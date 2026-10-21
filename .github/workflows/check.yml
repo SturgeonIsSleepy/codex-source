@@ -1,0 +1,22 @@
+name: Repository checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check repository layout
+        run: python3 .github/scripts/check_layout.py
+      - name: Test repository layout rules
+        run: python3 -m unittest discover -s .github/scripts/tests -v
+      - name: Test Android Cloud controller
+        run: python3 -m unittest discover -s tools/android-cloud/tests -v
+      - name: Check installer syntax
+        run: sh -n tools/android-cloud/install.sh

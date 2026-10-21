@@ -1,0 +1,393 @@
+#!/usr/bin/env python3
+"""Small, dependency-free Android 16 cloud emulator controller."""
+import argparse
+import contextlib
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import platform
+import shutil
+import signal
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.parse
+import urllib.request
+import zipfile
+
+IMAGE = 'system-images;android-36;default;x86_64'
+TOOLS_URL = 'https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip'
+TOOLS_SHA1 = '5fdcc763663eefb86a5b8879697aa6088b041e70'
+ROOT = Path(os.environ.get('ANDROID_CLOUD_HOME', '~/.cache/android-cloud')).expanduser().resolve()
+SDK = ROOT / 'sdk'
+AVDS = ROOT / 'avd'
+STATE = ROOT / 'state.json'
+LOG = ROOT / 'android-cloud.log'
+ENV = dict(os.environ, ANDROID_HOME=str(SDK), ANDROID_SDK_ROOT=str(SDK),
+           ANDROID_AVD_HOME=str(AVDS), ANDROID_USER_HOME=str(ROOT / 'user'))
+ADB = str(SDK / 'platform-tools/adb')
+AVD = 'cloud_android_16'
+
+
+class Failure(Exception):
+    def __init__(self, code, message):
+        self.code, self.message = code, message
+
+
+def emit(**data):
+    print(json.dumps(data, ensure_ascii=False, separators=(',', ':')), flush=True)
+
+
+def run(args, timeout=20, data=None, check=True, log=False):
+    try:
+        p = subprocess.run([str(a) for a in args], env=ENV, input=data,
+                           text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                           timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise Failure('command_timeout', f'Command timed out; see {LOG}')
+    except FileNotFoundError:
+        raise Failure('missing_tool', f'Missing executable: {args[0]}')
+    if log:
+        with LOG.open('a') as f:
+            f.write(p.stdout)
+    if check and p.returncode:
+        raise Failure('command_failed', f'{Path(str(args[0])).name} failed; see {LOG}' if log
+                      else p.stdout[-1500:].strip())
+    return p
+
+
+def state():
+    if not STATE.exists():
+        return {}
+    return json.loads(STATE.read_text())
+
+
+def save(value):
+    temp = STATE.with_suffix('.tmp')
+    temp.write_text(json.dumps(value))
+    temp.replace(STATE)
+
+
+@contextlib.contextmanager
+def locked():
+    ROOT.mkdir(parents=True, exist_ok=True)
+    with (ROOT / 'lock').open('a') as f:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise Failure('busy', 'Another deployment is running; use status or logs.')
+        yield
+
+
+def kvm():
+    try:
+        fd = os.open('/dev/kvm', os.O_RDWR)
+        try:
+            return fcntl.ioctl(fd, 0xAE00, 0) == 12  # KVM_GET_API_VERSION
+        finally:
+            os.close(fd)
+    except OSError:
+        return False
+
+
+def preflight(software=False):
+    if platform.system() != 'Linux' or platform.machine() != 'x86_64':
+        raise Failure('unsupported_host', 'Local mode requires Linux x86_64; use connect for a remote Android 16 device.')
+    if not software and not kvm():
+        raise Failure('kvm_required', 'Enable /dev/kvm with read/write access, use connect HOST:PORT, or explicitly use --software (slow).')
+    if not shutil.which('java'):
+        raise Failure('java_required', 'Install JDK 17+ in the base image.')
+    if shutil.disk_usage(ROOT).free < 8 * 1024**3 and not (SDK / 'system-images/android-36/default/x86_64/system.img').exists():
+        raise Failure('disk_space', 'At least 8 GiB free is required for initial setup.')
+
+
+def bootstrap():
+    manager = SDK / 'cmdline-tools/latest/bin/sdkmanager'
+    if manager.exists():
+        return manager
+    archive = ROOT / 'commandline-tools.zip'
+    if not archive.exists() or hashlib.sha1(archive.read_bytes()).hexdigest() != TOOLS_SHA1:
+        part = archive.with_suffix('.part')
+        try:
+            with urllib.request.urlopen(TOOLS_URL, timeout=60) as src, part.open('wb') as dst:
+                shutil.copyfileobj(src, dst)
+            if hashlib.sha1(part.read_bytes()).hexdigest() != TOOLS_SHA1:
+                raise Failure('checksum', 'Official command-line tools checksum mismatch.')
+            part.replace(archive)
+        finally:
+            part.unlink(missing_ok=True)
+    target = SDK / 'cmdline-tools/latest'
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+        with zipfile.ZipFile(archive) as z:
+            z.extractall(tmp)
+        shutil.move(str(Path(tmp) / 'cmdline-tools'), target)
+    for path in (target / 'bin').iterdir():
+        path.chmod(0o755)
+    return manager
+
+
+def proxy_args():
+    raw = os.environ.get('HTTPS_PROXY') or os.environ.get('https_proxy')
+    if not raw:
+        return []
+    p = urllib.parse.urlsplit(raw)
+    if p.scheme != 'http' or not p.hostname or p.username or p.password:
+        raise Failure('proxy_unsupported', 'sdkmanager needs an HTTP proxy without URL credentials; configure the platform proxy.')
+    return ['--proxy=http', f'--proxy_host={p.hostname}', f'--proxy_port={p.port or 80}']
+
+
+def setup(args):
+    preflight(args.software)
+    needed = [SDK / 'emulator/emulator', Path(ADB),
+              SDK / 'system-images/android-36/default/x86_64/system.img']
+    if not all(p.exists() for p in needed):
+        if not args.accept_licenses:
+            raise Failure('licenses_required', 'Review Android SDK terms, then rerun with --accept-licenses: https://developer.android.com/studio/terms')
+        manager = bootstrap()
+        base = [manager, f'--sdk_root={SDK}', *proxy_args()]
+        run([*base, '--licenses'], timeout=180, data='y\n' * 200, log=True)
+        run([*base, 'platform-tools', 'emulator', IMAGE], timeout=1800,
+            data='y\n' * 200, log=True)
+        if not all(p.exists() for p in needed):
+            raise Failure('incomplete_sdk', f'SDK install incomplete; see {LOG}')
+    AVDS.mkdir(parents=True, exist_ok=True)
+    if not (AVDS / f'{AVD}.ini').exists():
+        run([SDK / 'cmdline-tools/latest/bin/avdmanager', 'create', 'avd',
+             '--name', AVD, '--package', IMAGE], data='no\n', timeout=90, log=True)
+        config = AVDS / f'{AVD}.avd/config.ini'
+        values = dict(line.split('=', 1) for line in config.read_text().splitlines() if '=' in line)
+        values.update({'hw.lcd.width': '480', 'hw.lcd.height': '800', 'hw.lcd.density': '160',
+                       'hw.keyboard': 'yes', 'showDeviceFrame': 'no'})
+        config.write_text(''.join(f'{key}={value}\n' for key, value in values.items()))
+    return {'status': 'installed', 'api': 36, 'sdk': str(SDK)}
+
+
+def adb(serial, *args, check=False):
+    try:
+        return run([ADB, '-s', serial, *args], timeout=10, check=check).stdout.strip()
+    except Failure as exc:
+        if not check and exc.code == 'command_timeout':
+            return ''
+        raise
+
+
+def inspect(saved=None):
+    saved = state() if saved is None else saved
+    if not saved:
+        return {'status': 'stopped', 'api': 36}
+    serial = saved['serial']
+    if not Path(ADB).exists():
+        return {'status': 'offline', 'serial': serial, 'api': 36}
+    if adb(serial, 'get-state') != 'device':
+        return {'status': 'starting' if owned_running(saved) else 'offline', 'serial': serial, 'api': 36, 'mode': saved['mode']}
+    api = adb(serial, 'shell', 'getprop', 'ro.build.version.sdk')
+    boot = adb(serial, 'shell', 'getprop', 'sys.boot_completed')
+    if boot == '1' and api == '36' and saved['mode'] != 'remote':
+        name = adb(serial, 'emu', 'avd', 'name').splitlines()
+        if not name or name[0] != AVD:
+            return {'status': 'device_mismatch', 'serial': serial, 'api': 36}
+    return {'status': 'ready' if boot == '1' and api == '36' else 'booting' if boot != '1' else 'wrong_android_version',
+            'serial': serial, 'api': int(api) if api.isdigit() else api,
+            'mode': saved['mode']}
+
+
+def wait_ready(saved, timeout):
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        result = inspect(saved)
+        if result['status'] == 'ready':
+            return result
+        if result['status'] == 'device_mismatch':
+            raise Failure('device_mismatch', 'Selected port belongs to another AVD; use a different --port.')
+        if result['status'] == 'wrong_android_version':
+            raise Failure('wrong_android_version', f'Expected API 36, got {result["api"]}')
+        if saved['mode'] != 'remote' and adb(saved['serial'], 'get-state') != 'device':
+            # Poll the owned child when this is the process that launched it.
+            child = saved.get('_child')
+            if child is not None and child.poll() is not None:
+                raise Failure('emulator_exited', f'Emulator exited; see {LOG}')
+        time.sleep(2)
+    raise Failure('boot_timeout', f'Not ready after {timeout}s; emulator may still be booting. Use status or logs; see {LOG}')
+
+
+def process_birth(pid):
+    try:
+        fields = Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()
+        return fields[19] if fields[0] != 'Z' else None
+    except (OSError, IndexError):
+        return None
+
+
+def owned_running(saved):
+    pid = saved.get('pid')
+    return bool(pid and saved.get('birth') and process_birth(pid) == saved['birth'])
+
+
+def up(args):
+    old = state()
+    if old:
+        result = inspect(old)
+        if result['status'] == 'ready':
+            return result
+        if result['status'] == 'device_mismatch':
+            raise Failure('device_mismatch', 'Selected port belongs to another AVD.')
+        if old['mode'] == 'remote':
+            raise Failure('remote_selected', 'Use down before switching from a remote device to a local emulator.')
+        # Never launch a second emulator while a selected one is still reachable.
+        if adb(old['serial'], 'get-state') == 'device':
+            return wait_ready(old, args.timeout) if args.wait else result
+        if owned_running(old):
+            return wait_ready(old, args.timeout) if args.wait else result
+    setup(args)
+    port = args.port
+    if port % 2 or not 5554 <= port <= 5682:
+        raise Failure('invalid_port', 'Choose an even emulator port from 5554 to 5682.')
+    sockets = []
+    try:
+        for n in (port, port + 1):
+            s = socket.socket()
+            sockets.append(s)
+            s.bind(('127.0.0.1', n))
+    except OSError:
+        raise Failure('port_in_use', 'Emulator port is in use; choose another --port.')
+    finally:
+        for s in sockets:
+            s.close()
+    run([ADB, 'start-server'])
+    cmd = [SDK / 'emulator/emulator', '-avd', AVD, '-port', str(port),
+           '-no-window', '-no-audio', '-no-boot-anim', '-no-snapshot', '-show-kernel',
+           '-gpu', 'swiftshader', '-feature', '-Vulkan', '-memory', str(args.memory), '-cores', '2',
+           '-accel', 'off' if args.software else 'on']
+    proxy = os.environ.get('HTTP_PROXY') or os.environ.get('http_proxy')
+    if proxy:
+        proxy_args()  # Validate the platform proxy before passing it to the emulator.
+        cmd += ['-http-proxy', proxy]
+    with LOG.open('a') as log:
+        child = subprocess.Popen([str(c) for c in cmd], env=ENV, stdin=subprocess.DEVNULL,
+                                 stdout=log, stderr=log, start_new_session=True)
+    saved = {'mode': 'software' if args.software else 'kvm', 'serial': f'emulator-{port}', 'pid': child.pid, 'birth': process_birth(child.pid)}
+    save(saved)
+    if args.wait:
+        return wait_ready(dict(saved, _child=child), args.timeout)
+    return {'status': 'starting', 'serial': saved['serial'], 'api': 36, 'mode': saved['mode']}
+
+
+def connect(args):
+    if state():
+        raise Failure('device_selected', 'Use down before selecting another device.')
+    host, sep, port = args.address.rpartition(':')
+    if not sep or not host or not port.isdigit() or not 1 <= int(port) <= 65535:
+        raise Failure('invalid_address', 'Use an authorized ADB HOST:PORT endpoint.')
+    if not Path(ADB).exists():
+        if not args.accept_licenses:
+            raise Failure('licenses_required', 'Rerun with --accept-licenses to install official platform-tools.')
+        manager = bootstrap()
+        base = [manager, f'--sdk_root={SDK}', *proxy_args()]
+        run([*base, '--licenses'], timeout=180, data='y\n' * 200, log=True)
+        run([*base, 'platform-tools'], timeout=600, data='y\n' * 200, log=True)
+    run([ADB, 'connect', args.address], log=True)
+    saved = {'mode': 'remote', 'serial': args.address}
+    save(saved)
+    return wait_ready(saved, args.timeout)
+
+
+def down():
+    saved = state()
+    if not saved:
+        return {'status': 'stopped'}
+    if saved['mode'] == 'remote':
+        run([ADB, 'disconnect', saved['serial']], log=True)
+    else:
+        if adb(saved['serial'], 'get-state') != 'device':
+            if owned_running(saved):
+                os.kill(saved['pid'], signal.SIGTERM)
+                for _ in range(20):
+                    if not owned_running(saved):
+                        break
+                    time.sleep(0.5)
+                else:
+                    raise Failure('stop_timeout', f'Emulator PID {saved["pid"]} has not stopped; state preserved.')
+        else:
+            name = adb(saved['serial'], 'emu', 'avd', 'name').splitlines()
+            if not name or name[0] != AVD:
+                raise Failure('device_mismatch', 'Refusing to stop an emulator not owned by this tool.')
+            if not owned_running(saved):
+                raise Failure('ownership_lost', 'Emulator PID identity no longer matches saved state; refusing to stop it.')
+            adb(saved['serial'], 'emu', 'kill', check=True)
+            for _ in range(30):
+                if adb(saved['serial'], 'get-state') != 'device':
+                    break
+                time.sleep(1)
+            else:
+                raise Failure('stop_timeout', 'Emulator has not stopped; state preserved.')
+    STATE.unlink(missing_ok=True)
+    return {'status': 'stopped'}
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    sub = p.add_subparsers(dest='command', required=True)
+    sub.add_parser('doctor')
+    sub.add_parser('status')
+    sub.add_parser('down')
+    sub.add_parser('logs')
+    q = sub.add_parser('adb', help='run ADB against the selected device, including binary exec-out')
+    q.add_argument('args', nargs=argparse.REMAINDER)
+    for name in ('setup', 'up'):
+        q = sub.add_parser(name)
+        q.add_argument('--software', action='store_true', help='explicitly allow slow CPU emulation')
+        q.add_argument('--accept-licenses', action='store_true', help='accept Google Android SDK license terms')
+        if name == 'up':
+            q.add_argument('--wait', action='store_true', help='wait for Android boot completion; default is background startup')
+            q.add_argument('--port', type=int, default=5554)
+            q.add_argument('--memory', type=int, default=2048)
+            q.add_argument('--timeout', type=int, default=None)
+    q = sub.add_parser('connect')
+    q.add_argument('address')
+    q.add_argument('--accept-licenses', action='store_true')
+    q.add_argument('--timeout', type=int, default=60)
+    args = p.parse_args()
+    if args.command in ('setup', 'up'):
+        args.software = args.software or not kvm()
+        if args.command == 'up' and args.timeout is None:
+            args.timeout = 900 if args.software else 240
+    try:
+        ROOT.mkdir(parents=True, exist_ok=True)
+        if args.command == 'doctor':
+            emit(status='checked', host=platform.system() + '/' + platform.machine(),
+                 kvm=kvm(), java=bool(shutil.which('java')), installed=Path(ADB).exists(),
+                 free_gib=round(shutil.disk_usage(ROOT).free / 1024**3, 1), home=str(ROOT),
+                 next='up --accept-licenses')
+        elif args.command == 'status':
+            emit(**inspect())
+        elif args.command == 'adb':
+            saved = state()
+            if not saved:
+                raise Failure('no_device', 'Run up or connect first.')
+            os.execve(ADB, [ADB, '-s', saved['serial'], *args.args], ENV)
+        elif args.command == 'logs':
+            if LOG.exists():
+                with LOG.open('rb') as f:
+                    f.seek(max(0, LOG.stat().st_size - 12000))
+                    print(f.read().decode(errors='replace'))
+        else:
+            with locked():
+                result = {'setup': lambda: setup(args), 'up': lambda: up(args),
+                          'connect': lambda: connect(args), 'down': down}[args.command]()
+                emit(**result)
+    except Failure as exc:
+        emit(status='error', code=exc.code, message=exc.message)
+        return 1
+    except (OSError, ValueError, zipfile.BadZipFile) as exc:
+        emit(status='error', code='runtime_error', message=str(exc))
+        return 1
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
