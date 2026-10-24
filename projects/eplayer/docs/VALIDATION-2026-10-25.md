@@ -29,8 +29,18 @@
 
 [设备证据](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40123797367/artifacts/12572094416)，ZIP SHA256 `474b2fa7180a10afa5a99d4c582b6aa6931eaae84200cb4458a37fe7eb7cccc3`。fastRelease APK `39973e9e1f71207bb70d49c79a2514c6e8e617f4167d06cf1ebf9e823ae10c56`，R8 APK `15a933c8368d4231e55d22ab5a1f84876a7975f3a8f443297a4c73f2ecf2c65d`；测试 APK `936e2e1444ae04e91feb247060ee89759b9f98f9c25ebe252afe6e6de06ca57c`。仅证明上述模拟器范围，没有通知面板点击或实机证据。
 
+## 第五/六阶段失败与通过范围
+
+源码 `74ac16fc663705239a617f027f0d815c1714af33`，[CI 40124903082](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40124903082)：26 项中 **24 通过、1 失败、1 条件跳过**，117.399 秒。纯画布的像素/动作、横竖屏布局等用例通过，已查看本轮播放截图，人物资源与墨线进度条保持一致。
+
+唯一失败为完整集成流程第 200 行等待 Rust `isPlaying`、有效 duration 和当前曲目；90 秒内条件未满足。不是自然进程崩溃；没有获得真实 Rust 播放/拖动/切回的通过证据。现有 runtime.txt 仅采集 AndroidRuntime/EPlayerTest，缺失原生细节，不能从该日志推断具体根因。因为测试组失败，R8 冷启动 smoke 未执行。
+
+[失败证据](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40124903082/artifacts/12572746847)，ZIP SHA256 `0fa2099257b76ce38021c40616268df0a4cdb3cda23edb1d9d890178ce07fe02`；fastRelease APK SHA256 `2af260784d9e87badbebc76b01d431988f45d5e608d03ac67fca886aedf202d8`。本轮所有 APK/日志仍是 CI 中间证据，不宣称正式交付。
+
+第七阶段源码 `ed716144c091b022b1d3d6bff7bde0f8f363a8f3` 已推送，[CI 40125811298](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40125811298) 运行中。第八阶段补充原生/会话状态、仅限 Rust 初始化和传输的日志摘要、失败截图，以及 RustAudioEngine/FlickPlayer 等日志标签；不导出整个账号/模块日志缓冲。非缓冲原生错误与 JNI 拒绝通过 Media3 playerError 回传，重试/换曲清除旧错误。未取得新设备结果，不能把这些改动记作 Rust 阻塞已修复。
+
 ## 尚未完成
 
-第五/六阶段源码 `74ac16fc663705239a617f027f0d815c1714af33` 的焦点/真实 Rust 播放与纯画布回归待 CI 40124903082；本地 JVM 共 13 项通过。第七阶段 Rust 断点及真实通知卡片点击已加入检查，尚未设备运行。实机焦点、耳机路由、真实源账号、长时间播放、完整 R8 音乐功能和全页视觉均未验收。DSP 编辑和淡入淡出入口仍需迁移。
+第七/八阶段的 Rust 断点、错误回传和真实通知卡片点击待对应设备检查；本地 JVM 13 项及主程序/测试包构建通过。实机焦点、耳机路由、真实源账号、长时间播放、完整 R8 音乐功能和全页视觉均未验收。DSP 编辑和淡入淡出入口仍需迁移。
 
 早先 CI 40120164035 因 R8 目标剔除测试共享 Kotlin 类，未执行用例；CI 40121564864 为 23 通过、1 初始化失败，不能把这些失败覆盖为全通过。历史 0.1.1 具体公开交付仍保持原审批断点，本轮未重新发布该包。

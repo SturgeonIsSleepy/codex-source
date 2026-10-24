@@ -65,7 +65,7 @@ def main():
         print(result.stdout)
         if 'FAILURES!!!' in result.stdout or 'INSTRUMENTATION_CODE: -1' not in result.stdout or 'OK (' not in result.stdout:
             raise RuntimeError('Instrumentation did not report a complete passing run')
-        runtime = subprocess.run(['adb', 'logcat', '-d', '-s', 'AndroidRuntime', 'EPlayerTest'], capture_output=True, text=True, check=False)
+        runtime = subprocess.run(['adb', 'logcat', '-d', '-s', 'AndroidRuntime', 'EPlayerTest', 'FlickPlayer', 'RustEngine', 'RustAudioEngine', 'CPPlayerDebug', 'AudioTrack', 'AAudio', 'AudioManager'], capture_output=True, text=True, check=False)
         (output / 'instrumentation-runtime.txt').write_text(runtime.stdout)
         verify_release_start(release)
     except subprocess.TimeoutExpired as error:
@@ -77,7 +77,7 @@ def main():
     finally:
         for folder in ['visual-check', 'art-check', 'layout-check']:
             subprocess.run(['adb', 'pull', f'/sdcard/Android/data/app.eplayer.music/files/{folder}', str(output / folder)], check=False)
-        logs = subprocess.run(['adb', 'logcat', '-d', '-s', 'AndroidRuntime', 'EPlayerTest'], capture_output=True, text=True, check=False)
+        logs = subprocess.run(['adb', 'logcat', '-d', '-s', 'AndroidRuntime', 'EPlayerTest', 'FlickPlayer', 'RustEngine', 'RustAudioEngine', 'CPPlayerDebug', 'AudioTrack', 'AAudio', 'AudioManager'], capture_output=True, text=True, check=False)
         (output / 'runtime.txt').write_text(logs.stdout)
         subprocess.run(['adb', 'shell', 'wm', 'size', 'reset'], check=False)
         subprocess.run(['adb', 'shell', 'wm', 'density', 'reset'], check=False)

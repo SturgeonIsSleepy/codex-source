@@ -42,6 +42,32 @@ class EPlayerIntegrationTest {
         }
         assertTrue("Condition did not become true", predicate())
     }
+    private fun backgroundApp() {
+        main {
+            androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+                .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED)
+                .filterIsInstance<MainActivity>().forEach { it.moveTaskToBack(true) }
+        }
+        await {
+            var background = false
+            main { background = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+                .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED).none { it is MainActivity } }
+            background
+        }
+    }
+    private fun playerExpanded(): Boolean {
+        var expanded = false
+        main {
+            fun containsQueue(node: android.view.accessibility.AccessibilityNodeInfo?): Boolean {
+                if (node == null) return false
+                if (node.isVisibleToUser && node.contentDescription?.toString() == "播放队列") return true
+                for (index in 0 until node.childCount) if (containsQueue(node.getChild(index))) return true
+                return false
+            }
+            expanded = containsQueue(instrumentation.uiAutomation.rootInActiveWindow)
+        }
+        return expanded
+    }
     private fun capture(name: String) {
         val folder = File(context.getExternalFilesDir(null), "visual-check").apply { mkdirs() }
         val bitmap = instrumentation.uiAutomation.takeScreenshot()
@@ -50,6 +76,27 @@ class EPlayerIntegrationTest {
             bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
         }
         bitmap.recycle()
+    }
+    private fun dumpPlaybackDiagnostics(player: MediaController?) {
+        val report = StringBuilder()
+        main {
+            report.appendLine("connected=${player?.isConnected}")
+            if (player?.isConnected == true) {
+                report.appendLine("item=${player.currentMediaItem?.mediaId} state=${player.playbackState} requested=${player.playWhenReady} playing=${player.isPlaying} suppressed=${player.playbackSuppressionReason}")
+                report.appendLine("position=${player.currentPosition} duration=${player.duration} error=${player.playerError}")
+                report.appendLine("cause=${player.playerError?.cause}")
+            }
+        }
+        report.appendLine("nativeState=${runCatching { cp.player.engine.RustEngine.getState() }}")
+        report.appendLine("nativeProgress=${runCatching { cp.player.engine.RustEngine.getProgress() }}")
+        // Only native initialization/transport entries from this synthetic-audio test;
+        // never export the application's complete log buffer or account/module logs.
+        cp.player.util.LogManager.logs.value.filter { it.message.startsWith("RustEngine:") }
+            .take(30).asReversed().forEach { report.appendLine(it.toString()) }
+        val folder = File(context.getExternalFilesDir(null), "visual-check").apply { mkdirs() }
+        File(folder, "playback-diagnostics.txt").writeText(report.toString())
+        android.util.Log.i("EPlayerTest", report.toString())
+        runCatching { capture("failure-screen") }
     }
     private fun openFromNotification(title: String) {
         assertTrue("Notification shade opens", instrumentation.uiAutomation.performGlobalAction(
@@ -151,20 +198,7 @@ class EPlayerIntegrationTest {
             }
             context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             SystemClock.sleep(1000)
-            main {
-                androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
-                    .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED)
-                    .filterIsInstance<MainActivity>().forEach { it.moveTaskToBack(true) }
-            }
-            await {
-                var stopped = false
-                main {
-                    stopped = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
-                        .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED)
-                        .none { it is MainActivity }
-                }
-                stopped
-            }
+            backgroundApp()
             var backgroundPosition = 0L
             main { assertTrue("Playback survives backgrounding", player.isPlaying); backgroundPosition = player.currentPosition }
             await {
@@ -188,21 +222,11 @@ class EPlayerIntegrationTest {
             await { var paused = false; main { paused = !player.playWhenReady && player.sessionExtras.getLong(PlaybackSleepTimer.DEADLINE) == 0L }; paused }
             main { assertFalse("Service timer pauses while the activity is backgrounded", player.isPlaying); player.play() }
             await { var playing = false; main { playing = player.isPlaying }; playing }
-            main { assertNotNull("MediaSession exposes the notification return intent", player.sessionActivity) }
-            openFromNotification(WitchPlaylist.songs[0].name)
-            await(60000) {
-                var expanded = false
-                main {
-                    fun containsQueue(node: android.view.accessibility.AccessibilityNodeInfo?): Boolean {
-                        if (node == null) return false
-                        if (node.isVisibleToUser && node.contentDescription?.toString() == "播放队列") return true
-                        for (index in 0 until node.childCount) if (containsQueue(node.getChild(index))) return true
-                        return false
-                    }
-                    expanded = containsQueue(instrumentation.uiAutomation.rootInActiveWindow)
-                }
-                expanded
+            main {
+                assertNotNull("MediaSession exposes the notification return intent", player.sessionActivity)
+                player.sessionActivity!!.send() // Fixture setup; real notification tap is checked after backend playback.
             }
+            await(60000) { playerExpanded() }
             SystemClock.sleep(1200)
             capture("player-playing")
             main { player.pause() }
@@ -236,11 +260,29 @@ class EPlayerIntegrationTest {
             await { var parked = false; main { parked = !player.playWhenReady && player.currentMediaItem?.mediaId == "witch_1" && player.currentPosition in 5900..7000 }; parked }
             main { player.removeMediaItem(1) }
             await { var parked = false; main { parked = !player.playWhenReady && player.currentMediaItem?.mediaId == "witch_0" && player.currentPosition == 0L }; parked }
+            main {
+                player.setMediaItem(WitchPlaylist.songs[0].toMediaItem(FileProvider.getUriForFile(context,
+                    "${context.packageName}.fileprovider", File(context.cacheDir, "invalid-audio.txt"))))
+                player.prepare(); player.play()
+            }
+            await { var failed = false; main { failed = player.playerError != null }; failed }
+            main {
+                assertFalse("Native decoder errors must clear the playback request", player.playWhenReady)
+                player.setMediaItems(WitchPlaylist.songs.map { it.toMediaItem(WitchPlaylist.uri(context, it.id)) })
+            }
+            await { var cleared = false; main { cleared = player.playerError == null }; cleared }
             engine(0)
             main { player.play() }
             await { var playing = false; main { assertNull(player.playerError); playing = player.isPlaying }; playing }
             assertEquals(SessionResult.RESULT_SUCCESS, timer(0))
             android.util.Log.i("EPlayerTest", "Rust playback/seek/pause and return to ExoPlayer passed")
+            backgroundApp()
+            openFromNotification(WitchPlaylist.songs[0].name)
+            await(60000) { playerExpanded() }
+            capture("notification-return")
+        } catch (failure: Throwable) {
+            runCatching { dumpPlaybackDiagnostics(controller) }
+            throw failure
         } finally {
             controller?.let { player -> main {
                 player.sendCustomCommand(SessionCommand(PlaybackSleepTimer.COMMAND, Bundle.EMPTY),
