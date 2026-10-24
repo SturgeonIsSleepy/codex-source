@@ -32,6 +32,11 @@
 
 下一步：运行上述第四至第六阶段设备检查并审查墨线进度条截图。之后恢复 DSP 编辑入口、梳理焦点所有权和淡入淡出边界。实机音频焦点、耳机路由、长时间稳定性仍由本地 agent 验证。合入前再次拉取远端，保留对方新增提交。
 
+
+第四阶段已复核：[CI 40123797367](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40123797367)，源码 `37ad87f9336d9710802a52762d311f1c61b8f949`。26 项中 25 通过、1 项真实模块登录按条件跳过，51.685 秒；后台定时到期/取消、Session PendingIntent 返回、设置交互和无障碍进度均通过。R8 冷启动 smoke 通过，TotalTime 1835 ms。已实际查看播放中的新墨线进度条、横屏 2 倍字体与定时控件图。截图与 build.json 见 [设备证据](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40123797367/artifacts/12572094416)，ZIP SHA256 `474b2fa7180a10afa5a99d4c582b6aa6931eaae84200cb4458a37fe7eb7cccc3`。fastRelease APK SHA256 `39973e9e1f71207bb70d49c79a2514c6e8e617f4167d06cf1ebf9e823ae10c56`，R8 APK `15a933c8368d4231e55d22ab5a1f84876a7975f3a8f443297a4c73f2ecf2c65d`。这是模拟器、组件与 PendingIntent 验证，通知面板真实点击和实机路由仍未执行。
+
+第五阶段 `129a5ee2385660d55c05f75c938779af8c527b08` 与第六阶段 `74ac16fc663705239a617f027f0d815c1714af33` 均已推送；[联合 CI 40124903082](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40124903082) 运行中，焦点/真实 Rust 与纯画布回归不能提前标为通过。后续修复 Rust 起始进度并补真实通知面板点击，单独记录结果。
+
 ## 0.1.1 初步可用预览（2026-10-24）
 
 源码提交 `cd595a91ba11810c00f5a035af2f28cc1cd8e344`，versionCode 12。无音乐源时首页直接提供默认歌单导入与本地曲库，曲库默认打开手机音乐，不再自动跳转所有文件访问设置。按用户最新要求删除冗余副标题和说明，使用布局及导入、更换等动作表达流程。
