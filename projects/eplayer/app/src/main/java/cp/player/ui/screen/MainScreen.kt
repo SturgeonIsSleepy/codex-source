@@ -144,23 +144,17 @@ fun MainScreen(
             ) {
                 item {
                     Text("与伊蕾娜一起，听见旅途", style = MaterialTheme.typography.headlineSmall)
-                    Spacer(Modifier.height(8.dp))
-                    Text("从一首本地音乐开始今天的旅行", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 item { cp.player.ui.component.WitchPlaylistCard(onPlay = onWitchSongClick) }
                 item {
                     Button(onClick = onOpenLibrary, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
                         Text("打开本地曲库")
                     }
-                    Spacer(Modifier.height(8.dp))
-                    Text("在曲库中读取手机里的音乐，无需登录", style = MaterialTheme.typography.bodySmall)
                 }
                 item {
                     OutlinedButton(onClick = onSetupSource, modifier = Modifier.fillMaxWidth()) {
                         Text("添加在线音乐源")
                     }
-                    Text("在线搜索需要兼容的音乐源模块，本地播放可直接使用", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

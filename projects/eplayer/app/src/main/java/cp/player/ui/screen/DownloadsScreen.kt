@@ -126,7 +126,6 @@ fun DownloadsContent(
     LaunchedEffect(Unit) {
         if (hasPermission()) {
             onRefreshLocalMusic()
-
         } else {
             permissionLauncher.launch(permissionToRequest)
         }

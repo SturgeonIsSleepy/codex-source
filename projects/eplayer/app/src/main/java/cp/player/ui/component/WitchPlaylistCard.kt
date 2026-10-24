@@ -51,7 +51,6 @@ fun WitchPlaylistCard(onPlay: (Song, List<Song>) -> Unit) {
                 contentScale = androidx.compose.ui.layout.ContentScale.FillWidth
             )
             Text("魔女の旅々", style = MaterialTheme.typography.headlineMedium)
-            Text("两首旅途中的歌", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
             WitchPlaylist.songs.forEachIndexed { index, song ->
                 val imported = remember(revision) { WitchPlaylist.isImported(context, index) }
@@ -63,15 +62,12 @@ fun WitchPlaylistCard(onPlay: (Song, List<Song>) -> Unit) {
                     if (imported) IconButton(onClick = { onPlay(song, WitchPlaylist.available(context)) }) {
                         Icon(Icons.Default.PlayArrow, "播放 ${song.name}")
                     }
-                    IconButton(enabled = !importing, onClick = { target = index; picker.launch(arrayOf("audio/*")) }) {
-                        Icon(if (imported) Icons.Default.DriveFileRenameOutline else Icons.Default.FileOpen,
-                            if (imported) "更换 ${song.name} 的音频" else "导入 ${song.name} 的音频")
+                    TextButton(enabled = !importing, onClick = { target = index; picker.launch(arrayOf("audio/*")) }) {
+                        Text(if (imported) "更换" else "导入")
                     }
                 }
             }
             if (importing) LinearProgressIndicator(Modifier.fillMaxWidth())
-            else Text("导入你拥有的音频后即可离线播放", style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

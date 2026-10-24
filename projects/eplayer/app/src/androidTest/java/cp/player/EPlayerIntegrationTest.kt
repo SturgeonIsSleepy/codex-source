@@ -11,6 +11,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import cp.player.manager.WitchPlaylist
 import cp.player.service.MusicService
+import cp.player.util.UserPreferences
 import cp.player.util.toMediaItem
 import org.junit.Assert.*
 import org.junit.Test
@@ -41,6 +42,10 @@ class EPlayerIntegrationTest {
     }
     @Test fun importAndMediaSessionPlayback() {
         assertEquals("ePlayer", context.getString(R.string.app_name))
+        val previousQueue = UserPreferences.getLastQueueJson(context)
+        val previousIndex = UserPreferences.getLastQueueIndex(context)
+        val previousPosition = UserPreferences.getLastQueuePosition(context)
+        val previousPlaying = UserPreferences.getLastQueueWasPlaying(context)
         context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         instrumentation.waitForIdleSync()
         val fixture = File(context.cacheDir, "integration-tone.wav")
@@ -182,6 +187,8 @@ class EPlayerIntegrationTest {
             } }
             if (original == null) destination.delete() else destination.writeBytes(original)
             if (secondOriginal == null) secondDestination.delete() else secondDestination.writeBytes(secondOriginal)
+            if (previousQueue == null) UserPreferences.clearLastQueue(context)
+            else UserPreferences.saveLastQueue(context, previousQueue, previousIndex, previousPosition, previousPlaying)
             fixture.delete()
             File(context.cacheDir, "invalid-audio.txt").delete()
         }
