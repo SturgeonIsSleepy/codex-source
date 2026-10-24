@@ -57,7 +57,8 @@ fun DownloadsContent(
     allPlaylists: List<cp.player.model.Playlist> = emptyList(),
     bottomContentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
-    var selectedTabIndex by remember { mutableStateOf(0) }
+    val availableProviders by cp.player.provider.ModuleManager.providersFlow.collectAsState()
+    var selectedTabIndex by remember { mutableStateOf(if (availableProviders.isEmpty()) 1 else 0) }
     val tabs = listOf(stringResource(R.string.downloaded), stringResource(R.string.system_music_folder))
 
     // 系统音乐文件夹多选状态
@@ -125,17 +126,7 @@ fun DownloadsContent(
     LaunchedEffect(Unit) {
         if (hasPermission()) {
             onRefreshLocalMusic()
-            // 如果没有 MANAGE_EXTERNAL_STORAGE，提示用户授予以扫描 DSD 文件
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !android.os.Environment.isExternalStorageManager()) {
-                try {
-                    val intent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                    intent.data = android.net.Uri.parse("package:${context.packageName}")
-                    manageStorageLauncher.launch(intent)
-                } catch (_: Exception) {
-                    val intent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                    manageStorageLauncher.launch(intent)
-                }
-            }
+
         } else {
             permissionLauncher.launch(permissionToRequest)
         }

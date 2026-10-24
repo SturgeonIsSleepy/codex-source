@@ -335,6 +335,7 @@ fun AppMainContent(
                             val completedSongs by downloadViewModel.completedSongs.collectAsState()
                             val coroutineScope = rememberCoroutineScope()
                             MainScreen(
+                                onOpenLibrary = { navController.navigate("library") },
                                 onSetupSource = { navController.navigate("setup") },
                                 onWitchSongClick = { song, queue ->
                                     playbackViewModel.playSong(song, queue)

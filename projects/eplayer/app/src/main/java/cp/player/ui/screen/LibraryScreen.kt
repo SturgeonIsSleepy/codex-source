@@ -82,7 +82,8 @@ fun LibraryScreen(
         stringResource(R.string.tab_cloud) to Icons.Rounded.CloudQueue,
         stringResource(R.string.tab_live_sort) to Icons.Rounded.AutoGraph
     )
-    val pagerState = rememberPagerState(pageCount = { filters.size })
+    val availableProviders by cp.player.provider.ModuleManager.providersFlow.collectAsState()
+    val pagerState = rememberPagerState(initialPage = if (availableProviders.isEmpty()) 1 else 0, pageCount = { filters.size })
     val coroutineScope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
     

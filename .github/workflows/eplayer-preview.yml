@@ -1,0 +1,47 @@
+name: ePlayer preview
+on:
+  push:
+    paths:
+      - 'projects/eplayer/**'
+      - '.github/workflows/eplayer-preview.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: projects/eplayer
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install compile SDK
+        run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
+      - name: Restore checksummed native libraries
+        run: |
+          base=https://github.com/SturgeonIsSleepy/codex-source/releases/download/eplayer-v0.1.0
+          curl -fLsS "$base/eplayer-v0.1.0-native-libs.tar.gz" -o "$RUNNER_TEMP/eplayer-v0.1.0-native-libs.tar.gz"
+          curl -fLsS "$base/SHA256SUMS" -o "$RUNNER_TEMP/SHA256SUMS"
+          (cd "$RUNNER_TEMP" && grep ' eplayer-v0.1.0-native-libs.tar.gz$' SHA256SUMS | sha256sum -c -)
+          tar -xzf "$RUNNER_TEMP/eplayer-v0.1.0-native-libs.tar.gz"
+      - name: Build preview and device tests
+        run: |
+          bash tools/prepare-local-signing.sh
+          bash gradlew assembleFastRelease assembleFastReleaseAndroidTest -PwithRust=false -PtestBuildType=fastRelease --console=plain
+      - name: Upload preview and device tests
+        uses: actions/upload-artifact@v4
+        with:
+          name: eplayer-preview-${{ github.sha }}
+          path: |
+            projects/eplayer/app/build/outputs/apk/fastRelease/*.apk
+            projects/eplayer/app/build/outputs/apk/androidTest/fastRelease/*.apk
+          if-no-files-found: error
