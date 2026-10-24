@@ -151,16 +151,13 @@ class EPlayerIntegrationTest {
             await(60000) {
                 var expanded = false
                 main {
-                    val activities = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
-                        .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED)
-                    fun containsArtwork(view: android.view.View): Boolean {
-                        if (view is cp.player.ui.artwork.WitchPlayerView) return true
-                        if (view is android.view.ViewGroup) for (index in 0 until view.childCount) {
-                            if (containsArtwork(view.getChildAt(index))) return true
-                        }
+                    fun containsQueue(node: android.view.accessibility.AccessibilityNodeInfo?): Boolean {
+                        if (node == null) return false
+                        if (node.isVisibleToUser && node.contentDescription?.toString() == "播放队列") return true
+                        for (index in 0 until node.childCount) if (containsQueue(node.getChild(index))) return true
                         return false
                     }
-                    expanded = activities.any { containsArtwork(it.window.decorView) }
+                    expanded = containsQueue(instrumentation.uiAutomation.rootInActiveWindow)
                 }
                 expanded
             }

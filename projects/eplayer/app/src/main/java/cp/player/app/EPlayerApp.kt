@@ -377,6 +377,7 @@ private fun SourceLogin(source: String) {
                         val cookie = response.get("cookie")?.asString
                         check(!cookie.isNullOrBlank()) { "登录未返回会话" }
                         UserPreferences.getPrefs(context).edit().putString("cookie_$source", cookie).apply()
+                        SourceStore.clearResolved(source)
                         status = "已登录"; break
                     }
                 }

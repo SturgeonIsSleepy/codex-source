@@ -63,6 +63,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private var progressVisible = false
     private var ticker: Job? = null
     private var search: Job? = null
+    private var searchGeneration = 0
     private val future = MediaController.Builder(app, SessionToken(app, ComponentName(app, MusicService::class.java))).buildAsync()
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) { publish() }
@@ -166,15 +167,16 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         search?.cancel(); results.value = emptyList()
         val source = activeSource.value ?: run { message.value = "请先添加音源"; return }
         if (query.isBlank()) return
+        val generation = ++searchGeneration
         searching.value = true; searched.value = true; searchFailure.value = null
         search = viewModelScope.launch {
             try { results.value = SourceStore.search(app, source.id, query.trim()) }
             catch (error: kotlinx.coroutines.CancellationException) { throw error }
             catch (error: Exception) { searchFailure.value = error.message ?: "搜索失败" }
-            finally { searching.value = false }
+            finally { if (generation == searchGeneration) searching.value = false }
         }
     }
-    fun clearSearch() { search?.cancel(); results.value = emptyList(); searching.value = false; searched.value = false; searchFailure.value = null }
+    fun clearSearch() { searchGeneration++; search?.cancel(); results.value = emptyList(); searching.value = false; searched.value = false; searchFailure.value = null }
     fun importSource(uri: Uri) = sourceAction { SourceStore.import(app, uri) }
     fun selectSource(source: BackendProvider) = sourceAction { SourceStore.select(app, source) }
     fun removeSource(source: BackendProvider) = sourceAction { SourceStore.remove(app, source) }

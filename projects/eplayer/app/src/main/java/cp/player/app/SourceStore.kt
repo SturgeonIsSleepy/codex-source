@@ -22,6 +22,8 @@ import kotlinx.coroutines.withContext
 /** All app-facing source operations use one serialized module store and explicit source IDs. */
 object SourceStore {
     private val mutex = Mutex()
+    private data class Resolved(val url: String, val expiresAt: Long)
+    private val resolved = android.util.LruCache<String, Resolved>(64)
     private val initialized = CompletableDeferred<Unit>()
     private val _issue = MutableStateFlow<String?>(null)
     val issue = _issue.asStateFlow()
@@ -91,11 +93,18 @@ object SourceStore {
             ?.map { Track(it, source = sourceId) }.orEmpty()
     }
     suspend fun resolve(context: Context, sourceId: String, songId: String, quality: String = "standard"): String {
+        val key = "$sourceId:$songId:$quality"
+        synchronized(resolved) { resolved.get(key)?.takeIf { it.expiresAt > android.os.SystemClock.elapsedRealtime() }?.let { return it.url } }
         val response = call(context, sourceId, "song/url/v1", mapOf("id" to songId, "level" to quality))
         val url = response.get("redirectUrl")?.takeUnless { it.isJsonNull }?.asString ?: JsonUtils.findUrl(response)
         check(!url.isNullOrBlank() && (url.startsWith("https://") || url.startsWith("http://"))) {
             response.get("msg")?.asString ?: "此歌曲暂不可播放，可能需要登录或会员权限"
         }
+        val expires = response.getAsJsonArray("data")?.firstOrNull()?.asJsonObject?.get("expi")?.asLong ?: 300
+        synchronized(resolved) { resolved.put(key, Resolved(url, android.os.SystemClock.elapsedRealtime() + expires.coerceIn(1, 300) * 1000)) }
         return url
+    }
+    fun clearResolved(source: String) {
+        synchronized(resolved) { resolved.snapshot().keys.filter { it.startsWith("$source:") }.forEach(resolved::remove) }
     }
 }
