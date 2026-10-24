@@ -11,16 +11,13 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import cp.player.manager.WitchPlaylist
 import cp.player.service.MusicService
-import cp.player.util.UserPreferences
 import cp.player.util.toMediaItem
 import org.junit.Assert.*
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.util.concurrent.TimeUnit
-import kotlin.math.sin
 
 /** Exercises real import validation and the CPPlayer foreground playback service on Android. */
 @RunWith(AndroidJUnit4::class)
@@ -42,29 +39,18 @@ class EPlayerIntegrationTest {
     }
     @Test fun importAndMediaSessionPlayback() {
         assertEquals("ePlayer", context.getString(R.string.app_name))
-        val previousQueue = UserPreferences.getLastQueueJson(context)
-        val previousIndex = UserPreferences.getLastQueueIndex(context)
-        val previousPosition = UserPreferences.getLastQueuePosition(context)
-        val previousPlaying = UserPreferences.getLastQueueWasPlaying(context)
+        // This test replaces the active queue and default-song files. Never run it
+        // against a user's real queue/imports; use a fresh test installation.
+        val savedItems = context.getSharedPreferences("eplayer_queue", 0).getString("items", null)
+        assumeTrue("Use a clean test queue", savedItems == null || savedItems == "[]")
+        assumeTrue("Do not replace user recordings", (0..1).none { File(context.filesDir, "witch/audio-$it").exists() })
         context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         instrumentation.waitForIdleSync()
         val fixture = File(context.cacheDir, "integration-tone.wav")
-        val samples = 44100 * 45
-        val buffer = ByteBuffer.allocate(44 + samples * 2).order(ByteOrder.LITTLE_ENDIAN)
-        buffer.put("RIFF".toByteArray()).putInt(36 + samples * 2).put("WAVEfmt ".toByteArray())
-            .putInt(16).putShort(1).putShort(1).putInt(44100).putInt(88200).putShort(2).putShort(16)
-            .put("data".toByteArray()).putInt(samples * 2)
-        // A 2,205-sample period contains exactly 22 cycles at 440 Hz. Reuse it
-        // so software-emulated Android does not evaluate two million sine calls.
-        val period = ByteBuffer.allocate(2205 * 2).order(ByteOrder.LITTLE_ENDIAN)
-        repeat(2205) { i -> period.putShort((sin(i * 2 * Math.PI * 440 / 44100) * 3000).toInt().toShort()) }
-        repeat(samples / 2205) { buffer.put(period.array()) }
-        fixture.writeBytes(buffer.array())
+        fixture.writeBytes(cp.player.testing.SyntheticAudio.wav(45))
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", fixture)
         val destination = File(context.filesDir, "witch/audio-0")
-        val original = if (destination.exists()) destination.readBytes() else null
         val secondDestination = File(context.filesDir, "witch/audio-1")
-        val secondOriginal = if (secondDestination.exists()) secondDestination.readBytes() else null
         var controller: MediaController? = null
         try {
             WitchPlaylist.import(context, 0, uri)
@@ -182,10 +168,8 @@ class EPlayerIntegrationTest {
                 player.repeatMode = Player.REPEAT_MODE_OFF
                 player.release()
             } }
-            if (original == null) destination.delete() else destination.writeBytes(original)
-            if (secondOriginal == null) secondDestination.delete() else secondDestination.writeBytes(secondOriginal)
-            if (previousQueue == null) UserPreferences.clearLastQueue(context)
-            else UserPreferences.saveLastQueue(context, previousQueue, previousIndex, previousPosition, previousPlaying)
+            destination.delete()
+            secondDestination.delete()
             fixture.delete()
             File(context.cacheDir, "invalid-audio.txt").delete()
         }

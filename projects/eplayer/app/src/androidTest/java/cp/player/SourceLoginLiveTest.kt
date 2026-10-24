@@ -13,7 +13,7 @@ import org.junit.runner.RunWith
 /** Opt-in handshake only. Never scans, confirms login, saves cookies or prints login keys. */
 @RunWith(AndroidJUnit4::class)
 class SourceLoginLiveTest {
-    @Test fun officialModuleCanCreateLocallyRenderedLoginCode() = runBlocking {
+    @Test fun officialModuleCanCreateLocallyRenderedLoginCode(): Unit = runBlocking {
         assumeTrue(BuildConfig.INTERNAL_BUILD && InstrumentationRegistry.getArguments().getString("liveNetwork") == "true")
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val source = "netease-cloudmusic-rs"

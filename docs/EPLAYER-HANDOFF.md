@@ -16,6 +16,12 @@
 
 第一轮 [CI 40120164035](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40120164035) 构建成功，但 R8 release 目标剔除的 Kotlin 类导致测试运行器启动失败，用例没有实际执行。流程调整为非调试 fastRelease 运行完整 Instrumentation，压缩 release 另做冷启动 smoke；不为测试框架扩大生产 keep 规则，也不把两者合称 R8 全功能验收通过。
 
+第二轮 [CI 40121564864](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40121564864) 在 Android 16 x86_64 模拟器实际执行 24 项，其中 23 项通过；唯一失败为 `SourceLoginLiveTest` 的 JUnit 方法返回非 void，导致初始化失败，联网检查并未执行。已将该方法显式声明为 Unit，普通版默认仍按条件跳过真实模块登录。该轮因测试组未全通过，没有执行后续 R8 冷启动 smoke。
+
+已取得并人工查看该轮普通字号播放截图、横屏组件图、2 倍字体组件图，确认曲名与插画分区、操作区可达；大字体竖屏的插画可通过滚动完整查看。快照与 build.json 见该运行的 `eplayer-device-checks-59293143cd76368237c381ee6e3155a9c609c2b2` Artifact。它们是模拟器/组件证据，不是实机音质或全页面验收。
+
+第三阶段增加系统 DownloadManager 回环测试：404 失败记录、重试、可播放文件导入、移除系统任务后私有副本完整性、取消不重复入库。测试音复用仅存在于 androidTest 的合成 WAV 生成器。完整播放测试改为检查新队列存储，已有队列或用户默认歌单录音时跳过，避免覆盖用户数据。以上新增检查已编译，待新一轮 CI 执行。
+
 下一步：核对本分支 CI 的设备结果与截图，修复确有问题的布局/播放操作，然后继续缓冲状态暂停语义及关闭动画时的统一底图。实机音频焦点、耳机路由、长时间稳定性仍由本地 agent 验证。合入前再次拉取远端，保留对方新增提交。
 
 ## 0.1.1 初步可用预览（2026-10-24）
