@@ -1,5 +1,9 @@
 # ePlayer 转移交接
 
+每日云端开发正在 [PR #1](https://github.com/SturgeonIsSleepy/codex-source/pull/1) 的 `agent/eplayer-20261025-playback-layout` 分支进行。继续前先读[该分支最新交接](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-20261025-playback-layout/docs/EPLAYER-HANDOFF.md)、[计划](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-20261025-playback-layout/projects/eplayer/docs/DEVELOPMENT-PLAN.md)和[证据索引](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-20261025-playback-layout/projects/eplayer/docs/VALIDATION-2026-10-25.md)，接续既有提交，不从旧迁移基线重做。本段仅登记入口，功能代码仍在草稿 PR，未合入主线。
+
+截至 2026-10-25 北京时间，已推送自适应播放页、统一播放请求、共用静态/动态修复插画、系统下载回归、服务定时停止、固定 Player 焦点、纯插画画布。CI 40123797367 为 25 通过/1 条件跳过及 R8 启动 smoke 通过；后续 CI 40124903082 为 24 通过/1 失败/1 条件跳过，阻塞在真实 Rust 播放，不能当最终验收通过。最新源码 `ffad7b3b6c00259635c5c798ba4e16cef18ab6f2` 增加断点修复、真实通知点击、原生错误回传与诊断，设备结果待分支回写。实机、真实账号、网络远端断点、DSP/淡入淡出等缺口仍在；不覆盖本地 agent 的实机职责。
+
 更新：2026-10-24。主线为 [projects/eplayer](../projects/eplayer/)，原独立参考版为 [projects/witch-player](../projects/witch-player/)。原 ePlayer 工作树最后提交 `d196c0d`；迁移后的后续工作以本仓库提交为准。
 
 ## 0.1.1 初步可用预览（2026-10-24）
