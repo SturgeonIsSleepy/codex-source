@@ -1,0 +1,503 @@
+{
+  "schema_version": 1,
+  "purpose": "Verified one-time transfer to Releases; payloads are never committed to source trees",
+  "releases": [
+    {
+      "tag": "eplayer-v0.1.0",
+      "title": "ePlayer 0.1.0 · 测试交付与开发交接",
+      "prerelease": true,
+      "notes": "ePlayer 0.1.0 原工作树 d196c0d 的测试交付与迁移归档。最新继续开发的源码请使用 main/projects/eplayer，交接入口为 docs/EPLAYER-HANDOFF.md。\n\n- 约 90 MiB 通用 APK：非调试、未 R8 缩小，app.eplayer.music，versionCode 6，包含 ARM64/ARMv7/x86_64；签名与 16 KB 对齐检查通过。\n- 三 ABI JNI 归档可在 ePlayer 项目根解压，使用 -PwithRust=false。开发补丁保留原提交记录，不包含原本地签名文件。\n- 完整播放/后台/通知返回尚未取得最终验收通过结果；软件模拟器超时与人工终止均保留在验证归档，不能当作全部测试通过。\n- 历史源码 ZIP 剔除了本地签名密钥；校验以本 Release 的 SHA256SUMS 为准。不含歌曲录音。\n- 已启用每日北京时间 02:00 的持续开发任务，首次 2026-10-25；目标为精简 CPPlayer 核心并全面重构外观、交互与使用流程，持续推送本仓库。\n",
+      "assets": [
+        {
+          "name": "SHA256SUMS",
+          "size": 663,
+          "sha256": "6e0558c7c91bc2a93ddd13c56782546e60f96b38313c5cfcde5cdfcc7723afcb",
+          "chunks": [
+            "83e61afeafdfc90d42073830bbb606dead03beb8"
+          ]
+        },
+        {
+          "name": "ePlayer-checkpoint.md",
+          "size": 4379,
+          "sha256": "ce1c69e3b46b7d69324ff4f3a5cb1608efc60082eea16d733c7100dc29fc5cfb",
+          "chunks": [
+            "9800f71a578545bf206d5009281891f5a7ce1518"
+          ]
+        },
+        {
+          "name": "ePlayer-instructions.md",
+          "size": 1201,
+          "sha256": "44d7ddafefbb7738e7f76e4cc5f9b164b98badc21ff871a5356f0445cfcd461d",
+          "chunks": [
+            "396d8296633d6953e650d17c09a9f87772bafb25"
+          ]
+        },
+        {
+          "name": "ePlayer-source.zip",
+          "size": 22982188,
+          "sha256": "f798bd59e7ea9cec5af4fe48e73801083632cad9a000a73f81e8c5a542022978",
+          "chunks": [
+            "d39fc364d886a4e45da01bd4590401e86f110c51",
+            "19252578f350ce71eaa35fe9ee3610fa568e7bba",
+            "16a37fcb41534168fea0b719649b9cd989324fd3",
+            "f7b98fcfaec3296a9ae41ef22fdef3eb4df05fc9",
+            "a05e8d91ad9f80f7177fa0c942a51eaaab61877c",
+            "bcb0b95468b5aa963cd96bb7fdfb4123c94bab37"
+          ]
+        },
+        {
+          "name": "ePlayer-v0.1.0-preview.apk",
+          "size": 93656628,
+          "sha256": "fa898c0d135f34f17b530cf0662cac1d9b29f4f16a984db994497adecb95fa69",
+          "chunks": [
+            "118aee1a8d6ca26b5fd1e2b34dd73bcf2ca88d0e",
+            "b9f6efd3e2d9581f43f5801163dc7d4479701ead",
+            "1b97eb030a3a6e90b3428e2f5b533f543db78136",
+            "aa1dd5101b5d17fcd9a52357e51410da9cca753c",
+            "38edc7348e80202ecc7bba77dfb4602f96f11d62",
+            "ca0a6f8a3b4a77a9bc20f98a2d2758dea9313901",
+            "be82f5841e060d3e1258b700249757c4cad9172a",
+            "2547585a352283390cbe8ea9e90ec251246181c2",
+            "6ce276ab5cafe8cb86e6086196b1c2fbab97151e",
+            "8d3de42b143d526ade86e4445041b284f05fb793",
+            "9b8ddc21cc0aafcc8fd8168b923a6d33f41766cc",
+            "0f29ab2875b9ed64d817430ce4be66f398e4c445",
+            "39621f6c6d0879dd48fffd049ee287999b7e34c5",
+            "bce39f82e07083fc4ce43e346eec27de83c38e32",
+            "2133206c0e14f1443a97b7ee0a5508c09ec9954d",
+            "f97fdee4a61e8627edd37ca25312bccc2f6de0e4",
+            "8257fe168b5fb3831fbbdbe980bf79832297005d",
+            "33e0a2947484b9d0ea97a9079cfbec430afaa30a",
+            "f3b8a4daffb92e2659f16dbd637762b6e515b9a6",
+            "e030b4af5a76286b57d95717ac24bfcb236fdeb5",
+            "ad4dae8c0840926e616943e2c5ce5cb8d35c4a79",
+            "4ccd0c0b474f20512e13e2a8fac935d9095b8715",
+            "d6e776e46e26179677e4d67b77d262e2c59453f6"
+          ]
+        },
+        {
+          "name": "eplayer-v0.1.0-development-history.tar.gz",
+          "size": 43031776,
+          "sha256": "f09f60a6cf68cebb359ecf79ef05a2a34030cfc9bf2202f0b0bae14e55749ead",
+          "chunks": [
+            "c83b71a2d03053223d30c15206333386100c5339",
+            "97ae5b84546657d72b28d09f34386d6c63e34754",
+            "6fbf644283f16db5fb5254e9d6807c14fbcb3702",
+            "9ec11448300c78ee3fb38f801123481445e5d289",
+            "f4cc09158fbd305cf57f1ca0fafc8bcf1e915599",
+            "82f5c502f78d2c176e5003aac3f3f4265cb680da",
+            "437c1890eae184a8b72a24d96731f2ff1d650929",
+            "7df7ccb575f52e331e9191284c98575f16db7120",
+            "465888fa157abf1670e2a12d8885364c1a3168c4",
+            "daa4f189b2ca3b98c75d4777eeaa64bf4c7ffce2",
+            "87af6888bad525be2813f482d4394a66084baa0f"
+          ]
+        },
+        {
+          "name": "eplayer-v0.1.0-native-libs.tar.gz",
+          "size": 5693573,
+          "sha256": "37da897c1e124c60208498ab2de043fefe6d2488dc009b4950fa74f507ce587c",
+          "chunks": [
+            "3a605cc8fe34f6731055b19d52cc31c5a010152c",
+            "a3ea6d7e71ad17936c2154f46e9ed5ebb689f8a8"
+          ]
+        },
+        {
+          "name": "eplayer-v0.1.0-validation.tar.gz",
+          "size": 1649777,
+          "sha256": "8dfaab23927628481796d812ce6c7c1fa752667749bfd6ff464ff9ce2b1fe369",
+          "chunks": [
+            "f2126a838c3394dfb7defa6d893e5719db4094cf"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "witch-player-v1.8.0",
+      "title": "Witch Player 1.8 · 独立版与历史归档",
+      "prerelease": false,
+      "notes": "Witch Player 1.8 独立双曲播放器及此前版本的完整历史交付归档。目录索引版本为 1.8.0，应用版本名仍为 1.8。\n\n固定歌曲为 灰色のサーガ 和 リテラチュア；不附录音，需用户导入。所有此前公开给用户的安装包、源码包、预览图、动画片段和 CPPlayer 接入评估一并保留。work-evidence 归档保留诊断素材，reference-inputs 保留参考图和生成原始图。\n\n继续开发以 main/projects/eplayer 为主线；main/projects/witch-player 为保留的源码和动作参考。历史素材中的旧路径、旧故障和时间步导出帧率不代表当前设备验收或实际帧率。未上传本地密钥、SDK、AVD 或歌曲录音。SHA256SUMS 覆盖本 Release 附件。\n",
+      "assets": [
+        {
+          "name": "CPPlayer-integration-assessment.md",
+          "size": 4438,
+          "sha256": "b9fb6e422276c3a37d8d37cc0156d38c5d756e2ed42b9d3cc0dd05cabe48abe1",
+          "chunks": [
+            "8254eccb975bdfd3e5017625aac8665447c8fe1a"
+          ]
+        },
+        {
+          "name": "SHA256SUMS",
+          "size": 3754,
+          "sha256": "1d847088c1149acc0869cbc019eb3963388eb14127ce3484ac795a21e881e1a4",
+          "chunks": [
+            "c54108843f3d28b0e32de55a9a9f52aa199e148d"
+          ]
+        },
+        {
+          "name": "witch-player-motion.gif",
+          "size": 685864,
+          "sha256": "39e23ea3c491ccae12445f844aed80f9692bfccd60b23342ccbb5c19c36209c0",
+          "chunks": [
+            "aa65bd8b4c798a57942b018ed4412bba0b2bb1cf"
+          ]
+        },
+        {
+          "name": "witch-player-preview.png",
+          "size": 351227,
+          "sha256": "22e161cd0b940017c93afff3933387c52ddbd29414a68ccb4b8a4c4a2a0c9e28",
+          "chunks": [
+            "7ed5ff57116b01849d0e50169f3e59e70182b2db"
+          ]
+        },
+        {
+          "name": "witch-player-source.zip",
+          "size": 1266758,
+          "sha256": "5388def120d557ce40d8803d1abbebb3c169e0c3d76a33e0b11adae1b0b720a7",
+          "chunks": [
+            "08cd79eaf264fb4c042bf1d9694b8ca3fcbf069a"
+          ]
+        },
+        {
+          "name": "witch-player-v1.1-source.zip",
+          "size": 5715929,
+          "sha256": "4165408cc84c0b6b2a9c3ceaecf059e80930290663292d97246e99dbfce288ec",
+          "chunks": [
+            "f3efa43b596de6d68283ee214976a18056c37697",
+            "825bd0fcd97c26b1e31aba292b5a1a7c8a32856c"
+          ]
+        },
+        {
+          "name": "witch-player-v1.1.apk",
+          "size": 6284159,
+          "sha256": "526206e3e6f5e198cb408179eccf66e537296380b0cd091f494e3d4b8725ecb3",
+          "chunks": [
+            "fe7950e51b783b44015f430e3706e691a12e10cc",
+            "38f20b22113e846cd38731de9febb0fe8f1e86b5"
+          ]
+        },
+        {
+          "name": "witch-player-v1.2-motion.gif",
+          "size": 249612,
+          "sha256": "c84edc5a4fff13a50c25fa8e876fad001ada8558467065cb9f713d38566f7c2d",
+          "chunks": [
+            "4efc73c5bdaf4706c5017bc6bbe14d0fae9bcf0b"
+          ]
+        },
+        {
+          "name": "witch-player-v1.2-source.zip",
+          "size": 5717739,
+          "sha256": "6d80aef6745bc39b9ee7f5c352184a32d08e47f540e2c5a9827fd165b5c5083b",
+          "chunks": [
+            "74155801a4ac95b71eb86f5a291eea6993417d95",
+            "054df885a651156ba3a007bd68acc0066514c270"
+          ]
+        },
+        {
+          "name": "witch-player-v1.2.apk",
+          "size": 6284159,
+          "sha256": "ed1d3d9fa909cfd6a03745fe66e842be4609c415f0c61e98612969ec2f499b08",
+          "chunks": [
+            "5dfc584c052055320a376bf7325ce60ea0d8df8c",
+            "ccc8c8c2840143df9f1874f4a96db529ee8fdb2f"
+          ]
+        },
+        {
+          "name": "witch-player-v1.3-motion.gif",
+          "size": 5743620,
+          "sha256": "b12f2317d5e0e3b9536a800e45cc887bf8164be312c7af2901dbed4fc29c7568",
+          "chunks": [
+            "b72313feea17364690d24b7a2a18950cc5456048",
+            "215b85be736674542f400a28be3d6db41e8fa9b4"
+          ]
+        },
+        {
+          "name": "witch-player-v1.3-motion.mp4",
+          "size": 834297,
+          "sha256": "a5b70a9db6af1f579f76f1dd136c331443fb3b054c1c912de576a01e10e4dfb3",
+          "chunks": [
+            "1957449675507bffbc816eeab231f30aa41280b5"
+          ]
+        },
+        {
+          "name": "witch-player-v1.3-source.zip",
+          "size": 7578258,
+          "sha256": "8f2e15367a295f2981e808a3b1fb9121cc8c279aa5d9cbfe523d57cdb366076d",
+          "chunks": [
+            "b123693fa38955ef6e24975646c80b997bfae752",
+            "ac753661ce7c1c16b5d53ac06c2eddad768473a7"
+          ]
+        },
+        {
+          "name": "witch-player-v1.3.apk",
+          "size": 8291271,
+          "sha256": "6725c327ab13550c5dc3f100a54fbbe261218408e41b042d583708a058c8d2d9",
+          "chunks": [
+            "4f92e1eaf03a4542fc5c41be94ba042e94ac383c",
+            "1c3d103c1b1d31855f302e3f1e9affb520c20bf1"
+          ]
+        },
+        {
+          "name": "witch-player-v1.4-preview.png",
+          "size": 454661,
+          "sha256": "9cb13b0bf460c96326bbfef8eabe0f4caf3cd9d588eea6b9bbf80cc8ecac8d42",
+          "chunks": [
+            "118e4a52f447348a51c1d5944a01acd8194d2863"
+          ]
+        },
+        {
+          "name": "witch-player-v1.4-source.zip",
+          "size": 7769018,
+          "sha256": "a19a199ce7aa4acd75c0e241b85aa460cc47f51f8b73328c185faab57bbbc21a",
+          "chunks": [
+            "11436dcbc7b159e089c71bd379d527b87563697c",
+            "9e3fbc5ccc68d8795bec8becbdf9cbd205693520"
+          ]
+        },
+        {
+          "name": "witch-player-v1.4.1-preview.png",
+          "size": 380144,
+          "sha256": "ab0ec49f399fe97762b67abafa50c1d4368c8b5cf83a67be98d930f566abd820",
+          "chunks": [
+            "95592a2096c4cfed352a623bd80c19ff90129f29"
+          ]
+        },
+        {
+          "name": "witch-player-v1.4.1-source.zip",
+          "size": 8591324,
+          "sha256": "0e6efb5dd93e712ac9321e53e95765e3f2d09caefb93626348c4d2ff79c0abb2",
+          "chunks": [
+            "7bfec31338ef80a2a046f2e50d2cb0382d37e810",
+            "5660a634f5a60983afde3772124e1dd490a971e5",
+            "abd87433f3dcd9343fc67d73c7dc39ad9f1169a4"
+          ]
+        },
+        {
+          "name": "witch-player-v1.4.1.apk",
+          "size": 8553499,
+          "sha256": "048141c43716795229059ec7173a7dab8695176ba00bd003bf48c8370973b9c3",
+          "chunks": [
+            "349fb78d4194c6dbb7d4a84a6225c8f016be53ab",
+            "fd368bb46963def9a0b2ffa0d60b5c53103af03a",
+            "733bc4c140c3da475c7a73790ec6a838d1beb416"
+          ]
+        },
+        {
+          "name": "witch-player-v1.4.apk",
+          "size": 7517132,
+          "sha256": "83cb688972d5d8b74cdb753a38055c582412d4abe461de55f747e72b8302e20e",
+          "chunks": [
+            "3ecd18911cb1bb82dbff99308896f5b4d8f7e741",
+            "761989dc77aa0f1ad0db0407e7815bd672867f71"
+          ]
+        },
+        {
+          "name": "witch-player-v1.5-motion.mp4",
+          "size": 1003773,
+          "sha256": "f9ee8e614ecb2fdc45df7b5dd5650baf777182fc8b4996159302b7f7fba11e0f",
+          "chunks": [
+            "7e6ba37ce84fcc7ced2c0f227441334e2f045eaa"
+          ]
+        },
+        {
+          "name": "witch-player-v1.5-preview.jpg",
+          "size": 66986,
+          "sha256": "f9572bee83433e14fc71e8af4146e5a89670037e58e35333ff3d4eb29298a90e",
+          "chunks": [
+            "45a04a61420cbad5af2b7a2a893d8780f064c782"
+          ]
+        },
+        {
+          "name": "witch-player-v1.5-source.zip",
+          "size": 7744921,
+          "sha256": "7a36dac8c35a7d56f9ad806292504faff18946a55e6a4ce77bd6451eca357687",
+          "chunks": [
+            "31ba9a9d017c1a459911274c07c12b271b0d2dad",
+            "6f003ee95b27e57e11548374376dd5955905f7ea"
+          ]
+        },
+        {
+          "name": "witch-player-v1.5.apk",
+          "size": 8389663,
+          "sha256": "5e235512df36eed9399ab37b47569ae40a37183c3b7f6291e79ec930a545e748",
+          "chunks": [
+            "e5f163ad3c4d6b80229cf0fb52c16f258eac9b3a",
+            "a95537f7e7dbd8dc3ca66f920ba7b493ebbed51e",
+            "b540c8d880ae0076ed853869c90b3a9898e625e2"
+          ]
+        },
+        {
+          "name": "witch-player-v1.6-face-open.png",
+          "size": 486649,
+          "sha256": "f2d7943908b9add4eee5f7f95e5a1bf8cd24fe1a6e3d4b83499358435194e3d9",
+          "chunks": [
+            "c345614f2806a4128a926a6ebc30830e93f1d91e"
+          ]
+        },
+        {
+          "name": "witch-player-v1.6-face.png",
+          "size": 466401,
+          "sha256": "66ded40d73e160980b293dc3f37ba0e13d2e32281999b77a1a0b0b383c3ce8a2",
+          "chunks": [
+            "3afaff94af18211742e70209aa97330447f41749"
+          ]
+        },
+        {
+          "name": "witch-player-v1.6-preview.png",
+          "size": 383205,
+          "sha256": "e67379de56b6a381ce733722d3aa0af7d43b124eb9944097daf9224d12ec2783",
+          "chunks": [
+            "98cfe7ef7a9c9ef602e83a72fd29e381cfef3dc4"
+          ]
+        },
+        {
+          "name": "witch-player-v1.6-source.zip",
+          "size": 9390156,
+          "sha256": "9d7ec69db6a0749c4b2398ffc287719bb1c7f271f063bcfdfb3a22f0f6868a0f",
+          "chunks": [
+            "5e225c48bf29938f2a1b96003b2be7b3cc127405",
+            "5062507b4bf2a16e9327c5b7e759dbef0eb8d951",
+            "06ba9a2376c847f148840a65807d8a002baf81aa"
+          ]
+        },
+        {
+          "name": "witch-player-v1.6.apk",
+          "size": 7701531,
+          "sha256": "06256ef0251374858728d4c62063ee279d0ec8143b3a6811fa8839f6adf09eaf",
+          "chunks": [
+            "69967f934d793d55fca6ee8a78a5f938ae5021ae",
+            "e0f87a24f4b2b644f5e7f1ebf1ff9655a384e231"
+          ]
+        },
+        {
+          "name": "witch-player-v1.7-eyes.png",
+          "size": 857357,
+          "sha256": "5ed2066f0a3f4486baedf75bd250e6cf415760a536dd8001efd7399580b615e5",
+          "chunks": [
+            "dadfb0058a1a9d622b14417a4cf924e1007f8aeb"
+          ]
+        },
+        {
+          "name": "witch-player-v1.7-preview.png",
+          "size": 383248,
+          "sha256": "dab114aec6bdf708514c5ae9fec8f7055e9df36f8574f6eaa15e20f33a8e7304",
+          "chunks": [
+            "12dcfd3f4ad4efea2dae5f67ec917412ae3c4c22"
+          ]
+        },
+        {
+          "name": "witch-player-v1.7-source.zip",
+          "size": 5831297,
+          "sha256": "3e041d73cb903a975e6da25096cf9bddf71227caba7b19baf93fb0f0bb17ba60",
+          "chunks": [
+            "b079d74123c40286092c966f4f76b804e29369d6",
+            "f8f45258024e0391ced7aabcd345fcb853af8062"
+          ]
+        },
+        {
+          "name": "witch-player-v1.7.apk",
+          "size": 2716484,
+          "sha256": "738ec236deb16e9caa15103afb1ceffcdac619fc8e35911eae5d2370b28adcc3",
+          "chunks": [
+            "9fc232a6e28b851ca80041b61cca8ec53c0870b3"
+          ]
+        },
+        {
+          "name": "witch-player-v1.8-blink.mp4",
+          "size": 75872,
+          "sha256": "1e3f4c2b203f2783418bb4ee691a995f462ef7693a734633caefa823b42d332a",
+          "chunks": [
+            "04e82166ecd81a6c4e1cf6fd4e602078c921852c"
+          ]
+        },
+        {
+          "name": "witch-player-v1.8-detail.png",
+          "size": 245039,
+          "sha256": "0e3fd50469c4696c51f6c99bdffba4a1bf7e2a2b52aec9c9a69a0494d5e930bd",
+          "chunks": [
+            "0b6201e346df93148a44fcb422b7b1c7c601097a"
+          ]
+        },
+        {
+          "name": "witch-player-v1.8-preview.png",
+          "size": 379801,
+          "sha256": "912dafa66baad79dab30d8d5639ae9451230370bb5379021e636724ed25235d8",
+          "chunks": [
+            "f1ddd345426cce1bccd8a145cdc9f6b494ec97f2"
+          ]
+        },
+        {
+          "name": "witch-player-v1.8-source.zip",
+          "size": 7853732,
+          "sha256": "87b78a828586e8f586594dbcd2059f8721931ba4fab94a18edd9e4069c0b93cb",
+          "chunks": [
+            "dc7434b4fb948123edcf27733c3f0084c6756e98",
+            "a95f45fa8ebdc3ca735f809fe0bb52c46070f162"
+          ]
+        },
+        {
+          "name": "witch-player-v1.8.0-reference-inputs.tar.gz",
+          "size": 24350120,
+          "sha256": "c5b6730493b2cf322395b2262c26293a16ef261d1b3b71459da9234905dcfeca",
+          "chunks": [
+            "b0265e8a43b5bf645139947d7dad6d18e8199403",
+            "9ed398f35fb90edbf687dd12515f27fb08b9a793",
+            "b93d6d36faaefd000e4e21bc70967f21963a6b01",
+            "9c163711a5052740ae17a4f575f2bb82d8986502",
+            "1a36db4d4953b7823dcab29bd63e6f34569d3841",
+            "3c75872305b8e64e424a516e9ceda6efaf4dc419"
+          ]
+        },
+        {
+          "name": "witch-player-v1.8.0-work-evidence.tar.gz",
+          "size": 103128258,
+          "sha256": "e571ae8b3542ab314c939cd731457eb117f07b1a50a89936713de70b358f46c0",
+          "chunks": [
+            "8d602597b3a6c414a57c745ab5b0fdd24cdd3309",
+            "424fe804d4de8596c05681ceb5ad4efa26f22250",
+            "4be2eda095fc476929df83a3ca677a21fc0d0bb0",
+            "4c75c896bb12c919ce7f30520a26e50c2e23d0c6",
+            "46258ccc94b058ad92d7a540082a4d6f558c2027",
+            "5945ae42f4d57eb79e8d4ac6e97f40b5285309fe",
+            "1a3c8099fcb87d0532b01ff1ef4646ce81b2602d",
+            "7e47137e21519adfc33c881a20e721f589d07cf5",
+            "38baf4a39299ea448071eee41b5b171d8101232d",
+            "2556044915047944c435c0e9bcf692e8ad002d32",
+            "ac31711da164031f752a38ebaa2b6fc3432c6484",
+            "3f7734c2bf0a8da905089ef48ca31161b0668300",
+            "ca79c5f79cc45a5285cd42da307b1b5530f07f4a",
+            "a2796e608eec2ab67bfb728fd7fbc784d2e7aba1",
+            "5efc0b74b0ace031e96f387fee8aa44a3bf04551",
+            "8587b2bbddb56a0bbfcc2c2ca6cec37fbbe5f5cf",
+            "7578b8aa38e7c2f7141d49988fd99aa3fbf3e2da",
+            "6db8bc67abb735f7c6d955267deb8c1c993d307e",
+            "ecfbacc8ef680feac660a25ec75bbed17edcb0de",
+            "ea52e63ebe12afc11f6b6b48282318db067b9ff3",
+            "946e2755d6e73acfa1d49c45908fba63ac53fa96",
+            "c7749ce28fab7e13856350d45acc80422d135c09",
+            "e539800df685aac76d05a3fb477afe25e56c7fe7",
+            "de2ca433bc62ca8b1993a614da2873a1d48c867d",
+            "24fee07f9273ae6b7d988b4f90a634a923fefc31"
+          ]
+        },
+        {
+          "name": "witch-player-v1.8.apk",
+          "size": 4850573,
+          "sha256": "3f6649f2c984e83ddcafc9aecb2cc5b66e0ce2d9a075055f401f04b00c9957ca",
+          "chunks": [
+            "5c26e9d45efd2578d23da4d06eedae13f2f4bd3f",
+            "faeb7b41d57836da5d47f30885ea70a7b9d87345"
+          ]
+        },
+        {
+          "name": "witch-player.apk",
+          "size": 1458792,
+          "sha256": "901b86a1dbbbf76cb98baf99e32292a45eb201d1d6cb9573d5c7faf94013ce65",
+          "chunks": [
+            "2523a47a88dcc6feccd1f94b79c76eab6005d2ca"
+          ]
+        }
+      ]
+    }
+  ]
+}
