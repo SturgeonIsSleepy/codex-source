@@ -58,9 +58,12 @@ class EPlayerIntegrationTest {
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", fixture)
         val destination = File(context.filesDir, "witch/audio-0")
         val original = if (destination.exists()) destination.readBytes() else null
+        val secondDestination = File(context.filesDir, "witch/audio-1")
+        val secondOriginal = if (secondDestination.exists()) secondDestination.readBytes() else null
         var controller: MediaController? = null
         try {
             WitchPlaylist.import(context, 0, uri)
+            WitchPlaylist.import(context, 1, uri)
             assertTrue(WitchPlaylist.isImported(context, 0))
             val firstRecording = WitchPlaylist.uri(context, "witch_0")
             WitchPlaylist.import(context, 0, uri)
@@ -86,7 +89,7 @@ class EPlayerIntegrationTest {
                     }
                 })
                 player.repeatMode = Player.REPEAT_MODE_ONE
-                player.setMediaItem(WitchPlaylist.songs[0].toMediaItem(WitchPlaylist.uri(context, "witch_0")))
+                player.setMediaItems(WitchPlaylist.songs.map { it.toMediaItem(WitchPlaylist.uri(context, it.id)) })
                 player.prepare()
                 player.play()
             }
@@ -104,6 +107,18 @@ class EPlayerIntegrationTest {
             await { var sought = false; main { sought = player.currentPosition in 3900..5000 }; sought }
             main { assertFalse(player.isPlaying); player.play() }
             await { var playing = false; main { playing = player.isPlaying }; playing }
+            main { player.seekToNextMediaItem() }
+            await {
+                var ready = false
+                main { assertNull(player.playerError); ready = player.currentMediaItem?.mediaId == "witch_1" && player.isPlaying }
+                ready
+            }
+            main { player.seekToPreviousMediaItem() }
+            await {
+                var ready = false
+                main { assertNull(player.playerError); ready = player.currentMediaItem?.mediaId == "witch_0" && player.isPlaying }
+                ready
+            }
             context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             SystemClock.sleep(1000)
             main {
@@ -120,7 +135,13 @@ class EPlayerIntegrationTest {
                 }
                 stopped
             }
-            main { assertTrue("Playback survives backgrounding", player.isPlaying) }
+            var backgroundPosition = 0L
+            main { assertTrue("Playback survives backgrounding", player.isPlaying); backgroundPosition = player.currentPosition }
+            await {
+                var advances = false
+                main { advances = player.isPlaying && player.currentPosition > backgroundPosition + 500 }
+                advances
+            }
             context.startActivity(Intent(context, MainActivity::class.java).setAction("ACTION_SHOW_PLAYER").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             await(60000) {
                 var expanded = false
@@ -160,6 +181,7 @@ class EPlayerIntegrationTest {
                 player.release()
             } }
             if (original == null) destination.delete() else destination.writeBytes(original)
+            if (secondOriginal == null) secondDestination.delete() else secondDestination.writeBytes(secondOriginal)
             fixture.delete()
             File(context.cacheDir, "invalid-audio.txt").delete()
         }
