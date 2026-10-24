@@ -51,3 +51,11 @@ Android 16 软件 TCG 模拟器非常慢；测试与大构建不要并行，不�
 ## 本次迁移验证
 
 已执行目录检查、9 项目录规则测试、17 项 Android Cloud 控制器测试、构建脚本语法检查和独立版 MotionCheck。迁移未重新进行 Android UI 验收，测试 APK仍对应原工作树 d196c0d；源码迁移仅涉及签名准备、构建版本下限、目录和交接说明等调整。
+
+## 转移完成确认
+
+2026-10-24 已完成转移：ePlayer Release 共 8 个附件，Witch Player 历史 Release 共 41 个附件，49 个附件逐一核对远端大小、uploaded 状态和 SHA256 摘要一致。源码、素材、开发补丁、JNI、安装包、历史打包、参考输入和经过凭据清理的诊断归档均已保存。
+
+[发布归档工作流](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40062807892) 与同提交的 Repository checks 均成功。`.github/handoff-assets.json` 记录校验清单；临时传输对象没有进入源码提交树。两个 Release 已发布，无需再次执行转存。
+
+每日自动开发已启用；本次仅完成迁移与任务设置，没有把未完成的播放器功能验收改写为通过。下一轮直接从开发计划和真实验收断点继续。
