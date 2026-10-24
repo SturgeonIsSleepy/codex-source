@@ -1,117 +1,32 @@
-# CLAUDE.md
+# ePlayer 开发入口
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+先阅读根 AGENTS.md、../../docs/EPLAYER-HANDOFF.md、README.md 和 docs/DEVELOPMENT-PLAN.md。分支协作，保留本地 agent 的实机验收记录；云端模拟器通过不代表实机通过。
 
-## Build
+## 当前源码
 
-```bash
-./gradlew assembleDebug          # Debug APK (auto-runs cargo ndk for Rust)
-./gradlew assembleRelease        # Release APK with R8
-./gradlew assembleFastRelease    # No R8, debug signing — for Compose perf profiling
+- MainActivity.kt：Compose 宿主和通知返回 Intent。
+- app/EPlayerApp.kt：导航、首页、曲库、音乐源和设置入口。
+- app/PlayerScreen.kt：独立的播放布局、元数据和操作回调，不持有解码器。
+- app/EPlayerViewModel.kt：MediaController 状态投影、曲库与下载操作。
+- app/CloudViewModel.kt、MusicRepository.kt、SourceStore.kt：云端页面状态、响应映射与模块请求。
+- service/MusicService.kt：唯一前台播放会话、通知、持久队列和系统音频路由。
+- engine/：Media3/Rust 引擎、DSP、实时能量读数；保留 cp.player JNI 命名空间。
+- provider/：JNI/binary/HTTP 模块生命周期与协议兼容。
+- ui/artwork/：共用的修复人物底图与连续动作。不要重新生成整脸帧造成线稿漂移。
+
+能力边界和迁移缺口见 docs/CORE-BOUNDARIES.md；不能把旧类还存在当成功能已经接通。
+
+## 构建与测试
+
+JDK 21，SDK Platform 37.0，Build Tools 36.0.0；targetSdk 36。正常包 app.eplayer.music，自用包 app.eplayer.music.internal。三 ABI 为 arm64-v8a、armeabi-v7a、x86_64；USB 独占默认关闭。
+
+先运行 tools/prepare-local-signing.sh；私钥不提交。已有三 ABI JNI 可按交接说明恢复，未改 Rust 时用 -PwithRust=false。
+
+```sh
+./gradlew assembleStandardDebug assembleStandardDebugAndroidTest -PwithRust=false
+./gradlew assembleStandardRelease assembleStandardReleaseAndroidTest -PwithRust=false -PtestBuildType=release
 ```
 
-Rust toolchain + `cargo-ndk` required. Builds `arm64-v8a`, `armeabi-v7a`, and `x86_64`. Android instrumentation tests are in `app/src/androidTest`; full playback acceptance remains incomplete.
+测试源码在 app/src/androidTest。eplayer-preview 工作流先构建，再在 Android 16 加速模拟器验证普通版，保留单独的结果和组件渲染；不自动登录真实账号，不把自用模块嵌入普通版。不要反复强制完整 speed 预编译，不把大构建和慢速本地模拟器抢占同一资源。
 
-## Entry Points
-
-- [MainActivity.kt](app/src/main/java/cp/player/MainActivity.kt) — Single Activity, hosts all Compose Navigation routes (`setup`, `main`, `search`, `library`, `playlist/{id}`, `settings`, `downloads`, `livesort`, etc.)
-- [CPApplication.kt](app/src/main/java/cp/player/CPApplication.kt) — Application init, loads provider modules
-- [MusicService.kt](app/src/main/java/cp/player/service/MusicService.kt) — `MediaSessionService`, foreground playback, dual-player crossfade
-
-## Audio Engine
-
-- [CPPlayerManager.kt](app/src/main/java/cp/player/engine/CPPlayerManager.kt) — Engine selector: ExoPlayer (0) vs FlickPlayer (1)
-- [FlickPlayer.kt](app/src/main/java/cp/player/engine/FlickPlayer.kt) — Media3 `SimpleBasePlayer` wrapping Rust JNI engine
-- [RustEngine.kt](app/src/main/java/cp/player/engine/RustEngine.kt) — JNI bridge to native Rust
-- [CrossfadeManager.kt](app/src/main/java/cp/player/engine/CrossfadeManager.kt) — Crossfade between two player instances
-- USB exclusive ownership was removed; the optional Rust `uac2` feature is disabled by default.
-- [StreamProxy.kt](app/src/main/java/cp/player/engine/StreamProxy.kt) — Progressive streaming proxy for remote audio
-- [BackendDataSource.kt](app/src/main/java/cp/player/service/BackendDataSource.kt) — Multi-provider failover DataSource for ExoPlayer
-
-## Provider Plugin System
-
-Modules are `.zip` files with `manifest.json`. Three transport types: `jni`, `binary`, `http`.
-
-- [BackendProvider.kt](app/src/main/java/cp/player/provider/BackendProvider.kt) — Provider interface
-- [ProviderManager.kt](app/src/main/java/cp/player/provider/ProviderManager.kt) — `callApi()` routing, apiMap remapping, active provider management
-- [ModuleManager.kt](app/src/main/java/cp/player/provider/ModuleManager.kt) — Load/unload modules from zip
-- [JniProvider.kt](app/src/main/java/cp/player/provider/JniProvider.kt) — JNI shared library provider
-- [BinaryProvider.kt](app/src/main/java/cp/player/provider/BinaryProvider.kt) — Subprocess binary provider
-- [HttpProvider.kt](app/src/main/java/cp/player/provider/HttpProvider.kt) — HTTP REST provider
-
-See [PROVIDER_DEV_GUIDE.md](PROVIDER_DEV_GUIDE.md) for API surface and manifest format.
-
-## API Layer
-
-- [MusicApiService.kt](app/src/main/java/cp/player/api/MusicApiService.kt) — Unified interface (sole entry point for all music API calls)
-- [MusicApiServiceImpl.kt](app/src/main/java/cp/player/api/MusicApiServiceImpl.kt) — Implementation with cookie injection, error wrapping, response validation
-- [MusicApiMethod.kt](app/src/main/java/cp/player/api/MusicApiMethod.kt) — API method name constants
-
-## Health Monitor
-
-- [HealthMonitor.kt](app/src/main/java/cp/player/monitor/HealthMonitor.kt) — Singleton tracking API call metrics (success rate, response time, fallbacks, response compatibility warnings)
-- [HealthScreen.kt](app/src/main/java/cp/player/ui/screen/HealthScreen.kt) — Unified health/debug UI (6 tabs: overview, method stats, call log, API test, apiMap, provider status)
-- Monitoring is automatic via `MusicApiServiceImpl.callApi()` — no manual instrumentation needed in consumers
-- `validateResponse()` checks each response for expected fields, codes, and structure compatibility
-
-## Data Models
-
-- [Song.kt](app/src/main/java/cp/player/model/Song.kt) — Song model
-- [Playlist.kt](app/src/main/java/cp/player/model/Playlist.kt) — Playlist model
-- [UserProfile.kt](app/src/main/java/cp/player/model/UserProfile.kt) — User profile
-- [LyricLine.kt](app/src/main/java/cp/player/model/LyricLine.kt) — Lyric line model
-- [PlayerState.kt](app/src/main/java/cp/player/model/PlayerState.kt) — Player state enum/model
-
-JSON parsing uses Gson with flexible deserializers in [JsonUtils.kt](app/src/main/java/cp/player/util/JsonUtils.kt).
-
-## ViewModels
-
-All extend [BaseViewModel.kt](app/src/main/java/cp/player/viewmodel/BaseViewModel.kt) for API access.
-
-- [PlaybackViewModel.kt](app/src/main/java/cp/player/viewmodel/PlaybackViewModel.kt) — Playback state, controls, queue
-- [UserViewModel.kt](app/src/main/java/cp/player/viewmodel/UserViewModel.kt) — User data, playlists, cloud songs
-- [SearchViewModel.kt](app/src/main/java/cp/player/viewmodel/SearchViewModel.kt) — Search
-- [LoginViewModel.kt](app/src/main/java/cp/player/viewmodel/LoginViewModel.kt) — Authentication
-- [SettingsViewModel.kt](app/src/main/java/cp/player/viewmodel/SettingsViewModel.kt) — Preferences
-- [DownloadViewModel.kt](app/src/main/java/cp/player/viewmodel/DownloadViewModel.kt) — Downloads
-- [SocialViewModel.kt](app/src/main/java/cp/player/viewmodel/SocialViewModel.kt) — Comments, messaging
-- [DiscoveryViewModel.kt](app/src/main/java/cp/player/viewmodel/DiscoveryViewModel.kt) — Rankings, personalized playlists, new songs
-
-## UI Screens
-
-- [MainScreen.kt](app/src/main/java/cp/player/ui/screen/MainScreen.kt) — Home screen with tabs
-- [PlayerScreen.kt](app/src/main/java/cp/player/ui/screen/PlayerScreen.kt) — Full player view
-- [SearchScreen.kt](app/src/main/java/cp/player/ui/screen/SearchScreen.kt) — Search
-- [LibraryScreen.kt](app/src/main/java/cp/player/ui/screen/LibraryScreen.kt) — Local library
-- [PlaylistDetailScreen.kt](app/src/main/java/cp/player/ui/screen/PlaylistDetailScreen.kt) — Playlist detail
-- [SettingsScreen.kt](app/src/main/java/cp/player/ui/screen/SettingsScreen.kt) — Settings
-- [LoginScreen.kt](app/src/main/java/cp/player/ui/screen/LoginScreen.kt) — Login
-- [DownloadsScreen.kt](app/src/main/java/cp/player/ui/screen/DownloadsScreen.kt) — Downloads
-- [LyricsScreen.kt](app/src/main/java/cp/player/ui/screen/LyricsScreen.kt) — Lyrics overlay
-- [CloudMusicScreen.kt](app/src/main/java/cp/player/ui/screen/CloudMusicScreen.kt) — Cloud music
-- [SetupScreen.kt](app/src/main/java/cp/player/ui/screen/SetupScreen.kt) — First-run setup
-- [ChatScreen.kt](app/src/main/java/cp/player/ui/screen/ChatScreen.kt) — Messaging
-- [DiscoveryScreen.kt](app/src/main/java/cp/player/ui/screen/DiscoveryScreen.kt) — Rankings, recommended playlists, new songs
-- [RankingDetailScreen.kt](app/src/main/java/cp/player/ui/screen/RankingDetailScreen.kt) — Ranking detail with song list
-
-## Rust Native (`app/src/main/rust/`)
-
-- `jni_api.rs` — JNI bridge functions
-- `audio/` — Playback engine (CPAL, Symphonia, WavPack, Opus)
-- `uac2/` — USB Audio Class 2.0 host
-- `library_scan/` — Local music scanning
-- `vendor/` — Vendored cpal, opus-sys, wavpack-sys
-
-## Conventions
-
-- Code comments and docs are primarily in Chinese
-- JVM target: Java 21. Target ABI: `arm64-v8a`, `armeabi-v7a`. Locales: `en`, `zh`, `ja`
-- State: `StateFlow`/`MutableStateFlow` in ViewModels, `collectAsState()` in Compose
-- Images: Coil3 + OkHttp backend, Palette for dynamic theming
-- Version catalog: `gradle/libs.versions.toml`
-
-## ePlayer transfer notes
-
-Read README.md and ../../docs/EPLAYER-HANDOFF.md before continuing. Application ID is app.eplayer.music; cp.player is only the JNI/source namespace. Generate a local signing key with tools/prepare-local-signing.sh before building. Local keys are never committed. Version code has a floor of 6 to match the transferred preview.
-
-Run device checks when doing playback/UI work, selecting the APK matching the device ABI. Keep background Android setup separate from playback acceptance; do not claim all tests pass. Documentation/archive-only handoff does not require launching or reinstalling Android. Commit concrete changes after the relevant checks.
+做播放器或 UI 改动要执行相关构建和检查；纯交接文档变更无需安装设备。提交前运行根目录检查及相关测试，及时 commit/push。Release 的公开发布需遵守实际审批结果，已有被拒绝交付不能绕过审批重传。

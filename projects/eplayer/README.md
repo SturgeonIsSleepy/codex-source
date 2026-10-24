@@ -2,13 +2,17 @@
 
 基于 [Aurora-Nasa-1/CPPlayer](https://github.com/Aurora-Nasa-1/CPPlayer) 的 Android 音乐播放器，统一为白纸、天空和手绘墨线风格。应用独立安装标识为 `app.eplayer.music`；保留原项目 Kotlin 包名与 JNI 名称，以免破坏原生引擎接口。
 
-## 0.1.1 预览版
+## 当前开发版本 0.3.0
+
+普通版与自用版分离，账号、云端发现、搜索、收藏、歌单和下载流程正在迁移。功能边界与已知缺口见 [CORE-BOUNDARIES.md](docs/CORE-BOUNDARIES.md)；历史模拟器检查不能代替最新代码或实机验收。播放页采用独立组件，按宽度与方向适配，并为大字体保留滚动及可达操作区。
+
+## 0.1.1 历史预览版
 
 没有音乐源时，首页直接提供魔女之旅歌单导入与本地曲库入口；本地曲库默认显示手机音乐，不再自动跳转所有文件访问设置。在线能力仍需用户配置音乐源。本轮构建和设备验收结果见交接页。
 
 ## 功能与设计
 
-- 保留 CPPlayer 的音乐源模块、搜索、曲库、下载、歌词、评论、队列、音频引擎与后台 MediaSession。
+- 以 CPPlayer 的音频与音乐源协议为核心，迁移搜索、曲库、下载、歌词、评论、队列和 MediaSession；DSP 编辑、定时停止及淡入淡出入口仍需逐项接通、验收。
 - 首页与曲库提供《魔女之旅》默认歌单：灰色のサーガ、リテラチュア。音频由用户导入，不随应用分发。
 - 竖屏与横屏均使用伊蕾娜插画播放器，控件调用 CPPlayer 原有的播放服务。
 - 所有表情共用同一张修复底图；只在眼睛区域移动眼睑。头发、帽子和手臂不随表情切换图层。
@@ -37,7 +41,7 @@ cargo install cargo-ndk --locked
 ## 结构
 
 - `ui/artwork/`：单一底图修复、眼睑、连续动作及原生插画 View。
-- `ui/component/WitchPlayerPanel.kt`：Compose 状态与插画控件之间的桥接。
+- `app/PlayerScreen.kt`：自适应播放布局、元数据、插画与操作回调。
 - `manager/WitchPlaylist.kt`：默认歌单、本地导入验证与私有音频 URI。
 - `ui/theme/Theme.kt`：统一纸白、蓝天、墨色、文楷字体。
 - `androidTest/.../EPlayerIntegrationTest.kt`：真实文件导入及 CPPlayer MediaSession 播放测试。
