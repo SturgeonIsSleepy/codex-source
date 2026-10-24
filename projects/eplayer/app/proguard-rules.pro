@@ -49,3 +49,6 @@
 -keep class cp.player.manager.WitchPlaylist { *; }
 
 -keep class cp.player.app.QrLogin { *; }
+
+# Keep the codec available to the release QR round-trip device check.
+-keep class com.google.zxing.** { *; }

@@ -230,7 +230,7 @@ fun EPlayerApp(model: EPlayerViewModel, showPlayer: Boolean, onShowPlayer: (Bool
                         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(active?.id == source.id, { model.selectSource(source) })
                             Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
-                                Text(source.name, style = MaterialTheme.typography.titleMedium)
+                                Text(if (source.id == "netease-cloudmusic-rs") "网易云音乐" else source.name, style = MaterialTheme.typography.titleMedium)
                                 Text(source.version, style = MaterialTheme.typography.bodySmall)
                             }
                             IconButton(onClick = { pendingDelete = source }) { Icon(Icons.Default.DeleteOutline, "移除 ${source.name}") }
@@ -364,7 +364,7 @@ private fun SourceLogin(source: String) {
     var refresh by remember { mutableIntStateOf(0) }
     var logged by remember(source) { mutableStateOf(!UserPreferences.getPrefs(context).getString("cookie_$source", null).isNullOrBlank()) }
     fun close() { open = false; key = null; url = null; image = null }
-    OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) { Text(if (logged) "已登录" else "登录") }
+    OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) { Text(if (logged) "切换账号" else "登录") }
     LaunchedEffect(open, source, refresh) {
         if (!open) return@LaunchedEffect
         status = "加载中"
@@ -376,6 +376,7 @@ private fun SourceLogin(source: String) {
             image = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { QrLogin.bitmap(url!!) }
             status = "等待扫码"
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                if (status == "已登录" || status == "二维码已过期") return@repeatOnLifecycle
                 while (open) {
                     delay(2000)
                     val response = SourceStore.call(context, source, "login/qr/check", mapOf("key" to key!!))
