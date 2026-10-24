@@ -83,13 +83,13 @@ public class ArtIntegrityTest {
         final java.util.concurrent.atomic.AtomicReference<Throwable> failure=new java.util.concurrent.atomic.AtomicReference<>();
         InstrumentationRegistry.getInstrumentation().runOnMainSync(()->{
             try {
-                WitchPlayerView view=new WitchPlayerView(context);view.setArtworkOnly(true);
+                WitchPlayerView view=new WitchPlayerView(context);
                 int width=android.view.View.MeasureSpec.makeMeasureSpec(865,android.view.View.MeasureSpec.EXACTLY);
                 int height=android.view.View.MeasureSpec.makeMeasureSpec(1280,android.view.View.MeasureSpec.EXACTLY);
                 view.measure(width,height);view.layout(0,0,865,1280);
                 for(int i=0;i<3;i++) {
                     if(i>0)view.setMotionEnabled(false);
-                    view.update("fixture",false,i==1,i==1,0,0,null);
+                    view.setPlayback(false,i==1,0);
                     frames[i]=Bitmap.createBitmap(865,1280,Bitmap.Config.ARGB_8888);
                     view.draw(new Canvas(frames[i]));
                 }

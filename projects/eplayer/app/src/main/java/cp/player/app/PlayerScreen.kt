@@ -65,17 +65,10 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
             artwork = { modifier ->
                 if (!artworkReady) Box(modifier, contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 else AndroidView(
-                    factory = { WitchPlayerView(it).apply { setArtworkOnly(true) } }, modifier = modifier,
+                    factory = { WitchPlayerView(it) }, modifier = modifier,
                     update = { view ->
                         view.setMotionEnabled(animate)
-                        view.update(state.song?.name.orEmpty(), state.playing, state.buffering, state.playRequested, position, state.duration,
-                        object : WitchPlayerView.Controls {
-                            override fun playPause() = model.playPause()
-                            override fun previous() = model.previous()
-                            override fun next() = model.next()
-                            override fun seek(position: Long) = model.seek(position)
-                            override fun queue() { queue = true }
-                        }) })
+                        view.setPlayback(state.playing, state.playRequested, position) })
             },
             controls = {
                 PlayerTransport(state, position, seeking, { seeking = it }, {

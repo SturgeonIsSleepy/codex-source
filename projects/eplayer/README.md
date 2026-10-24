@@ -18,7 +18,7 @@
 - 竖屏与横屏均使用伊蕾娜插画播放器，控件调用 CPPlayer 原有的播放服务。
 - 所有表情共用同一张修复底图；只在眼睛区域移动眼睑。头发、帽子和手臂不随表情切换图层。
 - 本地音频分析提供节拍与能量；ExoPlayer 与 Rust 引擎都提供实时 PCM 能量，让在线歌曲也影响摇摆幅度。没有能量数据时使用连续的缓慢摇摆，整个流程不使用麦克风。
-- 全局文字使用霞鹜文楷 Medium；原插画曲名使用 Yuji Boku。字体许可随 APK 打包。
+- 全局文字使用霞鹜文楷 Medium；参考素材所含 Yuji Boku 及字体许可仍保留，插画画布不再重复加载曲名字体。
 - 移除 USB 独占设置、设备接管、USB 启动过滤器与运行管理器；Rust 默认不编译 `uac2`。普通系统 USB / 耳机音频路由保留。
 - 移除上游 Sentry 构建插件与上报配置。关于页面标注 ePlayer 与 CPPlayer 的关系，不自动安装上游 APK。
 
@@ -41,7 +41,7 @@ cargo install cargo-ndk --locked
 
 ## 结构
 
-- `ui/artwork/`：单一底图修复、眼睑、连续动作及原生插画 View。
+- `ui/artwork/`：单一底图修复、眼睑、连续动作及纯绘制 View；不创建第二套控件或管理媒体音量。
 - `app/PlayerScreen.kt`：自适应播放布局、元数据、插画与操作回调。
 - `manager/WitchPlaylist.kt`：默认歌单、本地导入验证与私有音频 URI。
 - `ui/theme/Theme.kt`：统一纸白、蓝天、墨色、文楷字体。

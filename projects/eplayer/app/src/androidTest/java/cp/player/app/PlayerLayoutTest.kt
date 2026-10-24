@@ -57,7 +57,7 @@ class PlayerLayoutTest {
                         PlayerLayout(song, false,
                             header = { PlayerHeader(action, action, action, action, action) },
                             artwork = { modifier -> AndroidView(factory = { context ->
-                                WitchPlayerView(context).apply { setArtworkOnly(true) }
+                                WitchPlayerView(context)
                             }, modifier = modifier) },
                             controls = { PlayerTransport(state, 0, sought.value, { sought.value = it }, {}, action, action, action, action, action, false, action) })
                     }
