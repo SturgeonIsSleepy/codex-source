@@ -40,3 +40,10 @@
 
 # Persisted ePlayer library and queue schema.
 -keep class cp.player.app.Track { *; }
+
+# Device checks exercise the exact renderer/PCM and module core in release APKs.
+-keep class cp.player.ui.artwork.** { *; }
+-keep class cp.player.engine.EnergyAudioProcessor { *; }
+-keep class cp.player.engine.MusicPulse { *; }
+-keep class cp.player.engine.RustEngine { *; }
+-keep class cp.player.manager.WitchPlaylist { *; }

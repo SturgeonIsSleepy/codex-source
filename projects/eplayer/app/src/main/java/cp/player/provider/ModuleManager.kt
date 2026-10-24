@@ -36,7 +36,7 @@ object ModuleManager {
         if (!modulesDir.exists()) modulesDir.mkdirs()
 
         modulesDir.listFiles()?.forEach { dir ->
-            if (dir.isDirectory) {
+            if (dir.isDirectory && !dir.name.startsWith(".")) {
                 loadModule(dir)
             }
         }
@@ -51,68 +51,64 @@ object ModuleManager {
         }
     }
 
+    @Synchronized
     fun importModule(context: Context, zipFile: File): Boolean {
-        val modulesDir = File(context.filesDir, "modules")
-        if (!modulesDir.exists()) modulesDir.mkdirs()
+        val modulesDir = File(context.filesDir, "modules").apply { mkdirs() }
+        val staged = File(modulesDir, ".import-${java.util.UUID.randomUUID()}").apply { mkdirs() }
         lastLoadError = null
-
         try {
-            val tempDir = File(modulesDir, "temp_${System.currentTimeMillis()}")
-            tempDir.mkdirs()
-
-            ZipInputStream(zipFile.inputStream()).use { zis ->
-                var entry = zis.nextEntry
+            ZipInputStream(zipFile.inputStream()).use { input ->
+                var entry = input.nextEntry
                 while (entry != null) {
-                    val newFile = File(tempDir, entry.name)
-                    val destDirPath = tempDir.canonicalPath
-                    val destFilePath = newFile.canonicalPath
-                    if (!destFilePath.startsWith(destDirPath + File.separator)) {
-                        throw SecurityException("Entry is outside of the target dir: ${entry.name}")
+                    val destination = File(staged, entry.name)
+                    require(destination.canonicalPath.startsWith(staged.canonicalPath + File.separator)) { "ZIP 路径无效" }
+                    if (entry.isDirectory) destination.mkdirs() else {
+                        destination.parentFile!!.mkdirs()
+                        destination.outputStream().use { input.copyTo(it) }
                     }
-
-                    if (entry.isDirectory) {
-                        newFile.mkdirs()
-                    } else {
-                        newFile.parentFile?.mkdirs()
-                        FileOutputStream(newFile).use { fos ->
-                            zis.copyTo(fos)
-                        }
-                    }
-                    entry = zis.nextEntry
+                    entry = input.nextEntry
                 }
             }
-
-            val manifestFile = File(tempDir, "manifest.json")
-            if (!manifestFile.exists()) {
-                tempDir.deleteRecursively()
-                lastLoadError = "模块包中缺少 manifest.json"
-                Log.e(TAG, "No manifest.json found in module")
-                return false
+            val manifestFile = File(staged, "manifest.json")
+            require(manifestFile.isFile) { "模块缺少 manifest.json" }
+            val manifest = gson.fromJson(manifestFile.readText(), ModuleManifest::class.java)
+            require(manifest.id.matches(Regex("[A-Za-z0-9][A-Za-z0-9._-]*")) && manifest.id != "." && manifest.id != "..") { "模块 ID 无效" }
+            require(manifest.name.isNotBlank() && manifest.version.isNotBlank()) { "模块信息不完整" }
+            require(manifest.type in setOf("http", "jni", "binary")) { "不支持的模块类型" }
+            if (manifest.type != "http") {
+                val entry = resolveEntryPoint(staged, manifest)
+                require(entry.canonicalPath.startsWith(staged.canonicalPath + File.separator) && entry.isFile) { "模块入口不存在" }
             }
-
-            val manifestText = manifestFile.readText()
-            val manifest = gson.fromJson(manifestText, ModuleManifest::class.java)
-            val targetDir = File(modulesDir, manifest.id)
-            if (targetDir.exists()) targetDir.deleteRecursively()
-            tempDir.renameTo(targetDir)
-
-            val success = loadModule(targetDir)
-            if (!success) {
-                // 加载失败时清理已移动的目录，避免残留损坏模块
-                targetDir.deleteRecursively()
-            } else {
-                updateProvidersFlow()
+            val target = File(modulesDir, manifest.id)
+            val backup = File(modulesDir, ".backup-${manifest.id}")
+            val previous = providers[manifest.id]
+            val wasActive = ProviderManager.currentProvider?.id == manifest.id
+            // Validate first, then replace. A rejected update never destroys a working module.
+            if (target.exists()) {
+                require(!backup.exists()) { "上次模块更新未完成" }
+                File(target, "user_data").takeIf { it.isDirectory }?.copyRecursively(File(staged, "user_data"), overwrite = true)
+                check(target.renameTo(backup)) { "无法备份旧模块" }
             }
-            return success
-        } catch (e: SecurityException) {
-            lastLoadError = "ZIP 路径不安全: ${e.message}"
-            Log.e(TAG, "Failed to import module: ZIP path traversal", e)
+            try {
+                check(staged.renameTo(target)) { "无法保存模块" }
+                check(loadModule(target)) { lastLoadError ?: "模块加载失败" }
+            } catch (failure: Exception) {
+                target.deleteRecursively()
+                if (backup.exists()) check(backup.renameTo(target)) { "无法恢复旧模块" }
+                if (previous != null) providers[manifest.id] = previous else providers.remove(manifest.id)
+                throw failure
+            }
+            if (wasActive) {
+                ProviderManager.switchProvider(null, context, save = false)
+                ProviderManager.switchProvider(providers[manifest.id], context)
+            }
+            backup.deleteRecursively()
+            updateProvidersFlow()
+            return true
+        } catch (failure: Exception) {
+            lastLoadError = failure.message ?: "模块导入失败"
             return false
-        } catch (e: Exception) {
-            lastLoadError = "导入失败: ${e.message}"
-            Log.e(TAG, "Failed to import module", e)
-            return false
-        }
+        } finally { staged.deleteRecursively() }
     }
 
     private fun loadModule(dir: File): Boolean {
@@ -232,75 +228,13 @@ object ModuleManager {
      * @return true 如果更新成功
      */
     fun updateModule(context: Context, id: String, zipFile: File): Boolean {
-        val modulesDir = File(context.filesDir, "modules")
-        lastLoadError = null
-        try {
-            val tempDir = File(modulesDir, "temp_update_${System.currentTimeMillis()}")
-            tempDir.mkdirs()
-
-            // 解压新 zip
-            ZipInputStream(zipFile.inputStream()).use { zis ->
-                var entry = zis.nextEntry
-                while (entry != null) {
-                    val newFile = File(tempDir, entry.name)
-                    val destDirPath = tempDir.canonicalPath
-                    val destFilePath = newFile.canonicalPath
-                    if (!destFilePath.startsWith(destDirPath + File.separator)) {
-                        throw SecurityException("Entry is outside of the target dir: ${entry.name}")
-                    }
-                    if (entry.isDirectory) {
-                        newFile.mkdirs()
-                    } else {
-                        newFile.parentFile?.mkdirs()
-                        FileOutputStream(newFile).use { fos ->
-                            zis.copyTo(fos)
-                        }
-                    }
-                    entry = zis.nextEntry
-                }
+        val matches = runCatching {
+            java.util.zip.ZipFile(zipFile).use { archive ->
+                val entry = archive.getEntry("manifest.json") ?: return@use false
+                archive.getInputStream(entry).reader().use { gson.fromJson(it, ModuleManifest::class.java).id == id }
             }
-
-            val manifestFile = File(tempDir, "manifest.json")
-            if (!manifestFile.exists()) {
-                tempDir.deleteRecursively()
-                lastLoadError = "更新包中缺少 manifest.json"
-                Log.e(TAG, "No manifest.json found in update zip")
-                return false
-            }
-
-            val manifest = gson.fromJson(manifestFile.readText(), ModuleManifest::class.java)
-            if (manifest.id != id) {
-                tempDir.deleteRecursively()
-                lastLoadError = "模块 ID 不匹配: 包含 ${manifest.id}，目标 $id"
-                Log.e(TAG, "Update zip id (${manifest.id}) does not match target ($id)")
-                return false
-            }
-
-            // 保留旧模块的 user_data 目录
-            val oldDir = File(modulesDir, id)
-            val userDataDir = File(oldDir, "user_data")
-            if (userDataDir.exists()) {
-                val targetUserData = File(tempDir, "user_data")
-                userDataDir.copyRecursively(targetUserData, overwrite = true)
-                Log.i(TAG, "Preserved user_data for module: $id")
-            }
-
-            // 停止旧 Provider 并移除
-            providers[id]?.stopServer()
-            providers.remove(id)
-
-            // 替换模块目录
-            if (oldDir.exists()) oldDir.deleteRecursively()
-            tempDir.renameTo(oldDir)
-
-            val loaded = loadModule(oldDir)
-            if (loaded) {
-                updateProvidersFlow()
-            }
-            return loaded
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to update module: $id", e)
-            return false
-        }
+        }.getOrDefault(false)
+        if (!matches) { lastLoadError = "模块 ID 不匹配"; return false }
+        return importModule(context, zipFile)
     }
 }
