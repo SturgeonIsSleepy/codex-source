@@ -22,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -54,12 +55,12 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     val found by cloud.searchResult.collectAsState()
     val results = found.tracks
     val home by cloud.home.collectAsState()
+    val cloudLikes by cloud.likes.collectAsState()
     val cloudMessage by cloud.message.collectAsState()
     val searchType by cloud.searchType.collectAsState()
     val searching by cloud.searching.collectAsState()
     val searched by cloud.searched.collectAsState()
     val searchFailure by cloud.searchError.collectAsState()
-    val downloading by model.downloading.collectAsState()
     val importing by model.importing.collectAsState()
     val providers by model.providers.collectAsState()
     val active by model.activeSource.collectAsState()
@@ -235,6 +236,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                         listOf("歌单", "本地", "最近").forEachIndexed { index, label -> FilterChip(libraryMode == index, { libraryMode = index }, label = { Text(label) }) }
                     }
                 }
+                item { DownloadsStatus(model) }
                 if (libraryMode == 0) {
                     if (home.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
                     home.error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
@@ -264,7 +266,10 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                     }
                     items(tracks, key = { it.song.id }) { track ->
                         SongRow(track, state.song?.id == track.song.id, { model.play(track, tracks); onShowPlayer(true) }) {
-                            IconButton(onClick = { model.favorite(track.song) }) { Icon(if (track.song.id in favorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "收藏 ${track.song.name}") }
+                            IconButton(onClick = { if (track.source == null) model.favorite(track.song) else cloud.like(track) }) {
+                                val liked = if (track.source == null) track.song.id in favorites else (track.remoteId ?: track.song.id) in cloudLikes[track.source].orEmpty()
+                                Icon(if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "喜欢 ${track.song.name}")
+                            }
                             if (track.source != null) IconButton(onClick = { selectedTrack = track to null }) { Icon(Icons.Default.MoreVert, "歌曲操作") }
                             else if (track.song.id.startsWith("import_")) IconButton(onClick = { pendingTrackDelete = track }) { Icon(Icons.Default.DeleteOutline, "删除 ${track.song.name}") }
                         }

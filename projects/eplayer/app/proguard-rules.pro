@@ -63,3 +63,5 @@
 -keep class cp.player.app.Account { *; }
 -keep class cp.player.app.MusicDetail { *; }
 -keep class cp.player.app.MusicSearch { *; }
+
+-keep class cp.player.app.DownloadRecord { *; }

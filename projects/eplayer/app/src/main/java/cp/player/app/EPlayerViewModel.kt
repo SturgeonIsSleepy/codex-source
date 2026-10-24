@@ -24,14 +24,11 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 
 data class Playback(val song: Song? = null, val playing: Boolean = false, val buffering: Boolean = false,
     val position: Long = 0, val duration: Long = 0, val queue: List<Song> = emptyList(),
@@ -46,14 +43,13 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private val _playback = MutableStateFlow(Playback())
     val playback = _playback.asStateFlow()
     val position = MutableStateFlow(0L)
-    val searched = MutableStateFlow(false)
-    val searchFailure = MutableStateFlow<String?>(null)
-    val downloading = MutableStateFlow<Set<String>>(emptySet())
+    val downloads = MutableStateFlow<List<DownloadProgress>>(emptyList())
+    private val resolvingDownloads = mutableSetOf<String>()
+    private val downloadStore by lazy { Downloads(app, catalog) }
+    private var downloadObserver: Job? = null
     val providers = ModuleManager.providersFlow
     val activeSource = ProviderManager.currentProviderFlow
     val sourceIssue = SourceStore.issue
-    val results = MutableStateFlow<List<Track>>(emptyList())
-    val searching = MutableStateFlow(false)
     val importing = MutableStateFlow(false)
     val message = MutableStateFlow<String?>(null)
     val favorites = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getStringSet("favorites", emptySet()).orEmpty().toSet())
@@ -64,8 +60,6 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private var visible = false
     private var progressVisible = false
     private var ticker: Job? = null
-    private var search: Job? = null
-    private var searchGeneration = 0
     private var radioSource: String? = null
     private var loadingRadio = false
     private val future = MediaController.Builder(app, SessionToken(app, ComponentName(app, MusicService::class.java))).buildAsync()
@@ -90,11 +84,8 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
                 pendingPlay?.invoke(); pendingPlay = null
             }.onFailure { message.value = "播放服务连接失败：${it.cause?.message ?: it.message}" }
         }, MoreExecutors.directExecutor())
-        viewModelScope.launch {
-            activeSource.collect { clearSearch() }
-        }
     }
-    fun setVisible(value: Boolean) { visible = value; restartTicker() }
+    fun setVisible(value: Boolean) { visible = value; restartTicker(); if (value) observeDownloads() else { downloadObserver?.cancel(); downloadObserver = null } }
     fun setProgressVisible(value: Boolean) { progressVisible = value; if (value) publish() else restartTicker() }
     private fun publish() {
         val player = controller ?: return
@@ -209,20 +200,6 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     }
     fun setAnimate(value: Boolean) { animate.value = value; app.getSharedPreferences("eplayer_ui", 0).edit().putBoolean("animate", value).apply() }
     fun setEngine(engine: Int) { controller?.sendCustomCommand(SessionCommand("SET_ENGINE", Bundle.EMPTY), Bundle().apply { putInt("engine", engine) }) }
-    fun search(query: String) {
-        search?.cancel(); results.value = emptyList()
-        val source = activeSource.value ?: run { message.value = "请先添加音源"; return }
-        if (query.isBlank()) return
-        val generation = ++searchGeneration
-        searching.value = true; searched.value = true; searchFailure.value = null
-        search = viewModelScope.launch {
-            try { results.value = SourceStore.search(app, source.id, query.trim()) }
-            catch (error: kotlinx.coroutines.CancellationException) { throw error }
-            catch (error: Exception) { searchFailure.value = error.message ?: "搜索失败" }
-            finally { if (generation == searchGeneration) searching.value = false }
-        }
-    }
-    fun clearSearch() { searchGeneration++; search?.cancel(); results.value = emptyList(); searching.value = false; searched.value = false; searchFailure.value = null }
     fun importSource(uri: Uri) = sourceAction { SourceStore.import(app, uri) }
     fun selectSource(source: BackendProvider) = sourceAction { SourceStore.select(app, source) }
     fun removeSource(source: BackendProvider) = sourceAction { SourceStore.remove(app, source) }
@@ -237,32 +214,47 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
             .getAsJsonObject("lrc")?.get("lyric")?.asString }.getOrNull() ?: "暂无歌词"
     }
     fun download(track: Track) = viewModelScope.launch {
-        if (track.source == null || "${track.source}:${track.song.id}" in downloading.value) return@launch
-        val downloadKey = "${track.source}:${track.song.id}"
-        downloading.value = downloading.value + downloadKey
+        val source = track.source ?: return@launch
+        val id = track.remoteId ?: track.song.id
+        val key = "$source:$id"
+        if (!resolvingDownloads.add(key)) return@launch
         try {
-            val url = SourceStore.resolve(app, track.source, track.song.id)
-            withContext(Dispatchers.IO) {
-                val temporary = File.createTempFile("download-", ".audio", app.cacheDir)
-                try {
-                    OkHttpClient().newCall(Request.Builder().url(url).build()).execute().use { response ->
-                        check(response.isSuccessful) { "下载失败：${response.code}" }
-                        val body = response.body ?: error("下载内容为空")
-                        body.byteStream().use { input -> temporary.outputStream().use { output ->
-                            val buffer = ByteArray(65536)
-                            while (true) { ensureActive(); val count = input.read(buffer); if (count < 0) break; output.write(buffer, 0, count) }
-                        } }
-                    }
-                    catalog.importAudio(Uri.fromFile(temporary), track.song.copy(id = track.remoteId ?: track.song.id), track.source)
-                } finally { temporary.delete() }
-            }
-            reloadLibrary(); message.value = "已保存到曲库"
+            if (library.value.any { it.source == source && it.remoteId == id }) { message.value = "已在本地曲库中"; return@launch }
+            val url = SourceStore.resolve(app, source, id, quality.value)
+            withContext(Dispatchers.IO) { downloadStore.enqueue(track, url) }
+            message.value = "已开始下载"
+            observeDownloads()
         } catch (error: kotlinx.coroutines.CancellationException) { throw error }
         catch (error: Exception) { message.value = error.message ?: "下载失败" }
-        finally { downloading.value = downloading.value - downloadKey }
+        finally { resolvingDownloads.remove(key) }
+    }
+    fun cancelDownload(key: String) = viewModelScope.launch {
+        withContext(Dispatchers.IO) { downloadStore.cancel(key) }
+        val result = withContext(Dispatchers.IO) { downloadStore.reconcile() }
+        downloads.value = result.first
+    }
+    fun retryDownload(record: DownloadRecord) = viewModelScope.launch {
+        withContext(Dispatchers.IO) { downloadStore.cancel(record.key) }
+        record.track.source?.let(SourceStore::clearResolved)
+        download(record.track)
+    }
+    private fun observeDownloads() {
+        if (!visible || downloadObserver?.isActive == true) return
+        downloadObserver = viewModelScope.launch {
+            try {
+                while (isActive && visible) {
+                    val result = withContext(Dispatchers.IO) { downloadStore.reconcile() }
+                    downloads.value = result.first
+                    if (result.second) reloadLibrary()
+                    if (result.first.none { it.record.error == null && it.record.id > 0 }) break
+                    delay(1000)
+                }
+            } catch (error: kotlinx.coroutines.CancellationException) { throw error }
+            catch (error: Exception) { message.value = error.message ?: "读取下载任务失败" }
+        }
     }
     override fun onCleared() {
-        ticker?.cancel(); search?.cancel()
+        ticker?.cancel(); downloadObserver?.cancel()
         controller?.removeListener(listener)
         MediaController.releaseFuture(future)
         super.onCleared()

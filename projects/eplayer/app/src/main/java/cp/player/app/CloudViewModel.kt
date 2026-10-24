@@ -37,7 +37,10 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
             pages.value = emptyList(); clearSearch()
             refresh()
         } }
-        viewModelScope.launch { SourceStore.accountChanges.collect { if (it == home.value.source) refresh() } }
+        viewModelScope.launch { SourceStore.accountChanges.collect { source -> if (source == home.value.source) {
+            home.value = CloudHome(source = source); pages.value = emptyList(); clearSearch()
+            likes.update { it - source }; refresh()
+        } } }
     }
     private suspend fun <T> optional(action: suspend () -> T): T? = try { action() } catch (error: CancellationException) { throw error } catch (_: Exception) { null }
     fun refresh() {
@@ -99,7 +102,7 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
             updatePage(page.target) { it.copy(loading = true) }
             try {
                 val next = MusicRepository(app, page.target.source).detail(page.target, detail.tracks.size)
-                updatePage(page.target) { it.copy(loading = false, data = detail.copy(tracks = (detail.tracks + next.tracks).distinctBy { it.song.id })) }
+                updatePage(page.target) { it.copy(loading = false, data = detail.copy(tracks = (detail.tracks + next.tracks).distinctBy { it.song.id }, total = if (next.tracks.isEmpty()) detail.tracks.size else detail.total)) }
             } catch (error: Exception) { updatePage(page.target) { it.copy(loading = false, error = error.message) } }
         }
     }
