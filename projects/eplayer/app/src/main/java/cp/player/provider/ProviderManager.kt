@@ -82,6 +82,7 @@ object ProviderManager {
      */
     fun startServer(context: Context, port: Int = DEFAULT_PORT) {
         val provider = currentProvider ?: return
+        if (provider.type == ProviderType.JNI || provider.type == ProviderType.HTTP) return
 
         // 端口检测 + 自动回退
         val actualPort = findAvailablePort(port)
@@ -136,7 +137,7 @@ object ProviderManager {
         }
 
         // 启动新 Provider（端口检测 + 自动回退）
-        if (provider != null && context != null) {
+        if (provider != null && context != null && provider.type != ProviderType.JNI && provider.type != ProviderType.HTTP) {
             val actualPort = findAvailablePort(port)
             if (actualPort == null) {
                 Log.e(TAG, "端口 $port ~ ${port + MAX_PORT_ATTEMPTS - 1} 全部被占用，无法启动 Provider: ${provider.id}")

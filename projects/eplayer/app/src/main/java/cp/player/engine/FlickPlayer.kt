@@ -637,7 +637,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
                         }
                     }
                 }
-                delay(50)
+                delay(if (isPlaying) 500 else 1500)
             }
         }
     }

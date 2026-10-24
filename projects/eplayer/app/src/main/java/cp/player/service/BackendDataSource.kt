@@ -76,7 +76,16 @@ class BackendDataSource(
                 return length
             }
 
+            val sourceId = uri.getQueryParameter("source")
             val quality = uri.getQueryParameter("quality") ?: "standard"
+            if (sourceId != null) {
+                val url = runBlocking { cp.player.app.SourceStore.resolve(context, sourceId, songId!!, quality) }
+                val resolved = dataSpec.buildUpon().setUri(Uri.parse(url)).setKey("$sourceId:$songId:$quality").build()
+                activeDataSource = httpDataSource
+                val length = httpDataSource.open(resolved)
+                transferStarted(dataSpec)
+                return length
+            }
 
             // 1. Check Local Registry
             val metadata = DownloadRegistry.getMetadata(songId)

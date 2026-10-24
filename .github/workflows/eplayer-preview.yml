@@ -38,12 +38,16 @@ jobs:
       - name: Build preview and device tests
         run: |
           bash tools/prepare-local-signing.sh
-          bash gradlew assembleFastRelease assembleFastReleaseAndroidTest -PwithRust=false -PtestBuildType=fastRelease --console=plain
+          bash gradlew assembleStandardRelease assembleInternalRelease assembleStandardReleaseAndroidTest assembleInternalReleaseAndroidTest -PwithRust=false -PtestBuildType=release --console=plain
       - name: Upload preview and device tests
         uses: actions/upload-artifact@v4
         with:
           name: eplayer-preview-${{ github.sha }}
           path: |
-            projects/eplayer/app/build/outputs/apk/fastRelease/*.apk
-            projects/eplayer/app/build/outputs/apk/androidTest/fastRelease/*.apk
+            projects/eplayer/app/build/outputs/apk/standard/release/*universal*.apk
+            projects/eplayer/app/build/outputs/apk/standard/release/*x86_64*.apk
+            projects/eplayer/app/build/outputs/apk/internal/release/*universal*.apk
+            projects/eplayer/app/build/outputs/apk/internal/release/*x86_64*.apk
+            projects/eplayer/app/build/outputs/apk/androidTest/standard/release/*.apk
+            projects/eplayer/app/build/outputs/apk/androidTest/internal/release/*.apk
           if-no-files-found: error

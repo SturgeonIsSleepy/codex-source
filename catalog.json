@@ -11,7 +11,7 @@
     {
       "id": "eplayer",
       "path": "projects/eplayer",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "description": "CPPlayer 框架的手绘伊蕾娜 Android 播放器，保留完整功能并去除 USB 独占；验收待完成",
       "entrypoint": "README.md"
     },

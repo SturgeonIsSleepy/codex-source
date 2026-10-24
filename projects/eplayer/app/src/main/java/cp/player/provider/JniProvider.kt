@@ -14,6 +14,8 @@ class JniProvider(
     override val updateUrl: String? = null
 ) : BackendProvider {
     override val type = ProviderType.JNI
+    private val modern = cp.player.core.provider.JniProvider()
+    private var modernSymbols = true
     private var isLoaded = false
     private var loadError: String? = null
 
@@ -53,6 +55,12 @@ class JniProvider(
         // 5. 尝试加载 .so
         try {
             System.load(soPath)
+            try {
+                modern.nativeCallApi("__eplayer_probe__", "{}")
+            } catch (_: UnsatisfiedLinkError) {
+                modernSymbols = false
+                nativeCallApi("__eplayer_probe__", "{}")
+            }
             isLoaded = true
             Log.i(TAG, "JNI 库加载成功: $soPath")
         } catch (e: UnsatisfiedLinkError) {
@@ -122,18 +130,7 @@ class JniProvider(
     external fun analyzeAudioFile(path: String): String
 
     override fun startServer(context: Context, port: Int) {
-        if (!isLoaded) {
-            Log.w(TAG, "JNI 未加载，跳过 startServer: $id")
-            return
-        }
-        try {
-            startNativeServer("127.0.0.1", port)
-        } catch (e: Throwable) {
-            // 捕获 Throwable 以处理 JNI 崩溃（如 SIGSEGV 转换的 Error）
-            isLoaded = false
-            loadError = "JNI 服务启动崩溃: ${e.message}"
-            Log.e(TAG, "startNativeServer 崩溃", e)
-        }
+        // JNI calls go directly to the module. No HTTP loopback server or listening socket.
     }
 
     override fun stopServer() {}
@@ -142,7 +139,7 @@ class JniProvider(
         if (!isLoaded) return """{"code": 500, "msg": "JNI not loaded: ${loadError ?: "unknown"}"}"""
         val json = com.google.gson.Gson().toJson(params)
         return try {
-            nativeCallApi(method, json)
+            if (modernSymbols) modern.nativeCallApi(method, json) else nativeCallApi(method, json)
         } catch (e: Throwable) {
             // 捕获 Throwable 以处理 JNI 崩溃
             isLoaded = false
@@ -155,7 +152,7 @@ class JniProvider(
     override fun analyzeAudio(path: String): String {
         if (!isLoaded) return """{"code": 500, "msg": "JNI not loaded: ${loadError ?: "unknown"}"}"""
         return try {
-            analyzeAudioFile(path)
+            if (modernSymbols) modern.analyzeAudioFile(path) else analyzeAudioFile(path)
         } catch (e: Throwable) {
             isLoaded = false
             loadError = "JNI 分析崩溃: ${e.message}"

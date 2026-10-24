@@ -35,6 +35,8 @@
 -keep class androidx.compose.ui.text.font.FontVariation$** { *; }
 
 # SuperLyricApi
--keep class com.hchen.superlyricapi.** {*;}
 
 -dontwarn android.os.ServiceManager
+
+# Persisted ePlayer library and queue schema.
+-keep class cp.player.app.Track { *; }

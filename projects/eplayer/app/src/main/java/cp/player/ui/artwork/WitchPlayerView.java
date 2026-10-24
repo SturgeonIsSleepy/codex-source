@@ -27,31 +27,18 @@ public final class WitchPlayerView extends FrameLayout {
     private float scale,left,top;
     private AudioRhythm rhythm;
     private String audioUri;
-    private volatile int analysisGeneration;
-    private static final java.util.concurrent.ExecutorService ANALYZER = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r,"ePlayer-Rhythm"); t.setDaemon(true); return t;
-    });
-    private static final java.util.Map<String,AudioRhythm> RHYTHMS = new java.util.LinkedHashMap<String,AudioRhythm>(4,.75f,true) {
-        @Override protected boolean removeEldestEntry(java.util.Map.Entry<String,AudioRhythm> entry){return size()>4;}
-    };
-    public void setAudioUri(String uri) {
-        if(java.util.Objects.equals(audioUri,uri))return;
-        audioUri=uri;rhythm=null;final int generation=++analysisGeneration;
-        if(uri==null)return;
-        synchronized(RHYTHMS){rhythm=RHYTHMS.get(uri);}
-        if(rhythm!=null)return;
-        final Context app=getContext().getApplicationContext();
-        ANALYZER.execute(()->{
-            try {
-                AudioRhythm result=AudioRhythm.analyze(app,android.net.Uri.parse(uri),()->analysisGeneration!=generation);
-                if(result!=null && generation==analysisGeneration){
-                    synchronized(RHYTHMS){RHYTHMS.put(uri,result);}
-                    post(()->{if(generation==analysisGeneration){rhythm=result;art.invalidate();}});
-                }
-            }catch(Exception e){android.util.Log.d("ePlayer","Rhythm analysis unavailable; using gentle continuous motion");}
-        });
+    private boolean artworkOnly;
+    public void setArtworkOnly(boolean value) {
+        artworkOnly=value;
+        int visibility=value?GONE:VISIBLE;
+        previous.setVisibility(visibility);play.setVisibility(visibility);next.setVisibility(visibility);
+        title.setVisibility(visibility);seek.setVisibility(visibility);volume.setVisibility(visibility);
+        art.invalidate();
     }
-    @Override protected void onDetachedFromWindow(){analysisGeneration++;audioUri=null;super.onDetachedFromWindow();}
+    public void setAudioUri(String uri) {
+        // Live PCM metering already drives motion; do not decode the entire track a second time.
+        audioUri=uri;
+    }
 
     public WitchPlayerView(Context context) {
         super(context);
@@ -128,6 +115,11 @@ public final class WitchPlayerView extends FrameLayout {
             c.save();c.translate(left,top);c.scale(scale,scale);
             paint.setColor(Color.BLACK);paint.setStyle(Paint.Style.FILL);paint.setAlpha(255);
             c.drawBitmap(sky,null,new RectF(0,0,865,1280),paint);
+            if(artworkOnly){
+                rig.draw(c,paint,motion);c.restore();
+                if(visible&&(playing||motion.transitioning(playing)))postInvalidateDelayed(33);
+                return;
+            }
             paint.setTypeface(brush);paint.setTextSize(44);
             if(!songTitle.codePoints().allMatch(cp -> Character.isWhitespace(cp) || paint.hasGlyph(new String(Character.toChars(cp)))))
                 paint.setTypeface(hand);
@@ -153,7 +145,7 @@ public final class WitchPlayerView extends FrameLayout {
             paint.setTypeface(brush);paint.setTextSize(25);c.drawText(time(dragging?duration*seek.getProgress()/10000:position),84,975,paint);
             paint.setTextAlign(Paint.Align.RIGHT);c.drawText(time(duration),764,975,paint);paint.setTextAlign(Paint.Align.LEFT);
             if(buffering){paint.setTypeface(hand);paint.setTextSize(22);c.drawText("加载中…",85,814,paint);}
-            c.restore();if(visible&&(playing||motion.transitioning(playing)))postInvalidateOnAnimation();
+            c.restore();if(visible&&(playing||motion.transitioning(playing)))postInvalidateDelayed(33);
         }
         String time(long ms){long secs=Math.max(0,ms)/1000;return String.format(Locale.ROOT,"%d:%02d",secs/60,secs%60);}
     }

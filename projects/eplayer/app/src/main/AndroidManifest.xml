@@ -6,17 +6,14 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
 
-    <uses-sdk tools:overrideLibrary="com.mocharealm.accompanist.lyrics.ui,com.mocharealm.accompanist.lyrics.core,com.mocharealm.gaze.capsule" />
 
     <application
         android:name=".CPApplication"
@@ -26,17 +23,13 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
+        android:label="${distributionLabel}"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.CPPlayer"
         android:usesCleartextTraffic="true"
         android:localeConfig="@xml/locales_config">
 
-        <meta-data android:name="lyricon_module" android:value="true" />
-        <meta-data android:name="lyricon_module_author" android:value="Aurora-Nasa-1" />
-        <meta-data android:name="lyricon_module_description" android:value="CP Player Lyric Provider" />
-        <meta-data android:name="lyricon_module_tags" android:resource="@array/lyricon_module_tags" />
 
         <activity
             android:name=".MainActivity"
