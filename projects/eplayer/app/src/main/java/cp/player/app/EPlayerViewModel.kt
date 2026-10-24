@@ -35,12 +35,13 @@ import okhttp3.Request
 
 data class Playback(val song: Song? = null, val playing: Boolean = false, val buffering: Boolean = false,
     val position: Long = 0, val duration: Long = 0, val queue: List<Song> = emptyList(),
-    val shuffle: Boolean = false, val repeat: Int = Player.REPEAT_MODE_OFF, val error: String? = null, val source: String? = null)
+    val shuffle: Boolean = false, val repeat: Int = Player.REPEAT_MODE_OFF, val error: String? = null, val source: String? = null, val remoteId: String? = null)
 
 class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private val catalog by lazy { LibraryStore(app) }
     private val _library = MutableStateFlow<List<Track>>(emptyList())
     val library = _library.asStateFlow()
+    val recent = MutableStateFlow<List<Track>>(emptyList())
     private var scanned = emptyList<Track>()
     private val _playback = MutableStateFlow(Playback())
     val playback = _playback.asStateFlow()
@@ -56,6 +57,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     val importing = MutableStateFlow(false)
     val message = MutableStateFlow<String?>(null)
     val favorites = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getStringSet("favorites", emptySet()).orEmpty().toSet())
+    val quality = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getString("quality", "standard") ?: "standard")
     val animate = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getBoolean("animate", true))
     private var controller: MediaController? = null
     private var pendingPlay: (() -> Unit)? = null
@@ -64,15 +66,24 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private var ticker: Job? = null
     private var search: Job? = null
     private var searchGeneration = 0
+    private var radioSource: String? = null
+    private var loadingRadio = false
     private val future = MediaController.Builder(app, SessionToken(app, ComponentName(app, MusicService::class.java))).buildAsync()
     private val listener = object : Player.Listener {
-        override fun onEvents(player: Player, events: Player.Events) { publish() }
+        override fun onEvents(player: Player, events: Player.Events) {
+            publish()
+            if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) {
+                viewModelScope.launch { recent.value = withContext(Dispatchers.IO) { RecentStore.read(app) } }
+                refillRadio()
+            }
+        }
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            playback.value.source?.let(SourceStore::clearResolved)
             message.value = "播放失败：${error.message ?: error.errorCodeName}"
         }
     }
     init {
-        viewModelScope.launch { reloadLibrary() }
+        viewModelScope.launch { reloadLibrary(); recent.value = withContext(Dispatchers.IO) { RecentStore.read(app) } }
         future.addListener({
             runCatching { future.get() }.onSuccess {
                 controller = it; it.addListener(listener); publish()
@@ -91,7 +102,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
             player.playbackState == Player.STATE_BUFFERING, player.currentPosition.coerceAtLeast(0),
             player.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0,
             (0 until player.mediaItemCount).map { player.getMediaItemAt(it).toSong() },
-            player.shuffleModeEnabled, player.repeatMode, player.playerError?.message, player.currentMediaItem?.mediaMetadata?.extras?.getString("source"))
+            player.shuffleModeEnabled, player.repeatMode, player.playerError?.message, player.currentMediaItem?.mediaMetadata?.extras?.getString("source"), player.currentMediaItem?.mediaMetadata?.extras?.getString("remoteId"))
         position.value = player.currentPosition.coerceAtLeast(0)
         restartTicker()
     }
@@ -132,7 +143,8 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
                 val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == track.song.id }
                 if (index != null) player.removeMediaItem(index)
             }
-            withContext(Dispatchers.IO) { catalog.removeImported(track) }
+            withContext(Dispatchers.IO) { catalog.removeImported(track); RecentStore.remove(app, track.song.id) }
+            recent.value = withContext(Dispatchers.IO) { RecentStore.read(app) }
             reloadLibrary()
         } catch (error: Exception) { message.value = error.message ?: "删除失败" }
     }
@@ -147,22 +159,46 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         catch (error: Exception) { message.value = error.message ?: "导入失败" }
         finally { importing.value = false }
     }
-    fun play(track: Track, queue: List<Track>) {
+    fun play(track: Track, queue: List<Track>, radio: Boolean = false) {
+        radioSource = if (radio) track.source else null
         val action = {
             controller?.let { player ->
                 val tracks = (if (queue.isEmpty()) listOf(track) else queue).distinctBy { it.song.id to it.source }
                 val index = tracks.indexOf(track).coerceAtLeast(0)
-                player.setMediaItems(tracks.map(Track::mediaItem), index, 0)
+                player.setMediaItems(tracks.map { it.mediaItem(quality.value) }, index, 0)
                 player.prepare(); player.play()
             }
             Unit
         }
         if (controller == null) pendingPlay = action else action()
     }
+    private fun refillRadio() {
+        val source = radioSource ?: return
+        val player = controller ?: return
+        if (loadingRadio || player.currentMediaItemIndex < player.mediaItemCount - 2) return
+        loadingRadio = true
+        viewModelScope.launch {
+            try {
+                val next = MusicRepository(app, source).radio()
+                if (radioSource == source) {
+                    val current = controller ?: return@launch
+                    current.addMediaItems(next.map { it.mediaItem(quality.value) })
+                    if (current.currentMediaItemIndex > 20) current.removeMediaItems(0, current.currentMediaItemIndex - 5)
+                }
+            } catch (failure: Exception) { message.value = failure.message ?: "FM 加载失败" }
+            finally { loadingRadio = false }
+        }
+    }
     fun playPause() { controller?.let { if (it.isPlaying) it.pause() else { if (it.playbackState == Player.STATE_IDLE) it.prepare(); if (it.playbackState == Player.STATE_ENDED) it.seekToDefaultPosition(); it.play() } } }
     fun previous() { controller?.seekToPreviousMediaItem() }
     fun next() { controller?.seekToNextMediaItem() }
     fun seek(position: Long) { controller?.seekTo(position); publish() }
+    fun setQuality(value: String) { quality.value = value; app.getSharedPreferences("eplayer_ui", 0).edit().putString("quality", value).apply() }
+    fun removeQueue(index: Int) { controller?.let { if (index in 0 until it.mediaItemCount) it.removeMediaItem(index) } }
+    fun moveQueue(from: Int, to: Int) { controller?.let { if (from in 0 until it.mediaItemCount && to in 0 until it.mediaItemCount) it.moveMediaItem(from, to) } }
+    fun addNext(track: Track) { controller?.let { it.addMediaItem((it.currentMediaItemIndex + 1).coerceIn(0, it.mediaItemCount), track.mediaItem(quality.value)) } }
+    fun addQueue(track: Track) { controller?.addMediaItem(track.mediaItem(quality.value)) }
+    fun currentTrack(): Track? = playback.value.song?.let { Track(it, source = playback.value.source, remoteId = playback.value.remoteId) }
     fun queueIndex(index: Int) { controller?.let { it.seekToDefaultPosition(index); it.prepare(); it.play() } }
     fun shuffle() { controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled } }
     fun repeat() { controller?.let { it.repeatMode = (it.repeatMode + 1) % 3 } }
@@ -196,7 +232,8 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     suspend fun lyrics(): String {
         val source = playback.value.source ?: return "暂无歌词"
         val song = playback.value.song ?: return "暂无歌词"
-        return runCatching { SourceStore.call(app, source, "lyric/new", mapOf("id" to song.id))
+        val id = playback.value.remoteId ?: song.id
+        return runCatching { SourceStore.call(app, source, "lyric/new", mapOf("id" to id))
             .getAsJsonObject("lrc")?.get("lyric")?.asString }.getOrNull() ?: "暂无歌词"
     }
     fun download(track: Track) = viewModelScope.launch {
@@ -216,7 +253,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
                             while (true) { ensureActive(); val count = input.read(buffer); if (count < 0) break; output.write(buffer, 0, count) }
                         } }
                     }
-                    catalog.importAudio(Uri.fromFile(temporary), track.song)
+                    catalog.importAudio(Uri.fromFile(temporary), track.song.copy(id = track.remoteId ?: track.song.id), track.source)
                 } finally { temporary.delete() }
             }
             reloadLibrary(); message.value = "已保存到曲库"

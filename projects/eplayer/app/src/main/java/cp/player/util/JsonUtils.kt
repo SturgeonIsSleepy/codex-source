@@ -51,7 +51,8 @@ object JsonUtils {
             artistId = artistId,
             album = albumName,
             albumArtUrl = picUrl,
-            durationMs = obj.get("dt")?.long ?: obj.get("duration")?.long ?: 0L
+            durationMs = obj.get("dt")?.long ?: obj.get("duration")?.long ?: 0L,
+            albumId = album?.get("id")?.str
         )
     }
 

@@ -15,13 +15,14 @@ import cp.player.ui.theme.EPlayerTheme
 
 class MainActivity : ComponentActivity() {
     private val player: EPlayerViewModel by viewModels()
+    private val cloud: cp.player.app.CloudViewModel by viewModels()
     private var showPlayer by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         showPlayer = intent.action == "ACTION_SHOW_PLAYER"
         enableEdgeToEdge()
-        setContent { EPlayerTheme { EPlayerApp(player, showPlayer) { showPlayer = it } } }
+        setContent { EPlayerTheme { EPlayerApp(player, cloud, showPlayer) { showPlayer = it } } }
     }
 
     override fun onNewIntent(intent: Intent) {

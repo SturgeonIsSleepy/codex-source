@@ -47,13 +47,18 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EPlayerApp(model: EPlayerViewModel, showPlayer: Boolean, onShowPlayer: (Boolean) -> Unit) {
+fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boolean, onShowPlayer: (Boolean) -> Unit) {
     val state by model.playback.collectAsState()
     val library by model.library.collectAsState()
-    val results by model.results.collectAsState()
-    val searching by model.searching.collectAsState()
-    val searched by model.searched.collectAsState()
-    val searchFailure by model.searchFailure.collectAsState()
+    val recent by model.recent.collectAsState()
+    val found by cloud.searchResult.collectAsState()
+    val results = found.tracks
+    val home by cloud.home.collectAsState()
+    val cloudMessage by cloud.message.collectAsState()
+    val searchType by cloud.searchType.collectAsState()
+    val searching by cloud.searching.collectAsState()
+    val searched by cloud.searched.collectAsState()
+    val searchFailure by cloud.searchError.collectAsState()
     val downloading by model.downloading.collectAsState()
     val importing by model.importing.collectAsState()
     val providers by model.providers.collectAsState()
@@ -63,6 +68,11 @@ fun EPlayerApp(model: EPlayerViewModel, showPlayer: Boolean, onShowPlayer: (Bool
     val message by model.message.collectAsState()
     var page by rememberSaveable { mutableIntStateOf(0) }
     var query by rememberSaveable { mutableStateOf("") }
+    var libraryMode by rememberSaveable { mutableIntStateOf(0) }
+    var createPlaylist by remember { mutableStateOf(false) }
+    var playlistName by remember { mutableStateOf("") }
+    var selectedTrack by remember { mutableStateOf<Pair<Track, MusicEntry?>?>(null) }
+    var commentTrack by remember { mutableStateOf<Track?>(null) }
     var onlyFavorites by rememberSaveable { mutableStateOf(false) }
     var settings by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<BackendProvider?>(null) }
@@ -83,6 +93,7 @@ fun EPlayerApp(model: EPlayerViewModel, showPlayer: Boolean, onShowPlayer: (Bool
         onDispose { lifecycle.removeObserver(observer); model.setVisible(false) }
     }
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); model.message.value = null } }
+    LaunchedEffect(cloudMessage) { cloudMessage?.let { snackbar.showSnackbar(it); cloud.message.value = null } }
     val importAudio = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments(), model::importAudio)
     val importSource = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let(model::importSource) }
     val importWitch = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let { uri -> model.importWitch(witchTarget, uri) } }
@@ -139,29 +150,43 @@ fun EPlayerApp(model: EPlayerViewModel, showPlayer: Boolean, onShowPlayer: (Bool
                         OutlinedTextField(query, { query = it }, placeholder = { Text("搜索音乐") }, singleLine = true,
                             modifier = Modifier.weight(1f), shape = RoundedCornerShape(20.dp),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(onSearch = { model.search(query) }),
-                            trailingIcon = { IconButton(onClick = { model.search(query) }) { Icon(Icons.Default.Search, "搜索") } })
+                            keyboardActions = KeyboardActions(onSearch = { cloud.search(query) }),
+                            trailingIcon = { IconButton(onClick = { cloud.search(query) }) { Icon(Icons.Default.Search, "搜索") } })
                     }
                 }
-                if (searching) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-                if (results.isNotEmpty()) {
-                    items(results, key = { "${it.source}:${it.song.id}" }) { track ->
-                        SongRow(track, state.song?.id == track.song.id, { model.play(track, results); onShowPlayer(true) }) {
-                            IconButton(enabled = "${track.source}:${track.song.id}" !in downloading, onClick = { model.download(track) }) {
-                                if ("${track.source}:${track.song.id}" in downloading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                                else Icon(Icons.Default.Download, "下载 ${track.song.name}")
-                            }
+                if (searched) item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("歌曲" to 1, "歌单" to 1000, "专辑" to 10, "歌手" to 100).forEach { category ->
+                            FilterChip(searchType == category.second, { cloud.search(query, category.second) }, label = { Text(category.first) })
                         }
                     }
+                }
+                if (searching || (!searched && home.loading)) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+                if (results.isNotEmpty() || found.entries.isNotEmpty()) {
+                    items(results, key = { "${it.source}:${it.song.id}" }) { track ->
+                        SongRow(track, state.song?.id == track.song.id, { model.play(track, results); onShowPlayer(true) }) {
+                            IconButton(onClick = { selectedTrack = track to null }) { Icon(Icons.Default.MoreVert, "歌曲操作") }
+                        }
+                    }
+                    items(found.entries, key = { "${it.kind}:${it.id}" }) { entry -> MusicEntryRow(entry) { cloud.open(entry) } }
                 } else if (searched) {
                     item {
                         Column(Modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             if (!searching) Text(searchFailure ?: "没有找到歌曲")
-                            TextButton(onClick = { query = ""; model.clearSearch() }) { Text("返回旅途") }
+                            TextButton(onClick = { query = ""; cloud.clearSearch() }) { Text("返回旅途") }
                         }
                     }
                 } else {
-                    item {
+                    if (home.source != null) item { CloudShortcuts(cloud) { tracks -> model.play(tracks.first(), tracks, radio = true); onShowPlayer(true) } }
+                    home.error?.let { error -> item {
+                        Text(error, color = MaterialTheme.colorScheme.error)
+                        TextButton(onClick = cloud::refresh) { Text("重试") }
+                    } }
+                    if (home.recommendations.isNotEmpty()) {
+                        item { Text("为你推荐", style = MaterialTheme.typography.titleLarge) }
+                        items(home.recommendations.chunked(2)) { row -> RecommendationRow(row, cloud::open) }
+                    }
+                    if (home.recommendations.isEmpty()) item {
                         Box(Modifier.fillMaxWidth().height(150.dp)) {
                             AsyncImage("file:///android_asset/travel-sky.png", null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
                             Text("旅途随声而行", style = MaterialTheme.typography.headlineSmall,
@@ -196,27 +221,57 @@ fun EPlayerApp(model: EPlayerViewModel, showPlayer: Boolean, onShowPlayer: (Bool
             } else if (page == 1) {
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("我的曲库", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
-                        IconToggleButton(onlyFavorites, { onlyFavorites = it }) { Icon(if (onlyFavorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "只看收藏") }
-                        IconButton(onClick = { permission.launch(if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE) }) {
-                            Icon(Icons.Default.FolderOpen, "读取手机音乐")
+                        Text("我的音乐", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                        IconButton(onClick = cloud::refresh) { Icon(Icons.Default.Refresh, "刷新账号和歌单") }
+                        if (home.account != null) IconButton(onClick = { createPlaylist = true }) { Icon(Icons.Default.PlaylistAdd, "创建歌单") }
+                    }
+                    home.account?.let { account ->
+                        Row(Modifier.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            AsyncImage(account.avatar, null, Modifier.size(48.dp).clip(androidx.compose.foundation.shape.CircleShape))
+                            Text(account.name, Modifier.padding(start = 12.dp), style = MaterialTheme.typography.titleMedium)
                         }
                     }
-                }
-                if (importing) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-                val tracks = if (onlyFavorites) library.filter { it.song.id in favorites } else library
-                if (tracks.isEmpty()) item {
-                    OutlinedButton(onClick = { importAudio.launch(arrayOf("audio/*")) }, Modifier.fillMaxWidth().height(64.dp)) {
-                        Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("导入音乐")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("歌单", "本地", "最近").forEachIndexed { index, label -> FilterChip(libraryMode == index, { libraryMode = index }, label = { Text(label) }) }
                     }
                 }
-                items(tracks, key = { it.song.id }) { track ->
-                    SongRow(track, state.song?.id == track.song.id, { model.play(track, tracks); onShowPlayer(true) }) {
-                        IconButton(onClick = { model.favorite(track.song) }) {
-                            Icon(if (track.song.id in favorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "收藏 ${track.song.name}")
+                if (libraryMode == 0) {
+                    if (home.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+                    home.error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
+                    if (home.account == null) item { OutlinedButton(onClick = { page = 2 }, modifier = Modifier.fillMaxWidth()) { Text("登录音源") } }
+                    home.account?.let { account -> item {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            FilledTonalButton(onClick = { cloud.open(MusicEntry(account.id, "我喜欢的音乐", home.source!!, MusicKind.LIKED)) }) { Text("我喜欢的音乐") }
+                            OutlinedButton(onClick = { cloud.open(MusicEntry(account.id, "音乐云盘", home.source!!, MusicKind.CLOUD)) }) { Text("音乐云盘") }
                         }
-                        if (track.song.id.startsWith("import_")) IconButton(onClick = { pendingTrackDelete = track }) { Icon(Icons.Default.DeleteOutline, "删除 ${track.song.name}") }
+                    } }
+                    items(home.playlists, key = { it.id }) { entry -> MusicEntryRow(entry) { cloud.open(entry) } }
+                } else if (libraryMode == 1) {
+                    item {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconToggleButton(onlyFavorites, { onlyFavorites = it }) { Icon(if (onlyFavorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "只看本地收藏") }
+                            TextButton(onClick = { permission.launch(if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE) }) {
+                                Icon(Icons.Default.FolderOpen, null); Text("读取手机音乐")
+                            }
+                        }
                     }
+                    if (importing) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+                    val tracks = if (onlyFavorites) library.filter { it.song.id in favorites } else library
+                    if (tracks.isEmpty()) item {
+                        OutlinedButton(onClick = { importAudio.launch(arrayOf("audio/*")) }, Modifier.fillMaxWidth().height(64.dp)) {
+                            Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("导入音乐")
+                        }
+                    }
+                    items(tracks, key = { it.song.id }) { track ->
+                        SongRow(track, state.song?.id == track.song.id, { model.play(track, tracks); onShowPlayer(true) }) {
+                            IconButton(onClick = { model.favorite(track.song) }) { Icon(if (track.song.id in favorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "收藏 ${track.song.name}") }
+                            if (track.source != null) IconButton(onClick = { selectedTrack = track to null }) { Icon(Icons.Default.MoreVert, "歌曲操作") }
+                            else if (track.song.id.startsWith("import_")) IconButton(onClick = { pendingTrackDelete = track }) { Icon(Icons.Default.DeleteOutline, "删除 ${track.song.name}") }
+                        }
+                    }
+                } else {
+                    items(recent, key = { "${it.source}:${it.song.id}" }) { track -> SongRow(track, state.song?.id == track.song.id,
+                        { model.play(track, recent); onShowPlayer(true) }) { IconButton(onClick = { selectedTrack = track to null }) { Icon(Icons.Default.MoreVert, "歌曲操作") } } }
                 }
             } else {
                 item {
@@ -251,11 +306,18 @@ fun EPlayerApp(model: EPlayerViewModel, showPlayer: Boolean, onShowPlayer: (Bool
         title = { Text("删除 ${track.song.name}？") },
         confirmButton = { TextButton(onClick = { model.removeImported(track); pendingTrackDelete = null }) { Text("删除") } },
         dismissButton = { TextButton(onClick = { pendingTrackDelete = null }) { Text("取消") } }) }
-    if (showPlayer) Player(model, state) { onShowPlayer(false) }
+    if (createPlaylist) AlertDialog(onDismissRequest = { createPlaylist = false }, title = { Text("创建歌单") },
+        text = { OutlinedTextField(playlistName, { playlistName = it }, singleLine = true, placeholder = { Text("歌单名称") }) },
+        confirmButton = { TextButton(enabled = playlistName.isNotBlank(), onClick = { cloud.create(playlistName); createPlaylist = false; playlistName = "" }) { Text("创建") } },
+        dismissButton = { TextButton(onClick = { createPlaylist = false }) { Text("取消") } })
+    CloudDetailScreen(cloud, model, { onShowPlayer(true) }) { track, playlist -> selectedTrack = track to playlist }
+    if (showPlayer) Player(model, cloud, state, { selectedTrack = model.currentTrack()?.let { it to null } }, { commentTrack = model.currentTrack() }) { onShowPlayer(false) }
+    selectedTrack?.let { (track, playlist) -> SongOptions(track, playlist, cloud, model, { commentTrack = it }, { entry -> onShowPlayer(false); cloud.open(entry) }) { selectedTrack = null } }
+    commentTrack?.let { track -> CommentsSheet(track) { commentTrack = null } }
 }
 
 @Composable
-private fun SongRow(track: Track, selected: Boolean, play: () -> Unit, trailing: @Composable RowScope.() -> Unit = {}) {
+internal fun SongRow(track: Track, selected: Boolean, play: () -> Unit, trailing: @Composable RowScope.() -> Unit = {}) {
     Row(Modifier.fillMaxWidth().clickable(onClick = play).padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         if (selected) { Icon(Icons.Default.GraphicEq, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(12.dp)) }
         Column(Modifier.weight(1f)) {
@@ -269,7 +331,7 @@ private fun SongRow(track: Track, selected: Boolean, play: () -> Unit, trailing:
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Player(model: EPlayerViewModel, state: Playback, close: () -> Unit) {
+private fun Player(model: EPlayerViewModel, cloud: CloudViewModel, state: Playback, more: () -> Unit, comments: () -> Unit, close: () -> Unit) {
     val animate by model.animate.collectAsState()
     val artworkContext = LocalContext.current.applicationContext
     val artworkReady by produceState(initialValue = !animate, key1 = animate) {
@@ -290,6 +352,8 @@ private fun Player(model: EPlayerViewModel, state: Playback, close: () -> Unit) 
                 IconButton(onClick = close) { Icon(Icons.Default.KeyboardArrowDown, "收起播放器") }
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = { scope.launch { lyrics = model.lyrics() } }) { Icon(Icons.Default.Lyrics, "歌词") }
+                if (state.source != null) IconButton(onClick = comments) { Icon(Icons.Default.ChatBubbleOutline, "评论") }
+                IconButton(onClick = more) { Icon(Icons.Default.MoreHoriz, "更多歌曲操作") }
                 IconButton(onClick = { queue = true }) { Icon(Icons.Default.QueueMusic, "播放队列") }
             }
             Text(state.song?.name ?: "未选择音乐", style = MaterialTheme.typography.headlineSmall,
@@ -325,9 +389,13 @@ private fun Player(model: EPlayerViewModel, state: Playback, close: () -> Unit) 
                 IconButton(onClick = model::repeat) { Icon(if (state.repeat == 1) Icons.Default.RepeatOne else Icons.Default.Repeat, "循环模式",
                     tint = if (state.repeat != 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.outline) }
             }
-            state.song?.let { song -> IconButton(onClick = { model.favorite(song) }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                Icon(if (song.id in favorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "收藏")
-            } }
+            state.song?.let { song ->
+                val likes by cloud.likes.collectAsState()
+                val liked = if (state.source == null) song.id in favorites else (state.remoteId ?: song.id) in likes[state.source].orEmpty()
+                IconButton(onClick = { if (state.source == null) model.favorite(song) else model.currentTrack()?.let(cloud::like) }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                    Icon(if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "喜欢")
+                }
+            }
         }
     }
     if (queue) ModalBottomSheet(onDismissRequest = { queue = false }) {
@@ -349,6 +417,18 @@ private fun Settings(model: EPlayerViewModel, close: () -> Unit) {
     AlertDialog(onDismissRequest = close, title = { Text("设置") }, text = {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) { Text("角色动画", Modifier.weight(1f)); Switch(animate, model::setAnimate) }
+            val quality by model.quality.collectAsState()
+            var qualityMenu by remember { mutableStateOf(false) }
+            val qualities = listOf("标准" to "standard", "极高" to "exhigh", "无损" to "lossless", "Hi-Res" to "hires")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("音质", Modifier.weight(1f))
+                Box {
+                    TextButton(onClick = { qualityMenu = true }) { Text(qualities.firstOrNull { it.second == quality }?.first ?: "标准") }
+                    DropdownMenu(qualityMenu, { qualityMenu = false }) { qualities.forEach { choice ->
+                        DropdownMenuItem(text = { Text(choice.first) }, onClick = { model.setQuality(choice.second); qualityMenu = false })
+                    } }
+                }
+            }
             listOf("系统音频", "Rust 音频").forEachIndexed { index, label ->
                 Row(Modifier.fillMaxWidth().clickable { engine = index; model.setEngine(index) }, verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(engine == index, { engine = index; model.setEngine(index) }); Text(label)
@@ -394,7 +474,7 @@ private fun SourceLogin(source: String) {
                             val cookie = response.get("cookie")?.takeIf { it.isJsonPrimitive }?.asString
                             check(!cookie.isNullOrBlank()) { "登录未返回会话，请刷新重试" }
                             UserPreferences.getPrefs(context).edit().putString("cookie_$source", cookie).apply()
-                            SourceStore.clearResolved(source)
+                            SourceStore.accountChanged(source)
                             logged = true; status = "已登录"; image = null; break
                         }
                         else -> error(response.get("msg")?.takeIf { it.isJsonPrimitive }?.asString ?: "登录检查失败，请刷新重试")

@@ -31,6 +31,7 @@ import java.io.File
             .setArtworkUri(this.albumArtUrl?.let { Uri.parse(it) })
             .setExtras(Bundle().apply {
                 putString("artistId", this@toMediaItem.artistId)
+                putString("albumId", this@toMediaItem.albumId)
                 putLong("duration", this@toMediaItem.durationMs)
             })
             .build()
@@ -62,7 +63,8 @@ import java.io.File
             album = this.mediaMetadata.albumTitle?.toString() ?: "Unknown",
             albumArtUrl = this.mediaMetadata.artworkUri?.toString(),
             artistId = this.mediaMetadata.extras?.getString("artistId"),
-            durationMs = this.mediaMetadata.extras?.getLong("duration") ?: 0L
+            durationMs = this.mediaMetadata.extras?.getLong("duration") ?: 0L,
+            albumId = this.mediaMetadata.extras?.getString("albumId")
         )
     }
 

@@ -15,6 +15,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -27,6 +28,9 @@ object SourceStore {
     private val initialized = CompletableDeferred<Unit>()
     private val _issue = MutableStateFlow<String?>(null)
     val issue = _issue.asStateFlow()
+    private val _accountChanges = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val accountChanges = _accountChanges.asSharedFlow()
+    fun accountChanged(source: String) { clearResolved(source); _accountChanges.tryEmit(source) }
     suspend fun initialize(context: Context) = withContext(Dispatchers.IO) {
         try {
             mutex.withLock {
@@ -81,7 +85,7 @@ object SourceStore {
         val mapped = provider.apiMap?.get(method) ?: method
         check(mapped.isNotBlank() && !mapped.equals("unsupported", true)) { "此音源不支持该操作" }
         val cookie = UserPreferences.getPrefs(context).getString("cookie_$sourceId", null)
-        val params = if (cookie.isNullOrBlank() || method.startsWith("login")) parameters else parameters + ("cookie" to cookie)
+        val params = if (cookie.isNullOrBlank() || method in setOf("login/qr/key", "login/qr/create", "login/qr/check", "login", "login/cellphone", "captcha/sent")) parameters else parameters + ("cookie" to cookie)
         val raw = provider.callApi(mapped, params)
         check(raw.isNotBlank()) { "音源返回空响应" }
         JsonParser.parseString(raw).asJsonObject

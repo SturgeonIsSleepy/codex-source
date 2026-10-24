@@ -17,13 +17,16 @@ import cp.player.util.toSong
 import java.io.File
 import java.util.UUID
 
-data class Track(val song: Song, val uri: String? = null, val source: String? = null) {
-    fun mediaItem() = song.toMediaItem(uri?.let(Uri::parse)).let { item ->
-        if (uri != null || source == null) item else item.buildUpon().setUri(
-            item.localConfiguration!!.uri.buildUpon().appendQueryParameter("source", source).build())
-            .setMediaMetadata(item.mediaMetadata.buildUpon().setExtras(Bundle(item.mediaMetadata.extras ?: Bundle()).apply {
-                putString("source", source)
-            }).build()).build()
+data class Track(val song: Song, val uri: String? = null, val source: String? = null, val remoteId: String? = null) {
+    fun mediaItem(quality: String = "standard") = song.toMediaItem(uri?.let(Uri::parse), quality).let { item ->
+        if (source == null) item else {
+            val builder = item.buildUpon().setMediaMetadata(item.mediaMetadata.buildUpon()
+                .setExtras(Bundle(item.mediaMetadata.extras ?: Bundle()).apply {
+                    putString("source", source); putString("remoteId", remoteId ?: song.id)
+                }).build())
+            if (uri == null) builder.setUri(item.localConfiguration!!.uri.buildUpon().appendQueryParameter("source", source).build())
+            builder.build()
+        }
     }
 }
 
@@ -34,7 +37,7 @@ class LibraryStore(private val context: Context) {
     private val imports = if (index.exists()) runCatching { gson.fromJson<List<Track>>(index.readText(), type) }.getOrNull().orEmpty().toMutableList() else mutableListOf()
 
     @Synchronized fun imported(): List<Track> = imports.toList()
-    @Synchronized fun importAudio(uri: Uri, metadataOverride: Song? = null): Track {
+    @Synchronized fun importAudio(uri: Uri, metadataOverride: Song? = null, source: String? = null): Track {
         val id = "import_${UUID.randomUUID()}"
         val directory = File(context.filesDir, "audio").apply { mkdirs() }
         val temporary = File(directory, "$id.part")
@@ -59,7 +62,7 @@ class LibraryStore(private val context: Context) {
             } finally { metadata.release() }
             check(temporary.renameTo(destination)) { "保存失败" }
             val finalSong = metadataOverride?.copy(id = id, durationMs = song.durationMs) ?: song
-            val track = Track(finalSong, FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", destination).toString())
+            val track = Track(finalSong, FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", destination).toString(), source, metadataOverride?.id)
             imports.add(0, track)
             try { save() } catch (failure: Exception) { imports.remove(track); destination.delete(); throw failure }
             return track
@@ -99,14 +102,16 @@ class LibraryStore(private val context: Context) {
 /** Persists at queue/transport changes; never writes progress every frame. */
 object QueueStore {
     private val gson = Gson()
-    fun save(context: Context, player: Player) {
+    private val writer = java.util.concurrent.Executors.newSingleThreadExecutor { work -> Thread(work, "ePlayer-state").apply { isDaemon = true } }
+    fun save(context: Context, player: Player, queueChanged: Boolean = true) {
+        val prefs = context.getSharedPreferences("eplayer_queue", Context.MODE_PRIVATE)
+        prefs.edit().putInt("index", player.currentMediaItemIndex).putLong("position", player.currentPosition).apply()
+        if (!queueChanged) return
         val items = (0 until player.mediaItemCount).map { i ->
             val item = player.getMediaItemAt(i)
-            Track(item.toSong(), item.localConfiguration?.uri?.toString())
+            Track(item.toSong(), item.localConfiguration?.uri?.toString(), item.mediaMetadata.extras?.getString("source"), item.mediaMetadata.extras?.getString("remoteId"))
         }
-        context.getSharedPreferences("eplayer_queue", Context.MODE_PRIVATE).edit()
-            .putString("items", gson.toJson(items)).putInt("index", player.currentMediaItemIndex)
-            .putLong("position", player.currentPosition).apply()
+        writer.execute { prefs.edit().putString("items", gson.toJson(items)).apply() }
     }
     fun restore(context: Context, player: Player) {
         val prefs = context.getSharedPreferences("eplayer_queue", Context.MODE_PRIVATE)
@@ -114,7 +119,24 @@ object QueueStore {
         val items = runCatching { gson.fromJson<List<Track>>(json, object : TypeToken<List<Track>>() {}.type) }.getOrNull().orEmpty()
         val valid = items.filter { it.uri != null && (!it.song.id.startsWith("witch_") || WitchPlaylist.uri(context, it.song.id) != null) }
         if (valid.isEmpty()) return
-        player.setMediaItems(valid.map(Track::mediaItem), prefs.getInt("index", 0).coerceIn(valid.indices), prefs.getLong("position", 0).coerceAtLeast(0))
+        player.setMediaItems(valid.map { it.mediaItem() }, prefs.getInt("index", 0).coerceIn(valid.indices), prefs.getLong("position", 0).coerceAtLeast(0))
         // Opening the app must not silently start playback or networking.
+    }
+}
+
+object RecentStore {
+    private val gson = Gson()
+    private val type = object : TypeToken<List<Track>>() {}.type
+    fun read(context: Context): List<Track> = runCatching {
+        gson.fromJson<List<Track>>(context.getSharedPreferences("eplayer_recent", 0).getString("items", "[]"), type)
+    }.getOrNull().orEmpty()
+    fun add(context: Context, player: Player) {
+        val item = player.currentMediaItem ?: return
+        val track = Track(item.toSong(), item.localConfiguration?.uri?.toString(), item.mediaMetadata.extras?.getString("source"), item.mediaMetadata.extras?.getString("remoteId"))
+        val next = (listOf(track) + read(context)).distinctBy { it.source to it.song.id }.take(100)
+        context.getSharedPreferences("eplayer_recent", 0).edit().putString("items", gson.toJson(next)).apply()
+    }
+    fun remove(context: Context, id: String) {
+        context.getSharedPreferences("eplayer_recent", 0).edit().putString("items", gson.toJson(read(context).filterNot { it.song.id == id })).apply()
     }
 }

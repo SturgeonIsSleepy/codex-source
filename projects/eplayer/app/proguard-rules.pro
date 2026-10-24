@@ -55,3 +55,11 @@
 
 # AndroidJUnitRunner shares this runtime dependency with the shrunk application.
 -keep class androidx.tracing.** { *; }
+
+# Public data boundary used by release integration checks.
+-keep class cp.player.app.MusicRepository { *; }
+-keep class cp.player.app.LibraryStore { *; }
+-keep class cp.player.app.MusicEntry { *; }
+-keep class cp.player.app.Account { *; }
+-keep class cp.player.app.MusicDetail { *; }
+-keep class cp.player.app.MusicSearch { *; }

@@ -62,8 +62,9 @@ class MusicService : MediaSessionService() {
         override fun onEvents(player: Player, events: Player.Events) {
             if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION,
                     Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_POSITION_DISCONTINUITY)) {
-                QueueStore.save(this@MusicService, player)
+                QueueStore.save(this@MusicService, player, queueChanged = events.contains(Player.EVENT_TIMELINE_CHANGED))
             }
+            if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) cp.player.app.RecentStore.add(this@MusicService, player)
             if (events.containsAny(Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_IS_PLAYING_CHANGED,
                     Player.EVENT_MEDIA_METADATA_CHANGED)) updateWidgets()
         }
