@@ -2,6 +2,18 @@
 
 更新：2026-10-24。主线为 [projects/eplayer](../projects/eplayer/)，原独立参考版为 [projects/witch-player](../projects/witch-player/)。原 ePlayer 工作树最后提交 `d196c0d`；迁移后的后续工作以本仓库提交为准。
 
+## 0.1.1 初步可用预览（2026-10-24）
+
+源码提交 `cd595a91ba11810c00f5a035af2f28cc1cd8e344`，versionCode 12。无音乐源时首页直接提供默认歌单导入与本地曲库，曲库默认打开手机音乐，不再自动跳转所有文件访问设置。按用户最新要求删除冗余副标题和说明，使用布局及导入、更换等动作表达流程。
+
+[预览构建](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40091056999) 产出通用 APK 与测试包。交付通用包经固定本地调试密钥重签，安装到带硬件加速的 Android 16 / API 36 x86_64 模拟器，全部 9 项 Instrumentation 检查通过：真实 WAV 导入与无效文件拒绝、MediaSession 播放/暂停/拖动、上一首/下一首、后台进度推进和返回播放器，以及 PCM、原生库、音乐源协议与插画检查。另通过系统文件选择器实际导入 WAV，检查精简后的首页与播放截图。测试音频由本轮生成，未包含歌曲录音。
+
+通用包 `ePlayer-v0.1.1-preview.apk` 为 97,796,111 字节，SHA256 为 `b8b13e24885dce0f7f905151b8eeb96dc120f851332fef5fa751da764d667cc1`，含三个 ABI 的 JNI，不含测试 WAV/MP3，签名验证通过。签名证书 SHA256 为 `ec9641dae05841b8fff31a61b8e5be689adbae66a5b547434ab740398e237a53`。本地签名私钥未上传；新签名不能覆盖旧 0.1.0 签名安装，应先保存需要的数据再处理旧安装。
+
+APK、说明、SHA256SUMS 与仅含测试结果/截图的验证归档已在本地准备好。公开 Release 上传被自动审批拒绝，正在等待用户对具体文件公开发布的明确授权；尚未创建或发布 0.1.1 Release，不要把 CI 原始签名 APK 当作上述重签交付包。
+
+本轮没有连接实机，物理耳机路由、音频焦点打断、真实在线源/账号、手机音质、横屏与长时间稳定性仍待验证。此前“最终验收未完成”的记录是迁移时的历史状态；本轮只补齐上述模拟器检查，不代表所有最终验收通过。下一轮在此版本上继续实机基线、CPPlayer 核心边界与其余页面重构。
+
 ## 先读与最新授权
 
 1. 阅读根目录 AGENTS.md、catalog.json、本页和 [开发计划](../projects/eplayer/docs/DEVELOPMENT-PLAN.md)。
