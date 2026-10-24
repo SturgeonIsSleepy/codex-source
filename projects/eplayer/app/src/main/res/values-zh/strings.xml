@@ -1,0 +1,586 @@
+<resources>
+    <string name="app_name">ePlayer</string>
+    <string name="no_lyrics">暂无歌词</string>
+    <string name="add_comment">发表评论...</string>
+    <string name="next_in_queue">待播放</string>
+    <string name="clear_queue">清空队列</string>
+    <string name="close">关闭</string>
+    <string name="cancel">取消</string>
+    <string name="search_placeholder">搜索歌曲、歌手...</string>
+    <string name="recent_searches">最近搜索</string>
+    <string name="clear">清空</string>
+    <string name="messages">私信</string>
+    <string name="no_recent_contacts">暂无最近联系人</string>
+    <string name="song_info">歌曲信息</string>
+    <string name="title_label">标题: %1$s</string>
+    <string name="artist_label">歌手: %1$s</string>
+    <string name="album_label">专辑: %1$s</string>
+    <string name="song_id_label">歌曲 ID: %1$s</string>
+    <string name="quality_info">音质信息</string>
+    <string name="wifi_quality">Wi-Fi 音质: %1$s</string>
+    <string name="cellular_quality">移动网络音质: %1$s</string>
+    <string name="playback_stats">播放统计:</string>
+    <string name="sample_rate">采样率: %1$d Hz</string>
+    <string name="sample_rate_na">采样率: 暂无</string>
+    <string name="bitrate">比特率: %1$d kbps</string>
+    <string name="bitrate_na">比特率: 暂无</string>
+    <string name="add_to_playlist">添加到歌单</string>
+    <string name="sleep_timer">睡眠定时</string>
+    <string name="playing">正在播放</string>
+    <string name="now_playing">正在播放</string>
+    <string name="app_logs">应用日志</string>
+    <string name="no_logs">暂无应用日志</string>
+    <string name="download_dir">下载目录</string>
+    <string name="clear_cache">清空播放缓存</string>
+    <string name="copy_debug_logs">复制调试日志</string>
+    <string name="live_sort">智能排序</string>
+    <string name="reorder_queue">重排当前队列</string>
+    <string name="analyzing">正在分析: %1$s</string>
+    <string name="optimizing">正在优化歌单顺序...</string>
+    <string name="go_back">返回</string>
+    <string name="songs_count">%1$d 首歌曲</string>
+    <string name="remaining_time">剩余时间: %1$s</string>
+    <string name="good_day">美好的一天</string>
+    <string name="made_for_you">为你推荐</string>
+    <string name="recently_played">最近播放</string>
+    <string name="selected_count">%1$d 已选择</string>
+    <string name="sort_by_name">按名称排序</string>
+    <string name="sort_by_artist">按歌手排序</string>
+    <string name="profile">资料</string>
+    <string name="show_all">显示全部</string>
+    <string name="show_less">收起</string>
+    <string name="scan_qr_login">扫码登录</string>
+    <string name="refresh_qr">刷新二维码</string>
+    <string name="logs_copied">日志已复制到剪贴板</string>
+    <string name="downloads">下载</string>
+    <string name="offline_music">离线音乐</string>
+    <string name="smart_reordering">智能队列重排</string>
+    <string name="downloading">正在下载</string>
+    <string name="connecting">连接中...</string>
+    <string name="no_downloads">未发现已下载歌曲</string>
+    <string name="downloaded">已下载</string>
+    <string name="type_message">输入消息...</string>
+    <string name="back">返回</string>
+    <string name="playlist">歌单</string>
+    <string name="your_library">音乐库</string>
+    <string name="settings">设置</string>
+    <string name="appearance">外观</string>
+    <string name="pure_black_mode">纯黑模式</string>
+    <string name="pure_black_desc">在深色模式下为 OLED 屏幕使用纯黑背景</string>
+    <string name="theme_mode">主题模式</string>
+    <string name="theme_mode_system">跟随系统</string>
+    <string name="theme_mode_cover">跟随封面</string>
+    <string name="theme_mode_fixed">固定颜色</string>
+    <string name="follow_cover_granular">取色应用范围</string>
+    <string name="follow_cover_app">全局界面</string>
+    <string name="follow_cover_mini">底部播放控制条</string>
+    <string name="follow_cover_player">播放界面</string>
+    <string name="playback_quality_cat">播放音质</string>
+    <string name="wifi_quality_label">Wi-Fi 音质</string>
+    <string name="cellular_quality_label">移动网络音质</string>
+    <string name="download_settings">下载设置</string>
+    <string name="download_quality_label">下载音质</string>
+    <string name="allow_cellular_download">允许使用移动网络下载</string>
+    <string name="allow_cellular_download_desc">开启后，可使用移动数据下载歌曲</string>
+    <string name="audio_effects">音频特效</string>
+    <string name="crossfade_duration">淡入淡出时长 (%1$d秒)</string>
+    <string name="storage_cache">存储与缓存</string>
+    <string name="cellular_caching">移动网络缓存</string>
+    <string name="cellular_caching_desc">使用移动网络播放时缓存歌曲</string>
+    <string name="max_cache_size">最大缓存大小: %1$dMB</string>
+    <string name="debug">调试</string>
+    <string name="health_status">健康状态</string>
+    <string name="comments_count">评论 (%1$d)</string>
+    <string name="hot_comments">最热评论</string>
+    <string name="newest_comments">最新评论</string>
+    <string name="no_more_comments">没有更多评论了</string>
+    <string name="view_replies">查看 %1$d 条回复</string>
+    <string name="sort_recommend">推荐</string>
+    <string name="sort_hot">最热</string>
+    <string name="sort_time">最新</string>
+    <string name="cloud_music">音乐云盘</string>
+    <string name="no_cloud_songs">云盘空空如也</string>
+    <string name="not_interested">不感兴趣</string>
+    <string name="reply">回复</string>
+    <string name="fluid_background">流体背景</string>
+    <string name="fluid_background_desc">在播放页和全局使用流体背景效果</string>
+    <string name="settings_appearance_desc">主题模式、封面取色、纯黑模式...</string>
+    <string name="settings_audio_desc">播放音质、音频特效...</string>
+    <string name="settings_ui_logic">界面逻辑</string>
+    <string name="settings_ui_logic_desc">播放行为、歌词来源...</string>
+    <string name="settings_download_desc">下载音质、移动数据下载、下载目录...</string>
+    <string name="settings_storage_desc">移动数据缓存、播放缓存大小...</string>
+    <string name="settings_debug_desc">查看并复制调试日志...</string>
+    <string name="wavy_progress_bar">波浪形进度条</string>
+    <string name="wavy_progress_bar_desc">在播放界面开启波浪形进度条</string>
+    <string name="system_music_folder">系统音乐文件夹</string>
+    <string name="follow_cover_app_desc">将封面取色应用到整个界面</string>
+    <string name="follow_cover_mini_desc">底部播放控制条跟随封面取色</string>
+    <string name="follow_cover_player_desc">播放器界面跟随封面取色</string>
+    <string name="audio_focus_management">音频焦点与行为</string>
+    <string name="transient_focus_loss_behavior">其他应用播放声音时</string>
+    <string name="focus_mode_duck">降低音量</string>
+    <string name="focus_mode_pause">暂停播放</string>
+    <string name="focus_mode_continue">保持播放</string>
+    <string name="allow_ducking">允许系统通知降低音量</string>
+    <string name="allow_ducking_desc">收到通知时临时调低音乐音量</string>
+    <string name="pause_on_noisy">拔出耳机时暂停播放</string>
+    <string name="pause_on_noisy_desc">耳机拔出或蓝牙断开时自动暂停播放</string>
+    <string name="auto_audio_focus">自动管理音频焦点</string>
+    <string name="auto_audio_focus_desc">让 ExoPlayer 原生自动管理音频焦点</string>
+    <string name="fade_mode">淡入淡出模式</string>
+    <string name="fade_mode_crossfade">交叉淡入淡出 (双播放器)</string>
+    <string name="fade_mode_single">普通淡入淡出 (单播放器)</string>
+    <string name="fade_mode_off">关闭</string>
+    <string name="provider_management">音源管理</string>
+    <string name="provider_management_desc">管理并切换自定义音乐源</string>
+    
+    <!-- Login & Account Strings -->
+    <string name="login_tab_qr">扫码</string>
+    <string name="login_tab_email">邮箱</string>
+    <string name="login_tab_phone">手机</string>
+    <string name="login_tab_guest">游客</string>
+    <string name="email_label">邮箱</string>
+    <string name="password_label">密码</string>
+    <string name="login_with_email">邮箱登录</string>
+    <string name="phone_number_label">手机号</string>
+    <string name="captcha_or_password_label">验证码 (或密码)</string>
+    <string name="get_code_button">获取验证码</string>
+    <string name="login_with_code">验证码登录</string>
+    <string name="login_with_password">密码登录</string>
+    <string name="guest_login_desc">作为游客登录以访问公开功能。</string>
+    <string name="guest_login_button">游客登录</string>
+    <string name="saved_accounts_title">已保存的账号</string>
+    <string name="add_another_account">添加其他账号</string>
+    <string name="sign_out_button">退出登录</string>
+    <string name="logout_confirm_title">退出登录</string>
+    <string name="logout_confirm_desc">您确定要退出当前账号吗？</string>
+    <string name="not_logged_in">未登录</string>
+
+    <string name="module_import_success">模块导入成功</string>
+    <string name="module_import_failed">导入模块失败</string>
+    <string name="module_import_error">导入模块时出错</string>
+    <string name="provider_active"> (当前使用)</string>
+    <string name="provider_info">类型: %1$s | 版本: %2$s</string>
+    <string name="provider_switched">已切换至 %1$s</string>
+    <string name="import_new_module">导入新模块 (.zip)</string>
+    <string name="setup_title">初始设置</string>
+    <string name="setup_welcome">欢迎来到 ePlayer</string>
+    <string name="setup_desc">要开始使用本应用，请先导入包含音乐源定义的后端模块（.zip 文件）。</string>
+    <string name="importing_module">正在导入模块...</string>
+    <string name="engine_exoplayer">ExoPlayer (默认)</string>
+    <string name="engine_flick">Flick 引擎（本地音频）[BETA]</string>
+
+    <string name="font_roundness">字体</string>
+    <string name="font_roundness_desc">切换 Google Sans Flex 的字体圆润模式，类似 Android 16 QPR2 效果</string>
+    <string name="font_roundness_standard">标准模式</string>
+    <string name="font_roundness_expressive">Expressive 模式</string>
+    <string name="font_roundness_default">系统默认字体</string>
+    <!-- 音质等级 -->
+    <string name="quality_standard">标准</string>
+    <string name="quality_higher">较高</string>
+    <string name="quality_exhigh">极高</string>
+    <string name="quality_lossless">无损</string>
+    <string name="quality_hires">高解析度</string>
+
+    <string name="play_immediately">点击直接播放</string>
+    <string name="play_immediately_desc">点击歌曲时直接开始播放，不跳转到播放界面</string>
+    <string name="playback_behavior">播放行为</string>
+
+    <!-- UI翻新新增字符串 -->
+    <string name="quick_access">快速访问</string>
+    <string name="quick_recommend_title">为你推荐</string>
+    <string name="quick_recommend_subtitle">发现你的音乐品味</string>
+    <string name="quick_fm_title">私人FM</string>
+    <string name="quick_fm_subtitle">专属你的电台</string>
+    <string name="recommended_playlists">推荐歌单</string>
+    <string name="greeting_morning">早上好</string>
+    <string name="greeting_afternoon">下午好</string>
+    <string name="greeting_evening">晚上好</string>
+    <string name="greeting_late_night">夜深了</string>
+    <string name="daily_mix_title">每日推荐</string>
+    <string name="daily_mix_subtitle">基于播放历史</string>
+    <string name="check_all_daily_mix">查看全部 →</string>
+    <string name="all_replies">所有回复</string>
+    <string name="sort_comments">排序</string>
+    <string name="send">发送</string>
+    <string name="view_all">查看全部</string>
+    <string name="no_comments_yet">暂无评论，快来抢沙发吧</string>
+    <string name="no_messages_yet">暂无消息</string>
+    <string name="import_from_playlist">从歌单导入</string>
+    <string name="add_songs">添加歌曲</string>
+    <string name="add_from_queue">从播放队列添加</string>
+    <string name="added_to_queue">已添加 %1$d 首到播放队列</string>
+    <string name="current_provider_label">当前音乐源</string>
+    <string name="switch_provider_label">切换音乐源</string>
+    <string name="provider_accounts_label">%1$s 的账号</string>
+    <string name="all_accounts_label">所有已保存的账号</string>
+    <string name="account_provider_badge">%1$s</string>
+
+    <!-- 本地音乐云端关联 -->
+    <string name="bind_cloud_song">关联云端歌曲</string>
+    <string name="bind_cloud_search">搜索</string>
+    <string name="bind_cloud_no_results">未找到匹配的云端歌曲</string>
+    <string name="bind_cloud_success">已关联云端歌曲</string>
+    <string name="unbind_cloud_song">解除关联</string>
+    <string name="sync_cloud_title">自动同步云端</string>
+    <string name="sync_cloud_progress">正在搜索并匹配云端歌曲…</string>
+    <string name="sync_cloud_done">同步完成：成功 %1$d 首，跳过 %2$d 首，失败 %3$d 首</string>
+
+    <!-- 关于页面 -->
+    <string name="about">关于</string>
+    <string name="settings_about_desc">项目信息、版本、维护者</string>
+    <string name="about_version_info">版本信息</string>
+    <string name="about_project">项目信息</string>
+    <string name="about_maintainers">主要维护者</string>
+    <string name="about_contributors">贡献者</string>
+    <string name="about_main_developer">项目创建者 &amp; 主要维护者</string>
+    <string name="current_version">当前版本</string>
+    <string name="commit_hash">提交哈希</string>
+    <string name="check_for_updates">检查更新</string>
+    <string name="checking_update">正在检查更新…</string>
+    <string name="update_available">发现新版本</string>
+    <string name="already_latest">已是最新版本</string>
+    <string name="project_address">项目地址</string>
+    <string name="qq_group">QQ 群</string>
+    <string name="qq_group_placeholder">1095919920</string>
+    <string name="update_changelog">更新日志</string>
+    <string name="update_download">下载更新</string>
+
+    <!-- 赞助页面 -->
+    <string name="sponsor">赞助</string>
+    <string name="settings_sponsor_desc">支持项目发展</string>
+    <string name="sponsor_alipay">支付宝</string>
+    <string name="sponsor_scan_to_pay">扫码请作者喝杯咖啡 ☕</string>
+    <string name="sponsor_thanks">感谢您的支持 ❤️</string>
+    <string name="copied">已复制</string>
+
+    <!-- 播放引擎 -->
+    <string name="playback_engine">播放引擎</string>
+    <string name="engine_selection">引擎选择</string>
+    <string name="dsd_output_mode">DSD 输出模式</string>
+    <string name="dap_bit_perfect">DAP Bit-Perfect</string>
+    <string name="dap_bit_perfect_desc">在支持的设备上绕过 Android SRC</string>
+    <string name="usb_audio_auto_resume">USB 音频自动恢复</string>
+    <string name="usb_audio_auto_resume_desc">USB 音频在 2 秒内重新连接时自动恢复播放</string>
+    <string name="copy_rust_debug_state">复制 Rust 调试状态</string>
+    <string name="copy_rust_debug_state_desc">查看原生音频引擎的运行状态</string>
+    <string name="copied_to_clipboard">已复制到剪贴板</string>
+    <string name="manage_music_source_modules">管理音乐源模块</string>
+
+    <!-- 歌词 -->
+    <string name="lyrics">歌词</string>
+    <string name="lyrics_source">歌词来源</string>
+    <string name="lyrics_source_provider_api">Provider API 优先</string>
+    <string name="lyrics_source_amll_ttml">AMLL TTML 优先</string>
+    <string name="lyrics_source_amll_only">仅 AMLL TTML</string>
+    <string name="amll_lyrics_platform">AMLL 歌词平台</string>
+    <string name="auto_detect">自动检测</string>
+    <string name="netease_cloud_music">网易云音乐</string>
+    <string name="qq_music">QQ 音乐</string>
+
+    <!-- 模块更新 -->
+    <string name="module_update_success">模块更新成功</string>
+    <string name="module_update_failed">模块更新失败</string>
+    <string name="module_update_error">更新出错: %1$s</string>
+    <string name="has_update">有更新</string>
+    <string name="more_actions">更多操作</string>
+
+    <!-- 调试 -->
+    <string name="view_app_and_system_logs">查看应用日志和系统日志</string>
+    <string name="api_monitor_desc">API 调用监控、兼容性检查、Provider 测试</string>
+
+    <!-- 音乐库 -->
+    <string name="tab_playlists">歌单</string>
+    <string name="tab_downloads">下载</string>
+    <string name="tab_cloud">云盘</string>
+    <string name="tab_live_sort">智能排序</string>
+    <string name="create_new_playlist">创建新歌单</string>
+    <string name="playlist_name">歌单名称</string>
+    <string name="create">创建</string>
+    <string name="songs_count_cn">%1$d 首</string>
+    <string name="created_playlist">创建的歌单</string>
+    <string name="collected_playlist">收藏 · %1$s</string>
+    <string name="unknown">未知</string>
+    <string name="delete_playlist">删除歌单</string>
+    <string name="unsubscribe">取消收藏</string>
+    <string name="delete_playlist_confirm">确定要删除「%1$s」吗？</string>
+    <string name="unsubscribe_confirm">确定要取消收藏「%1$s」吗？</string>
+    <string name="delete">删除</string>
+    <string name="added_to_queue_count">已添加 %1$d 首到播放队列</string>
+    <string name="share_playlist">分享歌单</string>
+
+    <!-- 关于页面 -->
+    <string name="qq_group_link_pending">QQ 群链接待添加</string>
+    <string name="creator_and_main_maintainer">项目创建者 &amp; 主要维护者</string>
+
+    <!-- 健康状态 -->
+    <string name="health_and_debug">健康状态 &amp; 调试</string>
+    <string name="tab_overview">概览</string>
+    <string name="tab_methods">方法</string>
+    <string name="tab_logs">日志</string>
+    <string name="tab_test">测试</string>
+    <string name="tab_status">状态</string>
+    <string name="no_monitoring_data">暂无监控数据</string>
+    <string name="health_auto_record">执行 API 调用后将自动记录健康数据</string>
+    <string name="provider_health_status">Provider 健康状态</string>
+    <string name="global_health">全局健康</string>
+    <string name="calls_avg_time">%1$d 次调用 · 平均 %2$dms</string>
+    <string name="metric_success">成功</string>
+    <string name="metric_fail">失败</string>
+    <string name="metric_fallback">回退</string>
+    <string name="metric_warning">警告</string>
+    <string name="score_unit">分</string>
+    <string name="no_call_records">暂无调用记录</string>
+    <string name="success_rate">成功率</string>
+    <string name="metric_calls">调用</string>
+    <string name="avg_response">平均响应</string>
+    <string name="compatibility_warnings_count">%1$d 个兼容性警告</string>
+    <string name="no_method_stats">暂无方法统计数据</string>
+    <string name="method_stats_desc">按 API 方法分组统计（按调用次数排序）</string>
+    <string name="method_calls_success_rate">%1$d 次 · 成功率 %2$s%% · 平均 %3$dms</string>
+    <string name="fail_count">%1$d 失败</string>
+    <string name="warning_count">%1$d 警告</string>
+    <string name="fallback_count">%1$d 回退</string>
+    <string name="compatibility_warning_dist">兼容性警告分布</string>
+    <string name="filter_failures_only">仅失败</string>
+    <string name="filter_warnings_only">仅警告</string>
+    <string name="clear_records">清除记录</string>
+    <string name="total_records">共 %1$d 条记录</string>
+    <string name="response_code">响应码</string>
+    <string name="error_code">错误码</string>
+    <string name="compatibility_warning">兼容性警告</string>
+    <string name="expected_field">期望字段: %1$s</string>
+    <string name="fallback_from">回退自</string>
+    <string name="select_api_method">选择 API 方法</string>
+    <string name="unmapped_passthrough">(未映射，直通)</string>
+    <string name="request_params_json">请求参数 (JSON)</string>
+    <string name="error_message">错误: %1$s</string>
+    <string name="sending">发送中...</string>
+    <string name="send_request">发送请求</string>
+    <string name="response">响应</string>
+    <string name="no_active_provider">没有活跃的 Provider</string>
+    <string name="current_provider">当前 Provider: %1$s</string>
+    <string name="active_label">活跃</string>
+
+    <!-- Provider 测试 -->
+    <string name="provider_test">Provider 测试</string>
+    <string name="api_test">API 测试</string>
+    <string name="status">状态</string>
+    <string name="type_label">类型: %1$s</string>
+    <string name="version_label">版本: %1$s</string>
+    <string name="mapped">已映射</string>
+    <string name="unsupported">不支持</string>
+    <string name="passthrough">直通</string>
+    <string name="all_api_methods">所有 API 方法</string>
+    <string name="loaded_providers">已加载的 Providers</string>
+    <string name="no_loaded_providers">没有已加载的 Provider</string>
+
+    <!-- 日志查看 -->
+    <string name="app_logs_tab">应用日志</string>
+    <string name="system_logs_tab">系统日志</string>
+    <string name="share_logs">分享日志</string>
+    <string name="share">分享</string>
+    <string name="clear_log">清除</string>
+    <string name="no_app_logs">暂无应用日志</string>
+    <string name="total_log_count">共 %1$d 条</string>
+
+    <!-- 搜索 -->
+    <string name="hot_searches">热门搜索</string>
+    <string name="search_songs">歌曲</string>
+    <string name="search_albums">专辑</string>
+    <string name="search_artists">歌手</string>
+    <string name="search_playlists">歌单</string>
+
+    <!-- 歌曲详情 -->
+    <string name="song_details">歌曲详情</string>
+    <string name="detail_song_name">歌曲名称</string>
+    <string name="detail_artist">歌手</string>
+    <string name="detail_album">专辑</string>
+    <string name="detail_duration">时长</string>
+    <string name="detail_publish_time">发行时间</string>
+    <string name="detail_comment_count">评论数</string>
+    <string name="detail_max_bitrate">最高码率</string>
+    <string name="detail_pay_type">付费类型</string>
+    <string name="pay_type_free">免费</string>
+    <string name="pay_type_vip">VIP</string>
+    <string name="pay_type_paid_album">付费专辑</string>
+    <string name="pay_type_free_vip">免费+VIP</string>
+    <string name="pay_type_unknown">未知</string>
+    <string name="detail_song_id">歌曲 ID</string>
+    <string name="detail_error">错误</string>
+
+    <!-- 歌曲操作 -->
+    <string name="play">播放</string>
+    <string name="add_to_queue">添加到队列</string>
+    <string name="play_next">下一首播放</string>
+    <string name="favorite">收藏</string>
+    <string name="info">信息</string>
+
+    <!-- 播放器歌曲选项 -->
+    <string name="add_to_playlist_action">添加到歌单</string>
+    <string name="download_action">下载</string>
+    <string name="downloaded_action">已下载</string>
+    <string name="not_interested_action">不感兴趣</string>
+    <string name="song_information">歌曲信息</string>
+    <string name="audio_quality_label">音质信息</string>
+    <string name="sample_rate_label">采样率: %1$dHz</string>
+    <string name="bitrate_label">比特率: %1$dkbps</string>
+    <string name="bit_depth_label">位深度: %1$d-bit</string>
+    <string name="channels_label">声道数: %1$d</string>
+    <string name="codec_label">编码格式: %1$s</string>
+
+
+    <!-- 歌词信息 -->
+    <string name="lyrics_info">歌词信息</string>
+    <string name="lyrics_source_label">来源: %1$s</string>
+    <string name="lyrics_format_label">格式: %1$s</string>
+    <string name="lyrics_word_by_word">逐字歌词: %1$s</string>
+    <string name="lyrics_supported">支持 ✓</string>
+    <string name="lyrics_not_supported">不支持 ✗</string>
+    <string name="lyrics_translation">翻译: 有</string>
+    <string name="lyrics_transliteration">音译: 有</string>
+
+    <!-- 播放列表操作 -->
+    <string name="sort_method">排序方式</string>
+    <string name="sort_default">默认</string>
+    <string name="sort_by_name_cn">按名称</string>
+    <string name="sort_by_artist_cn">按歌手</string>
+    <string name="default_sort">默认排序</string>
+
+    <!-- 队列 -->
+    <string name="next_up">待播放</string>
+    <string name="all_songs">所有歌曲</string>
+    <string name="locate_current">定位当前</string>
+    <string name="save_as_playlist">保存为歌单</string>
+    <string name="clear_queue_action">清空队列</string>
+    <string name="drag_to_reorder">拖拽排序</string>
+    <string name="album_art">专辑封面</string>
+    <string name="more_options">更多选项</string>
+    <string name="added_to_playlist_name">已添加到 %1$s</string>
+
+    <!-- 睡眠定时 -->
+    <string name="sleep_timer_off">关闭</string>
+    <string name="sleep_timer_10min">10 分钟</string>
+    <string name="sleep_timer_20min">20 分钟</string>
+    <string name="sleep_timer_30min">30 分钟</string>
+    <string name="sleep_timer_45min">45 分钟</string>
+    <string name="sleep_timer_60min">60 分钟</string>
+    <string name="sleep_timer_90min">90 分钟</string>
+    <string name="remaining_time_label">剩余: %1$s</string>
+
+    <!-- 播放控制 -->
+    <string name="previous">上一首</string>
+    <string name="play_pause">播放/暂停</string>
+    <string name="next">下一首</string>
+
+    <!-- 评论 -->
+    <string name="avatar">头像</string>
+    <string name="like">点赞</string>
+
+    <!-- 歌手 -->
+    <string name="albums_count">%1$d 张专辑</string>
+
+    <!-- 歌曲选择 -->
+    <string name="select_songs">选择歌曲</string>
+    <string name="from_source">来自 %1$s</string>
+    <string name="deselect_all">取消全选</string>
+    <string name="select_all">全选</string>
+    <string name="no_songs_found">未找到歌曲</string>
+    <string name="add_songs_count">添加 %1$d 首歌曲</string>
+
+    <!-- 登录 -->
+    <string name="add_new_account">添加新账号</string>
+    <string name="other_provider_accounts">其他提供商账号</string>
+
+    <!-- 下载 -->
+    <string name="refresh">刷新</string>
+
+    <!-- 用户账号 -->
+    <string name="initializing">初始化中...</string>
+    <string name="already_logged_in">已登录</string>
+    <string name="active_account">活跃</string>
+    <string name="remove_account">移除</string>
+
+    <!-- Provider 选项 -->
+    <string name="checking_update_progress">正在检查更新...</string>
+    <string name="new_version_found">发现新版本 v%1$s</string>
+    <string name="already_latest_version">已是最新版本</string>
+    <string name="check_update">检查更新</string>
+    <string name="manual_update">手动更新</string>
+    <string name="delete_provider">删除此提供商</string>
+    <string name="delete_provider_title">删除提供商</string>
+    <string name="delete_provider_confirm">确定要删除「%1$s」吗？删除后无法恢复。</string>
+    <string name="provider_deleted">已删除「%1$s」</string>
+    <string name="delete_failed">删除失败</string>
+
+    <!-- LiveSort -->
+    <string name="select_tracks_to_mix">选择混音曲目</string>
+    <string name="analyze_and_mix">分析并混音 %1$d 首曲目</string>
+    <string name="analyzing_features">正在分析特征</string>
+    <string name="optimizing_flow">正在优化流程</string>
+    <string name="analysis_failed">分析失败</string>
+    <string name="reset_and_try_again">重试</string>
+    <string name="livesort_flow">LiveSort 流程</string>
+    <string name="done">完成</string>
+    <string name="ideal_curve">理想曲线</string>
+    <string name="actual_mix">实际混音</string>
+    <string name="start_seamless_mix">开始无缝混音</string>
+    <string name="livesort_filter_hint">筛选当前队列，仅已下载或本地曲目可分析</string>
+    <string name="livesort_no_tracks_hint">当前队列中没有已下载或本地曲目，请先下载</string>
+    <string name="livesort_song_progress">第 %1$d 首，共 %2$d 首</string>
+    <string name="livesort_finding_sequence">正在寻找最佳顺序…</string>
+    <string name="livesort_tracks_connected">%1$d 首曲目无缝连接</string>
+    <string name="livesort_n_failed">%1$d 首分析失败已跳过</string>
+    <string name="bpm_label">BPM</string>
+    <string name="energy_label">能量</string>
+
+    <!-- 登录状态 -->
+    <string name="switched_to_provider">已切换到 %1$s</string>
+    <string name="please_login_provider">请登录 %1$s</string>
+    <string name="getting_qr_code">获取二维码中...</string>
+    <string name="switched_to_account">已切换到 %1$s</string>
+    <string name="failed_to_get_qr_key">获取二维码失败</string>
+    <string name="captcha_sent">验证码已发送</string>
+    <string name="failed_to_send_captcha">验证码发送失败</string>
+    <string name="logged_out">已退出登录</string>
+    <string name="login_failed">登录失败</string>
+    <string name="parse_error">解析错误</string>
+    <string name="user_nickname">用户</string>
+    <string name="guest_nickname">游客</string>
+
+    <!-- 喜欢的音乐 -->
+    <string name="liked_music">喜欢的音乐</string>
+
+    <!-- 未知用户 -->
+    <string name="unknown_user">未知用户</string>
+
+    <!-- 导航栏 -->
+    <string name="navigation_bar">导航栏</string>
+    <string name="hide_navbar_on_scroll">底栏随页面滑动自动隐藏</string>
+    <string name="hide_navbar_on_scroll_desc">向下滚动页面时自动隐藏底栏，向上滚动时恢复显示</string>
+    <string name="nav_home">首页</string>
+    <string name="nav_search">搜索</string>
+    <string name="nav_library">音乐库</string>
+    <string name="cellular_warning_title">移动网络警告</string>
+    <string name="cellular_warning_message">您当前正在使用移动网络。</string>
+    <string name="continue_action">继续</string>
+
+    <!-- 播放器样式 -->
+    <string name="player_style">播放器样式</string>
+    <string name="wavy_progress">波浪进度条</string>
+    <string name="wavy_progress_desc">使用波浪形动画进度条，关闭则显示平直进度条</string>
+
+    <!-- 发现页 -->
+    <string name="discover">发现</string>
+    <string name="toplists">排行榜</string>
+    <string name="recommended_new_songs">推荐新歌</string>
+    <string name="new_songs_express">新歌速递</string>
+    <string name="quality_playlists">精品歌单</string>
+    <string name="view_more">查看更多</string>
+
+    <!-- DSP -->
+    <string name="dsp_equalizer">DSP &amp; 均衡器</string>
+    <string name="dsp_effects">DSP &amp; 音效</string>
+    <string name="dsp_equalizer_desc">配置均衡器和空间音效</string>
+</resources>

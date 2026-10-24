@@ -56,6 +56,28 @@ class LayoutTests(unittest.TestCase):
     def test_reject_missing_entrypoint(self):
         self.assertTrue(any('entrypoint' in x for x in m.validate(self.root, self.files - {'tools/demo/run.py'})))
 
+    def test_large_font_exception_is_path_and_size_bounded(self):
+        path = 'projects/eplayer/app/src/main/res/font/travel_hand.ttf'
+        item = {'id': 'eplayer', 'path': 'projects/eplayer', 'version': '0.1.0',
+                'description': 'Licensed CJK font', 'entrypoint': 'README.md'}
+        self.catalog['entries'].append(item)
+        self.write_catalog()
+        for name, content in [('README.md', 'ePlayer'), ('VERSION', '0.1.0')]:
+            relative = 'projects/eplayer/' + name
+            target = self.root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content)
+            self.files.add(relative)
+        font = self.root / path
+        font.parent.mkdir(parents=True, exist_ok=True)
+        self.files.add(path)
+        with font.open('wb') as stream:
+            stream.truncate(25 * 1024**2)
+        self.assertEqual(m.validate(self.root, self.files), [])
+        with font.open('wb') as stream:
+            stream.truncate(27 * 1024**2)
+        self.assertTrue(any('26 MiB' in error for error in m.validate(self.root, self.files)))
+
     def test_reject_oversized_file(self):
         p = self.root / 'tools/demo/asset.png'
         with p.open('wb') as f:

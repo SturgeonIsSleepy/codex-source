@@ -26,3 +26,12 @@ state.json
 *.tgz
 *.part
 .DS_Store
+
+# Rust lockfiles and native source archives are reproducible source inputs.
+!**/Cargo.lock
+# Never publish local signing material or generated compiler output.
+*.keystore
+*.jks
+**/build/
+**/target/
+*.class

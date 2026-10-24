@@ -30,3 +30,7 @@ python3 -m unittest discover -s tools/android-cloud/tests -v
 ```
 
 提交只包含本次条目和必要索引/文档更新，提交说明写清用途与验证。不要覆盖其他工具或强制推送。可复用 URL 的目录保持稳定，固定版本链接使用完整 commit SHA。
+
+## ePlayer 字体例外
+
+`projects/eplayer/app/src/main/res/font/travel_hand.ttf` 是遵循 SIL OFL 的完整文楷 Medium，用于任意中日文曲库文字，约 24.6 MiB。只对此精确路径允许最高 26 MiB，并有路径与大小边界检查。其他文件仍保持 5 MiB 限制；不能以该例外上传 APK、日志、私钥或缓存。

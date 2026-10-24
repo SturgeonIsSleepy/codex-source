@@ -1,0 +1,1045 @@
+package cp.player.ui.screen
+
+import cp.player.util.buildLocalContentUri
+import cp.player.util.formatAsTime
+import android.app.Activity
+import android.content.ContextWrapper
+import androidx.activity.ComponentActivity
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.core.graphics.ColorUtils
+import androidx.core.view.WindowCompat
+import androidx.media3.common.Player
+import coil3.compose.AsyncImage
+import cp.player.R
+import cp.player.model.*
+import cp.player.ui.component.*
+import cp.player.util.resized
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
+import androidx.compose.ui.unit.IntOffset
+
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3WindowSizeClassApi::class,
+    ExperimentalMaterial3ExpressiveApi::class
+)
+@Composable
+fun PlayerScreen(
+    uiState: PlayerUiState,
+    callbacks: PlayerCallbacks,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null
+) {
+    // 从聚合状态中解构常用字段
+    val song = uiState.song
+    val isPlaying = uiState.isPlaying
+    val isBuffering = uiState.isBuffering
+    val currentPosition = uiState.currentPosition
+    val duration = uiState.duration
+    val repeatMode = uiState.repeatMode
+    val shuffleMode = uiState.shuffleMode
+    val isFavorite = uiState.isFavorite
+    val isDownloaded = uiState.isDownloaded
+    val syncedLyrics = uiState.syncedLyrics
+    val lyricsInfo = uiState.lyricsInfo
+    val queue = uiState.queue
+    val sampleRate = uiState.sampleRate
+    val bitrate = uiState.bitrate
+    val bitDepth = uiState.bitDepth
+    val channels = uiState.channels
+    val codecName = uiState.codecName
+    val useCoverColor = false
+    val useFluidBackground = false
+    val coverColor = uiState.coverColor
+    val pureBlack = uiState.pureBlack
+    val sleepTimerRemaining = uiState.sleepTimerRemaining
+    val allPlaylists = uiState.allPlaylists
+    val hotComments = uiState.hotComments
+    val newestComments = uiState.newestComments
+    val commentTotal = uiState.commentTotal
+    val isCommentsLoading = uiState.isCommentsLoading
+    val hasMoreComments = uiState.hasMoreComments
+    val commentSortType = uiState.commentSortType
+    val floorComments = uiState.floorComments
+    val floorCommentTotal = uiState.floorCommentTotal
+    val floorHasMore = uiState.floorHasMore
+    val activeParentComment = uiState.activeParentComment
+
+    val onPlayPause = callbacks.onPlayPause
+    val onSkipNext = callbacks.onSkipNext
+    val onSkipPrevious = callbacks.onSkipPrevious
+    val onSeek = callbacks.onSeek
+    val onRepeatClick = callbacks.onRepeatClick
+    val onShuffleClick = callbacks.onShuffleClick
+    val onLikeClick = callbacks.onLikeClick
+    val onArtistClick = callbacks.onArtistClick
+    val onDownloadClick = callbacks.onDownloadClick
+    val onCommentClick = callbacks.onCommentClick
+    val onDislikeClick = callbacks.onDislikeClick
+    val onAddToPlaylist = callbacks.onAddToPlaylist
+    val onPlayAtQueueIndex = callbacks.onPlayAtQueueIndex
+    val onMoveQueueItem = callbacks.onMoveQueueItem
+    val onRemoveQueueItem = callbacks.onRemoveQueueItem
+    val onClearQueue = callbacks.onClearQueue
+    val onLoadMoreComments = callbacks.onLoadMoreComments
+    val onLikeComment = callbacks.onLikeComment
+    val onReplyComment = callbacks.onReplyComment
+    val onPostComment = callbacks.onPostComment
+    val onAvatarClick = callbacks.onAvatarClick
+    val onCommentSortChange = callbacks.onCommentSortChange
+    val onViewFloorClick = callbacks.onViewFloorClick
+    val onLoadMoreFloor = callbacks.onLoadMoreFloor
+    val onDismissFloor = callbacks.onDismissFloor
+    val onSetSleepTimer = callbacks.onSetSleepTimer
+    val onBackPressed = callbacks.onBackPressed
+    val context = LocalContext.current
+    val backDispatcher = androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    val activity = remember(context) {
+        var c = context
+        while (c is ContextWrapper) {
+            if (c is ComponentActivity) break
+            c = c.baseContext
+        }
+        c as? ComponentActivity
+    }
+    val windowSizeClass = activity?.let { calculateWindowSizeClass(it) }
+    val isWideScreen = windowSizeClass?.let { it.widthSizeClass != WindowWidthSizeClass.Compact } ?: false
+
+    if (song == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    var showAddToPlaylistDialog by remember { mutableStateOf(false) }
+    var showQueueBottomSheet by remember { mutableStateOf(false) }
+    var showSleepTimerBottomSheet by remember { mutableStateOf(false) }
+    var showMoreMenu by remember { mutableStateOf(false) }
+    var showSongInfoDialog by remember { mutableStateOf(false) }
+    // 是否处于播放器页面（非歌词/评论页），用于控制下拉关闭手势
+    var isOnPlayerPage by remember { mutableStateOf(true) }
+    // HorizontalPager 状态（仅移动端使用，但需要在 TopAppBar 中读取）
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = 1) { 3 }
+    // 翻译开关
+    var showTranslation by remember { mutableStateOf(true) }
+    if (showSongInfoDialog) {
+        AlertDialog(
+            onDismissRequest = { showSongInfoDialog = false },
+            title = { Text(stringResource(R.string.song_info)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(stringResource(R.string.title_label, song.name))
+                    Text(stringResource(R.string.artist_label, song.artist))
+                    Text(stringResource(R.string.album_label, song.album))
+                    Text(stringResource(R.string.song_id_label, song.id))
+
+                    if (lyricsInfo != null) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        Text("歌词信息", style = MaterialTheme.typography.titleSmall)
+                        Text("来源: ${lyricsInfo.source}", style = MaterialTheme.typography.bodyMedium)
+                        Text("格式: ${lyricsInfo.format}", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "逐字歌词: ${if (lyricsInfo.hasWordLevel) "支持 ✓" else "不支持 ✗"}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (lyricsInfo.hasWordLevel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (lyricsInfo.hasTranslation) {
+                            Text("翻译: 有", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                        }
+                        if (lyricsInfo.hasPhonetic) {
+                            Text("音译: 有", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showSongInfoDialog = false }) {
+                    Text(stringResource(R.string.close))
+                }
+            }
+        )
+    }
+
+    if (showAddToPlaylistDialog) {
+        cp.player.ui.component.AddToPlaylistBottomSheet(
+            playlists = allPlaylists,
+            onDismissRequest = { showAddToPlaylistDialog = false },
+            onPlaylistSelected = { p ->
+                onAddToPlaylist(song.id, p.id)
+                showAddToPlaylistDialog = false
+            }
+        )
+    }
+
+    if (showQueueBottomSheet) {
+        QueueBottomSheet(
+            queue = queue,
+            currentSongId = song.id,
+            onPlayAt = onPlayAtQueueIndex,
+            onMove = onMoveQueueItem,
+            onRemove = onRemoveQueueItem,
+            onClear = onClearQueue,
+            onClose = { showQueueBottomSheet = false }
+        )
+    }
+
+    if (activeParentComment != null) {
+        FloorCommentBottomSheet(
+            parentComment = activeParentComment,
+            replies = floorComments,
+            totalCount = floorCommentTotal,
+            isLoading = isCommentsLoading,
+            hasMore = floorHasMore,
+            onLoadMore = { onLoadMoreFloor(activeParentComment) },
+            onLikeClick = onLikeComment,
+            onReplyClick = onReplyComment,
+            onPostComment = onPostComment,
+            onAvatarClick = onAvatarClick,
+            useCoverColor = useCoverColor,
+            coverColor = coverColor,
+            onDismiss = onDismissFloor
+        )
+    }
+
+    if (showSleepTimerBottomSheet) {
+        SleepTimerBottomSheet(
+            remainingTime = sleepTimerRemaining,
+            onSetTimer = onSetSleepTimer,
+            onDismiss = { showSleepTimerBottomSheet = false }
+        )
+    }
+
+    CoverThemeWrapper(useCoverColor = useCoverColor, coverColor = coverColor, pureBlack = pureBlack) {
+        val bgBrush = if (useCoverColor && coverColor != null) {
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color(coverColor).copy(alpha = 1.0f),
+                    MaterialTheme.colorScheme.surface
+                )
+            )
+        } else {
+            Brush.verticalGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.surfaceVariant,
+                    MaterialTheme.colorScheme.surface
+                )
+            )
+        }
+
+        val view = LocalView.current
+        if (!view.isInEditMode) {
+            val isAppearanceLightStatusBars = true
+
+            SideEffect {
+                activity?.window?.let { window ->
+                    WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = isAppearanceLightStatusBars
+                }
+            }
+        }
+
+        val coroutineScope = rememberCoroutineScope()
+        val offsetY = remember { Animatable(0f) }
+        val maxDrag = with(androidx.compose.ui.platform.LocalDensity.current) { 400.dp.toPx() }
+
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (isOnPlayerPage) Modifier.pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragEnd = {
+                            if (offsetY.value > 0) {
+                                val targetOffset = if (offsetY.value > maxDrag / 2) maxDrag * 2 else 0f
+                                if (targetOffset > 0f) {
+                                    onBackPressed()
+                                    coroutineScope.launch {
+                                        offsetY.animateTo(targetOffset, tween(300))
+                                    }
+                                } else {
+                                    coroutineScope.launch {
+                                        offsetY.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow))
+                                    }
+                                }
+                            }
+                        },
+                        onDragCancel = {
+                            if (offsetY.value > 0) {
+                                coroutineScope.launch { offsetY.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow)) }
+                            }
+                        },
+                        onVerticalDrag = { change, dragAmount ->
+                            if (dragAmount > 0 || offsetY.value > 0) {
+                                val newOffset = (offsetY.value + dragAmount).coerceIn(0f, maxDrag * 2)
+                                coroutineScope.launch { offsetY.snapTo(newOffset) }
+                                change.consume()
+                            }
+                        }
+                    )
+                } else Modifier)
+                .offset { IntOffset(0, offsetY.value.roundToInt()) }
+                .then(
+                    if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                        with(sharedTransitionScope) {
+                            Modifier.sharedBounds(
+                                sharedContentState = rememberSharedContentState(key = "player_container"),
+                                animatedVisibilityScope = animatedVisibilityScope
+                            )
+                        }
+                    } else Modifier
+                ),
+            color = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (useFluidBackground) {
+                    FluidBackground(
+                        color = if (coverColor != null) Color(coverColor) else MaterialTheme.colorScheme.primary,
+                        isDark = isSystemInDarkTheme()
+                    )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                }
+                Scaffold(
+                    topBar = {
+                        @OptIn(ExperimentalMaterial3Api::class)
+                        TopAppBar(
+                            title = {
+                                if (isWideScreen) {
+                                    // 横屏：顶栏显示歌曲名 + 歌手
+                                    Column {
+                                        Text(
+                                            song.name,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            song.artist,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                } else {
+                                    AnimatedContent(
+                                        targetState = pagerState.currentPage,
+                                        transitionSpec = {
+                                            (slideInVertically { h -> h } + fadeIn()) togetherWith
+                                                    (slideOutVertically { h -> -h } + fadeOut())
+                                        },
+                                        label = "TopBarTitle"
+                                    ) { page ->
+                                        when (page) {
+                                            1 -> { /* 播放器页无标题 */ }
+                                            else -> {
+                                                // 歌词页/评论页标题栏：歌曲名 + 歌手
+                                                Column {
+                                                    Text(
+                                                        song.name,
+                                                        style = MaterialTheme.typography.titleMedium,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                    Text(
+                                                        song.artist,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = { backDispatcher?.onBackPressed() ?: onBackPressed() }) {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowDown,
+                                        contentDescription = stringResource(id = R.string.back),
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            },
+                            actions = {
+                                if (!isWideScreen) {
+                                    AnimatedContent(
+                                        targetState = pagerState.currentPage,
+                                        label = "TopBarActions"
+                                    ) { page ->
+                                        when (page) {
+                                            0 -> {
+                                                // 歌词页：翻译开关
+                                                IconButton(
+                                                    onClick = { showTranslation = !showTranslation },
+                                                    modifier = Modifier.padding(end = 8.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Translate,
+                                                        contentDescription = "翻译",
+                                                        tint = if (showTranslation) MaterialTheme.colorScheme.onSurface
+                                                               else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                                    )
+                                                }
+                                            }
+                                            else -> {
+                                                // 播放器页/评论页：队列按钮
+                                                IconButton(
+                                                    onClick = { showQueueBottomSheet = true },
+                                                    modifier = Modifier.padding(end = 8.dp).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f), CircleShape)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.AutoMirrored.Filled.QueueMusic,
+                                                        contentDescription = "Queue",
+                                                        tint = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    IconButton(
+                                        onClick = { showQueueBottomSheet = true },
+                                        modifier = Modifier.padding(end = 8.dp).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f), CircleShape)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.QueueMusic,
+                                            contentDescription = "Queue",
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = Color.Transparent
+                            )
+                        )
+                    },
+                    containerColor = Color.Transparent
+                ) { innerPadding ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    ) {
+                        if (isWideScreen) {
+                                // 歌词自动预加载
+                                LaunchedEffect(song.id) {
+                                    cp.player.lyrics.LyricsManager.fetch(song.id, context, songTitle = song.name, songArtist = song.artist)
+                                }
+                                PlayerWideLayout(
+                                    sharedTransitionScope = sharedTransitionScope,
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    song = song,
+                                syncedLyrics = syncedLyrics,
+                                lyricsInfo = lyricsInfo,
+                                isPlaying = isPlaying,
+                                isBuffering = isBuffering,
+                                currentPosition = currentPosition,
+                                duration = duration,
+                                isFavorite = isFavorite,
+                                shuffleMode = shuffleMode,
+                                repeatMode = repeatMode,
+                                bitrate = bitrate,
+                                sampleRate = sampleRate,
+                                bitDepth = bitDepth,
+                                channels = channels,
+                                codecName = codecName,
+                                isDownloaded = isDownloaded,
+                                onPlayPause = onPlayPause,
+                                onSkipNext = onSkipNext,
+                                onSkipPrevious = onSkipPrevious,
+                                onSeek = onSeek,
+                                onLikeClick = onLikeClick,
+                                onArtistClick = onArtistClick,
+                                onShuffleClick = onShuffleClick,
+                                onRepeatClick = onRepeatClick,
+                                onCommentClick = { onCommentClick() },
+                                onQueueClick = { showQueueBottomSheet = true },
+                                onMoreClick = { showMoreMenu = true },
+                                showMoreMenu = showMoreMenu,
+                                onDismissMore = { showMoreMenu = false },
+                                onAddToPlaylist = { showAddToPlaylistDialog = true },
+                                onDownloadClick = onDownloadClick,
+                                onSleepTimerClick = { showSleepTimerBottomSheet = true },
+                                onInfoClick = { showSongInfoDialog = true },
+                                onDislikeClick = onDislikeClick,
+                                hotComments = hotComments,
+                                newestComments = newestComments,
+                                commentTotal = commentTotal,
+                                isCommentsLoading = isCommentsLoading,
+                                hasMoreComments = hasMoreComments,
+                                commentSortType = commentSortType,
+                                onLoadMoreComments = onLoadMoreComments,
+                                onLikeComment = onLikeComment,
+                                onReplyComment = onReplyComment,
+                                onPostComment = onPostComment,
+                                onAvatarClick = onAvatarClick,
+                                onCommentSortChange = onCommentSortChange,
+                                onViewFloorClick = onViewFloorClick
+                            )
+                        } else {
+                                // 歌词自动预加载：切换歌曲时获取歌词（传入标题/歌手用于本地歌曲自动搜索云端绑定）
+                                LaunchedEffect(song.id) {
+                                    cp.player.lyrics.LyricsManager.fetch(song.id, context, songTitle = song.name, songArtist = song.artist)
+                                }
+
+                                // 页面切换时重置下拉偏移量，防止卡在中间
+                                LaunchedEffect(pagerState.settledPage) {
+                                    isOnPlayerPage = pagerState.settledPage == 1
+                                    if (pagerState.settledPage != 1 && offsetY.value > 0f) {
+                                        offsetY.snapTo(0f)
+                                    }
+                                }
+
+                                PlayerMobileLayout(
+                                    sharedTransitionScope = sharedTransitionScope,
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    song = song,
+                                syncedLyrics = syncedLyrics,
+                                lyricsInfo = lyricsInfo,
+                                isPlaying = isPlaying,
+                                isBuffering = isBuffering,
+                                currentPosition = currentPosition,
+                                duration = duration,
+                                isFavorite = isFavorite,
+                                shuffleMode = shuffleMode,
+                                repeatMode = repeatMode,
+                                bitrate = bitrate,
+                                sampleRate = sampleRate,
+                                bitDepth = bitDepth,
+                                channels = channels,
+                                codecName = codecName,
+                                isDownloaded = isDownloaded,
+                                onPlayPause = onPlayPause,
+                                onSkipNext = onSkipNext,
+                                onSkipPrevious = onSkipPrevious,
+                                onSeek = onSeek,
+                                onLikeClick = onLikeClick,
+                                onArtistClick = onArtistClick,
+                                onShuffleClick = onShuffleClick,
+                                onRepeatClick = onRepeatClick,
+                                onCommentClick = {
+                                    onCommentClick()
+                                },
+                                onQueueClick = { showQueueBottomSheet = true },
+                                onMoreClick = { showMoreMenu = true },
+                                showMoreMenu = showMoreMenu,
+                                onDismissMore = { showMoreMenu = false },
+                                onAddToPlaylist = { showAddToPlaylistDialog = true },
+                                onDownloadClick = onDownloadClick,
+                                onSleepTimerClick = { showSleepTimerBottomSheet = true },
+                                onInfoClick = { showSongInfoDialog = true },
+                                onDislikeClick = onDislikeClick,
+                                pagerState = pagerState,
+                                showTranslation = showTranslation,
+                                hotComments = hotComments,
+                                newestComments = newestComments,
+                                commentTotal = commentTotal,
+                                isCommentsLoading = isCommentsLoading,
+                                hasMoreComments = hasMoreComments,
+                                commentSortType = commentSortType,
+                                onLoadMoreComments = onLoadMoreComments,
+                                onLikeComment = onLikeComment,
+                                onReplyComment = onReplyComment,
+                                onPostComment = onPostComment,
+                                onAvatarClick = onAvatarClick,
+                                onCommentSortChange = onCommentSortChange,
+                                onViewFloorClick = onViewFloorClick,
+                                similarSongs = uiState.similarSongs,
+                                isSimilarSongsLoading = uiState.isSimilarSongsLoading,
+                                onFetchSimilarSongs = callbacks.onFetchSimilarSongs,
+                                onPlaySimilarSong = callbacks.onPlaySimilarSong
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
+@Composable
+private fun PlayerWideLayout(
+    sharedTransitionScope: SharedTransitionScope?,
+    animatedVisibilityScope: AnimatedVisibilityScope?,
+    song: Song,
+    syncedLyrics: com.mocharealm.accompanist.lyrics.core.model.SyncedLyrics?,
+    lyricsInfo: cp.player.model.LyricsInfo?,
+    isPlaying: Boolean,
+    isBuffering: Boolean,
+    currentPosition: Long,
+    duration: Long,
+    isFavorite: Boolean,
+    shuffleMode: Boolean,
+    repeatMode: Int,
+    bitrate: Int,
+    sampleRate: Int,
+    bitDepth: Int,
+    channels: Int,
+    codecName: String,
+    isDownloaded: Boolean,
+    onPlayPause: () -> Unit,
+    onSkipNext: () -> Unit,
+    onSkipPrevious: () -> Unit,
+    onSeek: (Long) -> Unit,
+    onLikeClick: () -> Unit,
+    onArtistClick: (String) -> Unit,
+    onShuffleClick: () -> Unit,
+    onRepeatClick: () -> Unit,
+    onCommentClick: () -> Unit,
+    onQueueClick: () -> Unit,
+    onMoreClick: () -> Unit,
+    showMoreMenu: Boolean,
+    onDismissMore: () -> Unit,
+    onAddToPlaylist: () -> Unit,
+    onDownloadClick: () -> Unit,
+    onSleepTimerClick: () -> Unit,
+    onInfoClick: () -> Unit,
+    onDislikeClick: () -> Unit,
+    hotComments: List<Comment>,
+    newestComments: List<Comment>,
+    commentTotal: Int,
+    isCommentsLoading: Boolean,
+    hasMoreComments: Boolean,
+    commentSortType: Int,
+    onLoadMoreComments: () -> Unit,
+    onLikeComment: (Comment) -> Unit,
+    onReplyComment: (Comment) -> Unit,
+    onPostComment: (String) -> Unit,
+    onAvatarClick: (Long) -> Unit,
+    onCommentSortChange: (Int) -> Unit,
+    onViewFloorClick: (Comment) -> Unit
+) {
+    // 右侧面板切换：0 = 歌词，1 = 评论
+    var rightPanel by remember { mutableIntStateOf(0) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 32.dp, vertical = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(48.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        WitchPlayerPanel(
+            title = song.name, artist = song.artist, playing = isPlaying,
+            onArtist = song.artistId?.let { id -> { onArtistClick(id) } },
+            buffering = isBuffering, position = currentPosition, duration = duration,
+            audioUri = song.buildLocalContentUri(LocalContext.current)?.toString(),
+            favorite = isFavorite, shuffle = shuffleMode, repeat = repeatMode,
+            onPlayPause = onPlayPause, onPrevious = onSkipPrevious, onNext = onSkipNext,
+            onSeek = onSeek, onQueue = onQueueClick, onFavorite = onLikeClick,
+            onShuffle = onShuffleClick, onRepeat = onRepeatClick, onMore = onMoreClick,
+            modifier = Modifier.weight(1f)
+        )
+        if (showMoreMenu) {
+            PlayerSongOptionsBottomSheet(
+                song = song, isDownloaded = isDownloaded, sampleRate = sampleRate,
+                bitrate = bitrate, bitDepth = bitDepth, channels = channels,
+                codecName = codecName, lyricsInfo = lyricsInfo,
+                onPlaylistClick = { onAddToPlaylist(); onDismissMore() },
+                onDownloadClick = { onDownloadClick(); onDismissMore() },
+                onSleepTimerClick = { onSleepTimerClick(); onDismissMore() },
+                onDislikeClick = { onDislikeClick(); onDismissMore() },
+                onDismissRequest = onDismissMore
+            )
+        }
+
+        // Right Side: Lyrics / Comments toggle
+        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            // 切换器
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                val panelOptions = listOf("歌词", "评论")
+                panelOptions.forEachIndexed { index, label ->
+                    val selected = rightPanel == index
+                    Surface(
+                        onClick = { rightPanel = index },
+                        shape = when (index) {
+                            0 -> RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
+                            else -> RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)
+                        },
+                        color = if (selected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selected) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    if (index < panelOptions.lastIndex) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
+                }
+            }
+
+            // 内容区域
+            AnimatedContent(
+                targetState = rightPanel,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                transitionSpec = {
+                    (fadeIn() + slideInHorizontally { w -> w }) togetherWith
+                            (fadeOut() + slideOutHorizontally { w -> -w })
+                },
+                label = "RightPanelContent"
+            ) { panel ->
+                when (panel) {
+                    0 -> {
+                        // 歌词
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            LyricContent(
+                                syncedLyrics = syncedLyrics,
+                                currentPosition = currentPosition,
+                                contentPadding = PaddingValues(vertical = 80.dp, horizontal = 24.dp),
+                                onSeek = onSeek
+                            )
+                        }
+                    }
+                    1 -> {
+                        // 评论 — 首次切换时加载
+                        LaunchedEffect(Unit) {
+                            onCommentClick()
+                        }
+                        cp.player.ui.component.CommentPage(
+                            hotComments = hotComments,
+                            newestComments = newestComments,
+                            totalCount = commentTotal,
+                            isLoading = isCommentsLoading,
+                            hasMore = hasMoreComments,
+                            currentSort = commentSortType,
+                            onLoadMore = onLoadMoreComments,
+                            onLikeClick = onLikeComment,
+                            onReplyClick = onReplyComment,
+                            onPostComment = onPostComment,
+                            onAvatarClick = onAvatarClick,
+                            onSortChange = onCommentSortChange,
+                            onViewFloorClick = onViewFloorClick
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun PlayerMobileLayout(
+    sharedTransitionScope: SharedTransitionScope?,
+    animatedVisibilityScope: AnimatedVisibilityScope?,
+    song: Song,
+    syncedLyrics: com.mocharealm.accompanist.lyrics.core.model.SyncedLyrics?,
+    lyricsInfo: cp.player.model.LyricsInfo?,
+    isPlaying: Boolean,
+    isBuffering: Boolean,
+    currentPosition: Long,
+    duration: Long,
+    isFavorite: Boolean,
+    shuffleMode: Boolean,
+    repeatMode: Int,
+    bitrate: Int,
+    sampleRate: Int,
+    bitDepth: Int,
+    channels: Int,
+    codecName: String,
+    isDownloaded: Boolean,
+    onPlayPause: () -> Unit,
+    onSkipNext: () -> Unit,
+    onSkipPrevious: () -> Unit,
+    onSeek: (Long) -> Unit,
+    onLikeClick: () -> Unit,
+    onArtistClick: (String) -> Unit,
+    onShuffleClick: () -> Unit,
+    onRepeatClick: () -> Unit,
+    onCommentClick: () -> Unit,
+    onQueueClick: () -> Unit,
+    onMoreClick: () -> Unit,
+    showMoreMenu: Boolean,
+    onDismissMore: () -> Unit,
+    onAddToPlaylist: () -> Unit,
+    onDownloadClick: () -> Unit,
+    onSleepTimerClick: () -> Unit,
+    onInfoClick: () -> Unit,
+    onDislikeClick: () -> Unit,
+    pagerState: androidx.compose.foundation.pager.PagerState,
+    showTranslation: Boolean = true,
+    hotComments: List<Comment>,
+    newestComments: List<Comment>,
+    commentTotal: Int,
+    isCommentsLoading: Boolean,
+    hasMoreComments: Boolean,
+    commentSortType: Int,
+    onLoadMoreComments: () -> Unit,
+    onLikeComment: (Comment) -> Unit,
+    onReplyComment: (Comment) -> Unit,
+    onPostComment: (String) -> Unit,
+    onAvatarClick: (Long) -> Unit,
+    onCommentSortChange: (Int) -> Unit,
+    onViewFloorClick: (Comment) -> Unit,
+    similarSongs: List<Song> = emptyList(),
+    isSimilarSongsLoading: Boolean = false,
+    onFetchSimilarSongs: () -> Unit = {},
+    onPlaySimilarSong: (Song) -> Unit = {}
+) {
+    val context = LocalContext.current
+
+    androidx.compose.foundation.pager.HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+        when (page) {
+            // ==================== 歌词页（向右滑动进入）====================
+            0 -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // 歌词内容（标题栏已显示歌曲名和歌手）
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        LyricContent(
+                            syncedLyrics = syncedLyrics,
+                            currentPosition = currentPosition,
+                            showTranslation = showTranslation,
+                            contentPadding = PaddingValues(vertical = 60.dp, horizontal = 8.dp),
+                            onSeek = onSeek
+                        )
+                    }
+
+                    // 底部操作栏
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = onRepeatClick) {
+                                val icon = when (repeatMode) {
+                                    Player.REPEAT_MODE_ONE -> Icons.Default.RepeatOne
+                                    else -> Icons.Default.Repeat
+                                }
+                                Icon(icon, contentDescription = "Mode", modifier = Modifier.size(24.dp),
+                                    tint = if (repeatMode != Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            IconButton(onClick = onLikeClick) {
+                                AnimatedContent(targetState = isFavorite, label = "LikeAnimation") { targetFavorite ->
+                                    Icon(
+                                        if (targetFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = "Like",
+                                        modifier = Modifier.size(28.dp),
+                                        tint = if (targetFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+
+            // ==================== 播放器页（默认页）====================
+            1 -> {
+                WitchPlayerPanel(
+                    title = song.name, artist = song.artist, playing = isPlaying,
+                    onArtist = song.artistId?.let { id -> { onArtistClick(id) } },
+                    audioUri = song.buildLocalContentUri(context)?.toString(),
+                    buffering = isBuffering, position = currentPosition, duration = duration,
+                    favorite = isFavorite, shuffle = shuffleMode, repeat = repeatMode,
+                    onPlayPause = onPlayPause, onPrevious = onSkipPrevious, onNext = onSkipNext,
+                    onSeek = onSeek, onQueue = onQueueClick, onFavorite = onLikeClick,
+                    onShuffle = onShuffleClick, onRepeat = onRepeatClick, onMore = onMoreClick
+                )
+                if (showMoreMenu) {
+                    PlayerSongOptionsBottomSheet(
+                        song = song, isDownloaded = isDownloaded, sampleRate = sampleRate,
+                        bitrate = bitrate, bitDepth = bitDepth, channels = channels,
+                        codecName = codecName, lyricsInfo = lyricsInfo,
+                        onPlaylistClick = { onAddToPlaylist(); onDismissMore() },
+                        onDownloadClick = { onDownloadClick(); onDismissMore() },
+                        onSleepTimerClick = { onSleepTimerClick(); onDismissMore() },
+                        onDislikeClick = { onDislikeClick(); onDismissMore() },
+                        onDismissRequest = onDismissMore
+                    )
+                }
+            }
+
+            // ==================== 评论页 ====================
+            2 -> {
+                LaunchedEffect(Unit) {
+                    onCommentClick()
+                    onFetchSimilarSongs()
+                }
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // 相似歌曲区域
+                    if (similarSongs.isNotEmpty() || isSimilarSongsLoading) {
+                        SimilarSongsSection(
+                            songs = similarSongs,
+                            isLoading = isSimilarSongsLoading,
+                            onSongClick = onPlaySimilarSong
+                        )
+                    }
+                    // 评论区域
+                    CommentPage(
+                        hotComments = hotComments,
+                        newestComments = newestComments,
+                        totalCount = commentTotal,
+                        isLoading = isCommentsLoading,
+                        hasMore = hasMoreComments,
+                        currentSort = commentSortType,
+                        onLoadMore = { onLoadMoreComments() },
+                        onLikeClick = onLikeComment,
+                        onReplyClick = { comment -> onReplyComment(comment) },
+                        onPostComment = onPostComment,
+                        onAvatarClick = onAvatarClick,
+                        onSortChange = onCommentSortChange,
+                        onViewFloorClick = onViewFloorClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 相似歌曲区域 — 水平滚动卡片列表。
+ */
+@Composable
+private fun SimilarSongsSection(
+    songs: List<Song>,
+    isLoading: Boolean,
+    onSongClick: (Song) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Text(
+            text = "相似歌曲",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+        )
+
+        if (isLoading && songs.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+            }
+        } else {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                itemsIndexed(songs) { _, song ->
+                    SimilarSongCard(song = song, onClick = { onSongClick(song) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SimilarSongCard(
+    song: Song,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        modifier = Modifier.width(140.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AsyncImage(
+                model = song.albumArtUrl?.resized(100),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(4.dp))
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = song.name,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = song.artist,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}

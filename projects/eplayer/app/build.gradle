@@ -1,0 +1,221 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    alias libs.plugins.android.application
+    alias libs.plugins.jetbrains.kotlin.plugin.compose
+
+
+}
+
+// 动态版本号：基于 git tag 和 commit count（兼容 configuration cache）
+def gitShaProvider = providers.exec {
+    commandLine 'git', 'rev-parse', '--short', 'HEAD'
+    workingDir = rootDir
+}.standardOutput.asText.map { it.trim() }
+
+def gitVersionCodeProvider = providers.exec {
+    commandLine 'git', 'rev-list', '--count', 'HEAD'
+    workingDir = rootDir
+}.standardOutput.asText.map { it.trim().toInteger() }
+
+def gitDescribeProvider = providers.exec {
+    commandLine 'git', 'describe', '--tags', '--always'
+    workingDir = rootDir
+}.standardOutput.asText.map { it.trim() }
+
+// 在 defaultConfig 中使用这些 provider 值
+def resolvedSha = gitShaProvider.getOrElse('unknown')
+// The transferred preview has versionCode 6; a new repository must not downgrade it.
+def resolvedVersionCode = Math.max(6, gitVersionCodeProvider.getOrElse(1))
+def resolvedDescribe = gitDescribeProvider.getOrElse('')
+def resolvedVersionName = resolvedDescribe.matches('^v?\\d+.*') ? resolvedDescribe.replaceFirst(/^v/, '') : "1.0.${resolvedVersionCode}"
+
+android {
+    namespace 'cp.player'
+    // Run the same device checks against the non-debuggable fast build when needed.
+    testBuildType = providers.gradleProperty('testBuildType').getOrElse('debug')
+    compileSdk 37
+    compileSdkMinor 0
+    buildToolsVersion "36.0.0"
+
+    signingConfigs {
+        def commonSigningConfig = {
+            storeFile file('../debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+        debug(commonSigningConfig)
+        release {
+            // CI 环境：从 Gradle properties 读取签名配置（-P 参数传入）
+            def storeFilePath = findProperty('RELEASE_STORE_FILE')
+            if (storeFilePath) {
+                storeFile file(storeFilePath)
+                storePassword findProperty('RELEASE_STORE_PASSWORD')
+                keyAlias findProperty('RELEASE_KEY_ALIAS')
+                keyPassword findProperty('RELEASE_KEY_PASSWORD')
+            } else {
+                // 本地开发：使用 debug keystore
+                storeFile file('../debug.keystore')
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
+            }
+        }
+    }
+
+    defaultConfig {
+        applicationId "app.eplayer.music"
+        minSdk 28
+        targetSdk 36
+        versionCode resolvedVersionCode
+        versionName "0.1.0"
+        buildConfigField "String", "GIT_SHA", "\"${resolvedSha}\""
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables {
+            useSupportLibrary true
+        }
+        resConfigs "en", "zh", "ja"
+    }
+
+    splits {
+        abi {
+            enable true
+            reset()
+            include 'arm64-v8a', 'armeabi-v7a', 'x86_64'
+            universalApk true
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+            crunchPngs false
+        }
+        // 快速编译且具备接近 release 的运行性能（关闭 R8 压缩，关闭 debuggable，适用于 Compose 性能调试）
+        fastRelease {
+            initWith release
+            minifyEnabled false
+            shrinkResources false
+            signingConfig signingConfigs.debug
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    kotlin {
+        compilerOptions {
+            jvmTarget = JvmTarget.JVM_21
+            freeCompilerArgs.add("-opt-in=androidx.compose.material3.ExperimentalMaterial3ExpressiveApi")
+        }
+    }
+
+    buildFeatures {
+        compose true
+        buildConfig true
+    }
+    packagingOptions {
+        jniLibs.useLegacyPackaging = false
+        // Dependencies also ship x86 helpers; ePlayer's native engine supports the three ABIs above.
+        jniLibs.excludes += ['lib/x86/**']
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+            excludes += 'META-INF/DEPENDENCIES'
+            excludes += 'META-INF/LICENSE*'
+            excludes += 'META-INF/NOTICE*'
+            excludes += 'META-INF/*.kotlin_module'
+        }
+    }
+}
+
+dependencies {
+    implementation libs.androidx.core.ktx
+    implementation libs.androidx.lifecycle.runtime.ktx
+    implementation libs.androidx.documentfile
+    implementation libs.androidx.activity.compose
+    implementation platform(libs.androidx.compose.bom)
+    implementation libs.androidx.compose.ui
+    implementation libs.androidx.compose.ui.graphics
+    implementation libs.androidx.compose.ui.tooling.preview
+    implementation libs.androidx.compose.material3
+    implementation libs.androidx.compose.material3.window.size.class1
+    implementation libs.androidx.compose.material.icons.extended
+    implementation libs.androidx.navigation.compose
+
+    // Media3 (ExoPlayer)
+    implementation libs.androidx.media3.exoplayer
+    implementation libs.androidx.media3.ui
+    implementation libs.androidx.media3.session
+    implementation libs.androidx.media3.datasource
+    implementation libs.androidx.media3.database
+
+    // Networking
+    implementation libs.androidx.palette.ktx
+    implementation libs.gson
+    implementation libs.okhttp
+    def coil_version = "3.4.0"
+    implementation "io.coil-kt.coil3:coil-compose:$coil_version"
+    implementation "io.coil-kt.coil3:coil-network-okhttp:$coil_version"
+
+    // Coroutines
+    implementation libs.kotlinx.coroutines.android
+
+    // Lyricon
+    implementation(libs.provider)
+
+    // Accompanist Lyrics UI (Apple Music-like karaoke lyrics)
+    implementation(libs.accompanist.lyrics.ui)
+    implementation(libs.accompanist.lyrics.core)
+    implementation(libs.gaze.capsule)
+
+    // Material Color Utilities for Monet-like extraction
+    implementation(libs.material.color.utilities)
+
+    implementation(libs.superlyricapi)
+
+    testImplementation libs.junit
+    androidTestImplementation libs.androidx.junit
+    androidTestImplementation libs.androidx.espresso.core
+    androidTestImplementation platform(libs.androidx.compose.bom)
+    androidTestImplementation libs.androidx.compose.ui.test.junit4
+    debugImplementation libs.androidx.compose.ui.tooling
+    debugImplementation libs.androidx.compose.ui.test.manifest
+
+    // For Sentry ASM instrumentation to resolve window classes on some devices
+    compileOnly libs.androidx.window
+}
+
+def rustEnabled = providers.gradleProperty('withRust').getOrElse('true').toBoolean()
+tasks.register('buildRust', Exec) {
+    onlyIf { rustEnabled }
+    def cargoHome = "${System.getenv('CARGO_HOME') ?: System.getProperty('user.home') + '/.cargo'}/bin"
+    environment 'PATH', "${cargoHome}:${System.getenv('PATH')}"
+    // ANDROID_NDK_HOME 由 CI 设置，本地开发时 cargo-ndk 自动检测
+    def ndkHome = System.getenv('ANDROID_NDK_HOME')
+    if (ndkHome) {
+        environment 'ANDROID_NDK_HOME', ndkHome
+    }
+    workingDir file('src/main/rust')
+    commandLine "${cargoHome}/cargo", 'ndk',
+            '-t', 'arm64-v8a',
+            '-t', 'armeabi-v7a',
+            '-t', 'x86_64',
+            '-o', '../jniLibs',
+            'build', '--release'
+}
+
+// 确保 buildRust 在 JNI 合并和 Kotlin 编译之前完成（覆盖所有变体：debug/release/fastRelease）
+tasks.whenTaskAdded { task ->
+    if (task.name.startsWith('javaPreCompile') || task.name.startsWith('merge') && task.name.endsWith('JniLibFolders')) {
+        task.dependsOn 'buildRust'
+    }
+}

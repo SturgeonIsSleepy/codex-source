@@ -11,6 +11,10 @@ PREFIXES = {'tools', 'projects', 'assets'}
 NAME = re.compile(r'^[a-z0-9]+(?:-[a-z0-9]+)*$')
 VERSION = re.compile(r'^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$')
 FORBIDDEN_DIRS = {'__pycache__', 'node_modules', '.venv', '.gradle', '.cache', 'sdk', 'avd'}
+# Complete CJK handwriting face is required for arbitrary library metadata.
+# This precise licensed source asset is the only large-file exception.
+LARGE_SOURCE_LIMITS = {'projects/eplayer/app/src/main/res/font/travel_hand.ttf': 26 * 1024**2}
+
 FORBIDDEN_ENDINGS = ('.apk', '.aab', '.img', '.qcow2', '.zip', '.tar', '.tar.gz', '.tgz', '.log', '.pyc', '.pid', '.part')
 
 
@@ -68,8 +72,10 @@ def validate(root, files):
         local = root / file
         if local.is_symlink():
             errors.append(f'{file}: symlinks are not allowed')
-        elif local.is_file() and local.stat().st_size > 5 * 1024**2:
-            errors.append(f'{file}: exceeds 5 MiB; use a Release')
+        elif local.is_file():
+            limit = LARGE_SOURCE_LIMITS.get(file, 5 * 1024**2)
+            if local.stat().st_size > limit:
+                errors.append(f'{file}: exceeds {limit // (1024**2)} MiB; use a Release')
     return errors
 
 

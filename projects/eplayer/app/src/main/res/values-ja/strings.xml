@@ -1,0 +1,603 @@
+<resources>
+    <string name="app_name">ePlayer</string>
+    <string name="no_lyrics">歌詞はありません</string>
+    <string name="add_comment">コメントを追加...</string>
+    <string name="next_in_queue">次の曲</string>
+    <string name="clear_queue">履歴をクリア</string>
+    <string name="close">閉じる</string>
+    <string name="cancel">キャンセル</string>
+    <string name="search_placeholder">曲、アーティストを検索...</string>
+    <string name="recent_searches">最近の検索</string>
+    <string name="clear">クリア</string>
+    <string name="messages">メッセージ</string>
+    <string name="no_recent_contacts">最近の連絡先はありません</string>
+    <string name="song_info">曲の情報</string>
+    <string name="title_label">タイトル: %1$s</string>
+    <string name="artist_label">アーティスト: %1$s</string>
+    <string name="album_label">アルバム: %1$s</string>
+    <string name="song_id_label">曲 ID: %1$s</string>
+    <string name="quality_info">音質情報</string>
+    <string name="wifi_quality">Wi-Fi 音質: %1$s</string>
+    <string name="cellular_quality">モバイルデータ音質: %1$s</string>
+    <string name="playback_stats">再生統計:</string>
+    <string name="sample_rate">サンプリングレート: %1$d Hz</string>
+    <string name="sample_rate_na">サンプリングレート: なし</string>
+    <string name="bitrate">ビットレート: %1$d kbps</string>
+    <string name="bitrate_na">ビットレート: なし</string>
+    <string name="add_to_playlist">プレイリストに追加</string>
+    <string name="import_from_playlist">プレイリストからインポート</string>
+    <string name="add_songs">曲を追加</string>
+    <string name="add_from_queue">キューから追加</string>
+    <string name="added_to_queue">%1$d 曲をキューに追加しました</string>
+    <string name="sleep_timer">スリープタイマー</string>
+    <string name="playing">再生中</string>
+    <string name="app_logs">アプリログ</string>
+    <string name="no_logs">ログはありません</string>
+    <string name="download_dir">ダウンロード先</string>
+    <string name="clear_cache">キャッシュをクリア</string>
+    <string name="copy_debug_logs">デバッグログをコピー</string>
+    <string name="live_sort">ライブソート</string>
+    <string name="reorder_queue">再生キューを並べ替え</string>
+    <string name="analyzing">分析中: %1$s</string>
+    <string name="optimizing">プレイリストのフローを最適化中...</string>
+    <string name="go_back">戻る</string>
+    <string name="songs_count">%1$d 曲</string>
+    <string name="remaining_time">残り時間: %1$s</string>
+    <string name="good_day">こんにちは</string>
+    <string name="made_for_you">あなたにおすすめ</string>
+    <string name="recently_played">最近再生した曲</string>
+    <string name="selected_count">%1$d 選択済み</string>
+    <string name="sort_by_name">名前で並べ替え</string>
+    <string name="sort_by_artist">アーティストで並べ替え</string>
+    <string name="profile">プロフィール</string>
+    <string name="show_all">すべて表示</string>
+    <string name="show_less">表示を減らす</string>
+    <string name="scan_qr_login">QRコードでログイン</string>
+    <string name="refresh_qr">QRコードを更新</string>
+    <string name="logs_copied">ログをクリップボードにコピーしました</string>
+    <string name="downloads">ダウンロード</string>
+    <string name="offline_music">オフライン音楽</string>
+    <string name="smart_reordering">スマートプレイリスト並べ替え</string>
+    <string name="downloading">ダウンロード中</string>
+    <string name="connecting">接続中...</string>
+    <string name="no_downloads">ダウンロードされた曲はありません</string>
+    <string name="downloaded">ダウンロード済み</string>
+    <string name="type_message">メッセージを入力...</string>
+    <string name="back">戻る</string>
+    <string name="playlist">プレイリスト</string>
+    <string name="your_library">ライブラリ</string>
+    <string name="settings">設定</string>
+    <string name="appearance">外観</string>
+    <string name="pure_black_mode">ピュアブラックモード</string>
+    <string name="pure_black_desc">ダークモードでOLEDスクリーン用に真っ黒な背景を使用する</string>
+    <string name="theme_mode">テーマカラーモード</string>
+    <string name="theme_mode_system">システムに従う</string>
+    <string name="theme_mode_cover">カバーアートに合わせる</string>
+    <string name="theme_mode_fixed">固定色</string>
+    <string name="follow_cover_granular">カバーアート適用の範囲</string>
+    <string name="follow_cover_app">アプリ全体のUI</string>
+    <string name="follow_cover_mini">ボトム再生バー</string>
+    <string name="follow_cover_player">プレイヤー画面</string>
+    <string name="playback_quality_cat">再生音質</string>
+    <string name="wifi_quality_label">Wi-Fi 音質</string>
+    <string name="cellular_quality_label">モバイルデータ音質</string>
+    <string name="download_settings">ダウンロード設定</string>
+    <string name="download_quality_label">ダウンロード音質</string>
+    <string name="allow_cellular_download">モバイルデータでのダウンロードを許可</string>
+    <string name="allow_cellular_download_desc">モバイルデータ通信での曲のダウンロードを許可する</string>
+    <string name="audio_effects">オーディオエフェクト</string>
+    <string name="crossfade_duration">クロスフェード時間 (%1$d秒)</string>
+    <string name="storage_cache">ストレージとキャッシュ</string>
+    <string name="cellular_caching">モバイルデータキャッシュ</string>
+    <string name="cellular_caching_desc">モバイルデータ再生中に曲をキャッシュする</string>
+    <string name="max_cache_size">最大キャッシュサイズ: %1$dMB</string>
+    <string name="debug">デバッグ</string>
+    <string name="health_status">ヘルスステータス</string>
+    <string name="comments_count">コメント (%1$d)</string>
+    <string name="hot_comments">人気コメント</string>
+    <string name="newest_comments">最新のコメント</string>
+    <string name="no_more_comments">コメントはもうありません</string>
+    <string name="view_replies">%1$d 件の返信を表示</string>
+    <string name="sort_recommend">おすすめ</string>
+    <string name="sort_hot">人気</string>
+    <string name="sort_time">最新</string>
+    <string name="cloud_music">クラウド音楽</string>
+    <string name="no_cloud_songs">クラウドは空です</string>
+    <string name="not_interested">興味なし</string>
+    <string name="fluid_background">流体背景</string>
+    <string name="fluid_background_desc">プレーヤー画面と全体に流体背景エフェクトを適用する</string>
+    <string name="reply">返信</string>
+    <string name="now_playing">再生中</string>
+    <string name="settings_appearance_desc">テーマ、外観、ピュアブラック...</string>
+    <string name="settings_audio_desc">再生音質、オーディオエフェクト...</string>
+    <string name="settings_ui_logic">インターフェースロジック</string>
+    <string name="settings_ui_logic_desc">再生動作、歌詞ソース...</string>
+    <string name="settings_download_desc">ダウンロード音質、モバイルデータ、保存先...</string>
+    <string name="settings_storage_desc">モバイルデータキャッシュ、キャッシュサイズ...</string>
+    <string name="settings_debug_desc">デバッグログをコピー...</string>
+    <string name="wavy_progress_bar">波形プログレスバー</string>
+    <string name="wavy_progress_bar_desc">再生画面で波形プログレスバーを切り替える</string>
+    <string name="system_music_folder">システム音楽フォルダ</string>
+    <string name="follow_cover_app_desc">カバーの色をアプリ全体に適用する</string>
+    <string name="follow_cover_mini_desc">ミニプレーヤーがカバーの色に追従する</string>
+    <string name="follow_cover_player_desc">フルプレーヤーがカバーの色に追従する</string>
+    <string name="audio_focus_management">オーディオフォーカス管理</string>
+    <string name="transient_focus_loss_behavior">他のアプリが音を鳴らす時</string>
+    <string name="focus_mode_duck">音量を下げる</string>
+    <string name="focus_mode_pause">一時停止</string>
+    <string name="focus_mode_continue">再生を続ける</string>
+    <string name="allow_ducking">通知で音量を下げることを許可</string>
+    <string name="allow_ducking_desc">通知が届いたときに一時的に音量を下げます</string>
+    <string name="pause_on_noisy">イヤホンを抜いた時に一時停止</string>
+    <string name="pause_on_noisy_desc">ヘッドフォンやBluetoothの切断時に自動で一時停止します</string>
+    <string name="auto_audio_focus">自動オーディオフォーカス</string>
+    <string name="auto_audio_focus_desc">ExoPlayerにオーディオフォーカスを自動管理させる</string>
+    <string name="audio_focus_engine_hint_exoplayer">ExoPlayerはオーディオフォーカスを自動管理できます。オフにすると手動管理になります</string>
+    <string name="audio_focus_engine_hint_flick">Flickエンジンは常に手動オーディオフォーカス管理を使用します</string>
+    <string name="fade_mode">フェードモード</string>
+    <string name="fade_mode_crossfade">クロスフェード (デュアルプレーヤー)</string>
+    <string name="fade_mode_single">通常のフェードイン/アウト (シングルプレーヤー)</string>
+    <string name="fade_mode_off">オフ</string>
+    <string name="provider_management">プロバイダー管理</string>
+    <string name="provider_management_desc">カスタム音楽ソースの管理と切り替え</string>
+    
+    <!-- Login & Account Strings -->
+    <string name="login_tab_qr">QR</string>
+    <string name="login_tab_email">メール</string>
+    <string name="login_tab_phone">スマホ</string>
+    <string name="login_tab_guest">ゲスト</string>
+    <string name="email_label">メールアドレス</string>
+    <string name="password_label">パスワード</string>
+    <string name="login_with_email">メールでログイン</string>
+    <string name="phone_number_label">電話番号</string>
+    <string name="captcha_or_password_label">認証コード (またはパスワード)</string>
+    <string name="get_code_button">コードを取得</string>
+    <string name="login_with_code">コードでログイン</string>
+    <string name="login_with_password">パスワードでログイン</string>
+    <string name="guest_login_desc">ゲストとしてログインして公開機能にアクセスします。</string>
+    <string name="guest_login_button">ゲストログイン</string>
+    <string name="saved_accounts_title">保存されたアカウント</string>
+    <string name="add_another_account">別のアカウントを追加</string>
+    <string name="sign_out_button">ログアウト</string>
+    <string name="logout_confirm_title">ログアウト</string>
+    <string name="logout_confirm_desc">このアカウントからログアウトしてもよろしいですか？</string>
+    <string name="not_logged_in">未ログイン</string>
+    <string name="engine_exoplayer">ExoPlayer (デフォルト, クラウド)</string>
+    <string name="engine_flick">Flick エンジン（ローカル音声）[BETA]</string>
+
+    <string name="font_roundness">フォントの丸み</string>
+    <string name="font_roundness_desc">Google Sans Flex のフォント丸みモードを切り替えます（Android 16 QPR2 と同等）</string>
+    <string name="font_roundness_standard">スタンダード</string>
+    <string name="font_roundness_expressive">エクスプレッシブ</string>
+    <string name="font_roundness_default">システムデフォルト</string>
+    <!-- 音質レベル -->
+    <string name="quality_standard">標準</string>
+    <string name="quality_higher">高</string>
+    <string name="quality_exhigh">超高</string>
+    <string name="quality_lossless">ロスレス</string>
+    <string name="quality_hires">ハイレゾ</string>
+
+    <string name="play_immediately">タップで即再生</string>
+    <string name="play_immediately_desc">曲をタップした際、再生画面に遷移せずに直接再生を開始します</string>
+    <string name="playback_behavior">再生動作</string>
+
+    <!-- UI翻新新增字符串 -->
+    <string name="quick_access">クイックアクセス</string>
+    <string name="quick_recommend_title">あなたにおすすめ</string>
+    <string name="quick_recommend_subtitle">音楽のセンスを発見</string>
+    <string name="quick_fm_title">プライベートFM</string>
+    <string name="quick_fm_subtitle">あなただけのラジオ</string>
+    <string name="recommended_playlists">おすすめプレイリスト</string>
+    <string name="greeting_morning">おはようございます</string>
+    <string name="greeting_afternoon">こんにちは</string>
+    <string name="greeting_evening">こんばんは</string>
+    <string name="greeting_late_night">夜更けです</string>
+    <string name="daily_mix_title">デイリーミックス</string>
+    <string name="daily_mix_subtitle">履歴ベース</string>
+    <string name="check_all_daily_mix">すべて表示 →</string>
+    <string name="all_replies">すべての返信</string>
+    <string name="sort_comments">並べ替え</string>
+    <string name="send">送信</string>
+    <string name="view_all">すべて表示</string>
+    <string name="no_comments_yet">コメントはまだありません</string>
+    <string name="no_messages_yet">メッセージはありません</string>
+    <string name="current_provider_label">現在の音楽ソース</string>
+    <string name="switch_provider_label">音楽ソースの切り替え</string>
+    <string name="provider_accounts_label">%1$s のアカウント</string>
+    <string name="all_accounts_label">保存されたアカウント</string>
+    <string name="account_provider_badge">%1$s</string>
+
+    <!-- Module Management -->
+    <string name="module_import_success">モジュールのインポートに成功しました</string>
+    <string name="module_import_failed">モジュールのインポートに失敗しました</string>
+    <string name="module_import_failed_detail">インポート失敗：%s</string>
+    <string name="module_import_error">モジュールのインポート中にエラーが発生しました</string>
+    <string name="provider_active">（アクティブ）</string>
+    <string name="provider_info">種類: %1$s | バージョン: %2$s</string>
+    <string name="provider_switched">%1$s に切り替えました</string>
+    <string name="import_new_module">新しいモジュールをインポート (.zip)</string>
+    <string name="setup_title">初期セットアップ</string>
+    <string name="setup_welcome">ePlayer へようこそ</string>
+    <string name="setup_desc">アプリを使用するには、プロバイダー定義を含むバックエンドモジュール（.zipファイル）をインポートしてください。</string>
+    <string name="importing_module">モジュールをインポート中...</string>
+
+    <!-- ローカル音楽クラウド連携 -->
+    <string name="bind_cloud_song">クラウド曲を関連付け</string>
+    <string name="bind_cloud_search">検索</string>
+    <string name="bind_cloud_no_results">一致するクラウド曲が見つかりません</string>
+    <string name="bind_cloud_success">クラウド曲を関連付けました</string>
+    <string name="unbind_cloud_song">関連付けを解除</string>
+    <string name="sync_cloud_title">クラウド自動同期</string>
+    <string name="sync_cloud_progress">クラウド楽曲を検索・マッチング中…</string>
+    <string name="sync_cloud_done">同期完了：成功 %1$d 件、スキップ %2$d 件、失敗 %3$d 件</string>
+
+    <!-- バージョン情報 -->
+    <string name="about">バージョン情報</string>
+    <string name="settings_about_desc">プロジェクト情報、バージョン、メンテナー</string>
+    <string name="about_version_info">バージョン情報</string>
+    <string name="about_project">プロジェクト</string>
+    <string name="about_maintainers">メンテナー</string>
+    <string name="about_contributors">貢献者</string>
+    <string name="about_main_developer">作成者 &amp; メインメンテナー</string>
+    <string name="current_version">現在のバージョン</string>
+    <string name="commit_hash">コミットハッシュ</string>
+    <string name="check_for_updates">アップデートを確認</string>
+    <string name="checking_update">アップデートを確認中…</string>
+    <string name="update_available">アップデートがあります</string>
+    <string name="already_latest">最新バージョンです</string>
+    <string name="project_address">プロジェクトリポジトリ</string>
+    <string name="qq_group">QQグループ</string>
+    <string name="qq_group_placeholder">1095919920</string>
+    <string name="update_changelog">変更履歴</string>
+    <string name="update_download">アップデートをダウンロード</string>
+    <string name="copied">コピーしました</string>
+
+    <!-- スポンサー -->
+    <string name="sponsor">スポンサー</string>
+    <string name="settings_sponsor_desc">プロジェクトを支援</string>
+    <string name="sponsor_alipay">Alipay</string>
+    <string name="sponsor_scan_to_pay">開発者にコーヒーを奢る ☕</string>
+    <string name="sponsor_thanks">ご支援ありがとうございます ❤️</string>
+
+    <!-- 再生エンジン -->
+    <string name="playback_engine">再生エンジン</string>
+    <string name="engine_selection">エンジン選択</string>
+    <string name="dsd_output_mode">DSD 出力モード</string>
+    <string name="dap_bit_perfect">DAP Bit-Perfect</string>
+    <string name="dap_bit_perfect_desc">対応デバイスでAndroid SRCをバイパス</string>
+    <string name="usb_audio_auto_resume">USB オーディオ自動再開</string>
+    <string name="usb_audio_auto_resume_desc">USB オーディオが2秒以内に再接続された場合、自動的に再生を再開します</string>
+    <string name="restore_last_queue">前回の再生キューを復元</string>
+    <string name="restore_last_queue_desc">次回起動時に前回の再生キューを自動復元し、ミニプレーヤーを表示します</string>
+    <string name="copy_rust_debug_state">Rust デバッグ状態をコピー</string>
+    <string name="copy_rust_debug_state_desc">ネイティブ音声エンジンの動作状態を確認</string>
+    <string name="copied_to_clipboard">クリップボードにコピーしました</string>
+    <string name="manage_music_source_modules">音楽ソースモジュールの管理</string>
+
+    <!-- 歌詞 -->
+    <string name="lyrics">歌詞</string>
+    <string name="lyrics_source">歌詞ソース</string>
+    <string name="lyrics_source_provider_api">Provider API 優先</string>
+    <string name="lyrics_source_amll_ttml">AMLL TTML 優先</string>
+    <string name="lyrics_source_amll_only">AMLL TTML のみ</string>
+    <string name="amll_lyrics_platform">AMLL 歌詞プラットフォーム</string>
+    <string name="auto_detect">自動検出</string>
+    <string name="netease_cloud_music">NetEase Cloud Music</string>
+    <string name="qq_music">QQ Music</string>
+
+    <!-- モジュール更新 -->
+    <string name="module_update_success">モジュールの更新に成功しました</string>
+    <string name="module_update_failed">モジュールの更新に失敗しました</string>
+    <string name="module_update_error">更新エラー: %1$s</string>
+    <string name="has_update">更新あり</string>
+    <string name="more_actions">その他の操作</string>
+
+    <!-- デバッグ -->
+    <string name="view_app_and_system_logs">アプリログとシステムログを表示</string>
+    <string name="api_monitor_desc">API呼び出し監視、互換性チェック、Providerテスト</string>
+
+    <!-- ライブラリ -->
+    <string name="tab_playlists">プレイリスト</string>
+    <string name="tab_downloads">ダウンロード</string>
+    <string name="tab_cloud">クラウド</string>
+    <string name="tab_live_sort">ライブソート</string>
+    <string name="create_new_playlist">新しいプレイリストを作成</string>
+    <string name="playlist_name">プレイリスト名</string>
+    <string name="create">作成</string>
+    <string name="songs_count_cn">%1$d 曲</string>
+    <string name="created_playlist">作成したプレイリスト</string>
+    <string name="collected_playlist">お気に入り · %1$s</string>
+    <string name="unknown">不明</string>
+    <string name="delete_playlist">プレイリストを削除</string>
+    <string name="unsubscribe">お気に入り解除</string>
+    <string name="delete_playlist_confirm">「%1$s」を削除してもよろしいですか？</string>
+    <string name="unsubscribe_confirm">「%1$s」のお気に入りを解除してもよろしいですか？</string>
+    <string name="delete">削除</string>
+    <string name="added_to_queue_count">%1$d 曲をキューに追加しました</string>
+    <string name="share_playlist">プレイリストを共有</string>
+
+    <!-- バージョン情報 -->
+    <string name="qq_group_link_pending">QQグループリンクを追加予定</string>
+    <string name="creator_and_main_maintainer">作成者 &amp; メインメンテナー</string>
+
+    <!-- ヘルスステータス -->
+    <string name="health_and_debug">ヘルスステータス &amp; デバッグ</string>
+    <string name="tab_overview">概要</string>
+    <string name="tab_methods">メソッド</string>
+    <string name="tab_logs">ログ</string>
+    <string name="tab_test">テスト</string>
+    <string name="tab_status">ステータス</string>
+    <string name="no_monitoring_data">監視データがありません</string>
+    <string name="health_auto_record">API呼び出し後にヘルスデータが自動的に記録されます</string>
+    <string name="provider_health_status">Provider ヘルスステータス</string>
+    <string name="global_health">グローバルヘルス</string>
+    <string name="calls_avg_time">%1$d 回の呼び出し · 平均 %2$dms</string>
+    <string name="metric_success">成功</string>
+    <string name="metric_fail">失敗</string>
+    <string name="metric_fallback">フォールバック</string>
+    <string name="metric_warning">警告</string>
+    <string name="score_unit">ポイント</string>
+    <string name="no_call_records">通話記録がありません</string>
+    <string name="success_rate">成功率</string>
+    <string name="metric_calls">呼び出し</string>
+    <string name="avg_response">平均レスポンス</string>
+    <string name="compatibility_warnings_count">%1$d 件の互換性警告</string>
+    <string name="no_method_stats">メソッド統計がありません</string>
+    <string name="method_stats_desc">APIメソッド別グループ化（呼び出し回数順）</string>
+    <string name="method_calls_success_rate">%1$d 回 · 成功率 %2$s%% · 平均 %3$dms</string>
+    <string name="fail_count">%1$d 失敗</string>
+    <string name="warning_count">%1$d 警告</string>
+    <string name="fallback_count">%1$d フォールバック</string>
+    <string name="compatibility_warning_dist">互換性警告の分布</string>
+    <string name="filter_failures_only">失敗のみ</string>
+    <string name="filter_warnings_only">警告のみ</string>
+    <string name="clear_records">記録をクリア</string>
+    <string name="total_records">%1$d 件の記録</string>
+    <string name="response_code">レスポンスコード</string>
+    <string name="error_code">エラーコード</string>
+    <string name="compatibility_warning">互換性警告</string>
+    <string name="expected_field">期待されるフィールド: %1$s</string>
+    <string name="fallback_from">フォールバック元</string>
+    <string name="select_api_method">APIメソッドを選択</string>
+    <string name="unmapped_passthrough">（未マッピング、パススルー）</string>
+    <string name="request_params_json">リクエストパラメータ (JSON)</string>
+    <string name="error_message">エラー: %1$s</string>
+    <string name="sending">送信中...</string>
+    <string name="send_request">リクエスト送信</string>
+    <string name="response">レスポンス</string>
+    <string name="no_active_provider">アクティブなProviderがありません</string>
+    <string name="current_provider">現在のProvider: %1$s</string>
+    <string name="active_label">アクティブ</string>
+
+    <!-- Providerテスト -->
+    <string name="provider_test">Provider テスト</string>
+    <string name="api_test">API テスト</string>
+    <string name="status">ステータス</string>
+    <string name="type_label">種類: %1$s</string>
+    <string name="version_label">バージョン: %1$s</string>
+    <string name="mapped">マッピング済み</string>
+    <string name="unsupported">未対応</string>
+    <string name="passthrough">パススルー</string>
+    <string name="all_api_methods">すべてのAPIメソッド</string>
+    <string name="loaded_providers">ロード済みProvider</string>
+    <string name="no_loaded_providers">ロード済みProviderがありません</string>
+
+    <!-- ログビューア -->
+    <string name="app_logs_tab">アプリログ</string>
+    <string name="system_logs_tab">システムログ</string>
+    <string name="share_logs">ログを共有</string>
+    <string name="share">共有</string>
+    <string name="clear_log">クリア</string>
+    <string name="no_app_logs">アプリログがありません</string>
+    <string name="total_log_count">%1$d 件</string>
+
+    <!-- ナビゲーション -->
+    <string name="nav_home">ホーム</string>
+    <string name="nav_search">検索</string>
+    <string name="nav_library">ライブラリ</string>
+    <string name="cellular_warning_title">モバイルデータ警告</string>
+    <string name="cellular_warning_message">現在モバイルデータ通信中です。</string>
+    <string name="continue_action">続行</string>
+
+    <!-- 検索 -->
+    <string name="hot_searches">人気の検索</string>
+    <string name="search_songs">曲</string>
+    <string name="search_albums">アルバム</string>
+    <string name="search_artists">アーティスト</string>
+    <string name="search_playlists">プレイリスト</string>
+
+    <!-- 曲の詳細 -->
+    <string name="song_details">曲の詳細</string>
+    <string name="detail_song_name">曲名</string>
+    <string name="detail_artist">アーティスト</string>
+    <string name="detail_album">アルバム</string>
+    <string name="detail_duration">再生時間</string>
+    <string name="detail_publish_time">リリース日</string>
+    <string name="detail_comment_count">コメント数</string>
+    <string name="detail_max_bitrate">最大ビットレート</string>
+    <string name="detail_pay_type">支払いタイプ</string>
+    <string name="pay_type_free">無料</string>
+    <string name="pay_type_vip">VIP</string>
+    <string name="pay_type_paid_album">有料アルバム</string>
+    <string name="pay_type_free_vip">無料+VIP</string>
+    <string name="pay_type_unknown">不明</string>
+    <string name="detail_song_id">曲 ID</string>
+    <string name="detail_error">エラー</string>
+
+    <!-- 曲の操作 -->
+    <string name="play">再生</string>
+    <string name="add_to_queue">キューに追加</string>
+    <string name="play_next">次に再生</string>
+    <string name="favorite">お気に入り</string>
+    <string name="info">情報</string>
+
+    <!-- プレーヤー曲オプション -->
+    <string name="add_to_playlist_action">プレイリストに追加</string>
+    <string name="download_action">ダウンロード</string>
+    <string name="downloaded_action">ダウンロード済み</string>
+    <string name="not_interested_action">興味なし</string>
+    <string name="song_information">曲の情報</string>
+    <string name="audio_quality_label">音質情報</string>
+    <string name="sample_rate_label">サンプリングレート: %1$dHz</string>
+    <string name="bitrate_label">ビットレート: %1$dkbps</string>
+    <string name="bit_depth_label">ビット深度: %1$d-bit</string>
+    <string name="channels_label">チャンネル数: %1$d</string>
+    <string name="codec_label">コーデック: %1$s</string>
+
+
+    <!-- 歌詞情報 -->
+    <string name="lyrics_info">歌詞情報</string>
+    <string name="lyrics_source_label">ソース: %1$s</string>
+    <string name="lyrics_format_label">フォーマット: %1$s</string>
+    <string name="lyrics_word_by_word">一字一字: %1$s</string>
+    <string name="lyrics_supported">対応 ✓</string>
+    <string name="lyrics_not_supported">非対応 ✗</string>
+    <string name="lyrics_translation">翻訳: あり</string>
+    <string name="lyrics_transliteration">翻字: あり</string>
+
+    <!-- プレイリストオプション -->
+    <string name="sort_method">並べ替え方法</string>
+    <string name="sort_default">デフォルト</string>
+    <string name="sort_by_name_cn">名前順</string>
+    <string name="sort_by_artist_cn">アーティスト順</string>
+    <string name="default_sort">デフォルト並べ替え</string>
+
+    <!-- キュー -->
+    <string name="next_up">次に再生</string>
+    <string name="all_songs">すべての曲</string>
+    <string name="locate_current">現在位置に移動</string>
+    <string name="save_as_playlist">プレイリストとして保存</string>
+    <string name="clear_queue_action">キューをクリア</string>
+    <string name="drag_to_reorder">ドラッグして並べ替え</string>
+    <string name="album_art">アルバムアート</string>
+    <string name="more_options">その他のオプション</string>
+    <string name="added_to_playlist_name">%1$s に追加しました</string>
+
+    <!-- スリープタイマー -->
+    <string name="sleep_timer_off">オフ</string>
+    <string name="sleep_timer_10min">10分</string>
+    <string name="sleep_timer_20min">20分</string>
+    <string name="sleep_timer_30min">30分</string>
+    <string name="sleep_timer_45min">45分</string>
+    <string name="sleep_timer_60min">60分</string>
+    <string name="sleep_timer_90min">90分</string>
+    <string name="remaining_time_label">残り: %1$s</string>
+
+    <!-- 再生コントロール -->
+    <string name="previous">前へ</string>
+    <string name="play_pause">再生/一時停止</string>
+    <string name="next">次へ</string>
+
+    <!-- コメント -->
+    <string name="avatar">アバター</string>
+    <string name="like">いいね</string>
+
+    <!-- アーティスト -->
+    <string name="albums_count">%1$d アルバム</string>
+
+    <!-- 曲の選択 -->
+    <string name="select_songs">曲を選択</string>
+    <string name="from_source">%1$s から</string>
+    <string name="deselect_all">すべて解除</string>
+    <string name="select_all">すべて選択</string>
+    <string name="no_songs_found">曲が見つかりません</string>
+    <string name="add_songs_count">%1$d 曲を追加</string>
+
+    <!-- ログイン -->
+    <string name="add_new_account">新しいアカウントを追加</string>
+    <string name="other_provider_accounts">他のプロバイダーアカウント</string>
+
+    <!-- ダウンロード -->
+    <string name="refresh">更新</string>
+
+    <!-- ユーザーアカウント -->
+    <string name="initializing">初期化中...</string>
+    <string name="already_logged_in">ログイン済み</string>
+    <string name="active_account">アクティブ</string>
+    <string name="remove_account">削除</string>
+
+    <!-- Providerオプション -->
+    <string name="checking_update_progress">アップデートを確認中...</string>
+    <string name="new_version_found">新しいバージョンが見つかりました: v%1$s</string>
+    <string name="already_latest_version">最新バージョンです</string>
+    <string name="check_update">アップデートを確認</string>
+    <string name="manual_update">手動更新</string>
+    <string name="delete_provider">このプロバイダーを削除</string>
+    <string name="delete_provider_title">プロバイダーを削除</string>
+    <string name="delete_provider_confirm">「%1$s」を削除してもよろしいですか？この操作は元に戻せません。</string>
+    <string name="provider_deleted">「%1$s」を削除しました</string>
+    <string name="delete_failed">削除に失敗しました</string>
+
+    <!-- LiveSort -->
+    <string name="select_tracks_to_mix">ミックスするトラックを選択</string>
+    <string name="analyze_and_mix">%1$d トラックを分析＆ミックス</string>
+    <string name="analyzing_features">特徴を分析中</string>
+    <string name="optimizing_flow">フローを最適化中</string>
+    <string name="analysis_failed">分析に失敗しました</string>
+    <string name="reset_and_try_again">リセットして再試行</string>
+    <string name="livesort_flow">LiveSort フロー</string>
+    <string name="done">完了</string>
+    <string name="ideal_curve">理想カーブ</string>
+    <string name="actual_mix">実際のミックス</string>
+    <string name="start_seamless_mix">シームレスミックスを開始</string>
+    <string name="livesort_filter_hint">現在のキューをフィルタリング。ダウンロード済みまたはローカルトラックのみ分析できます。</string>
+    <string name="livesort_no_tracks_hint">ダウンロード済みまたはローカルトラックが見つかりません。先にトラックをダウンロードしてください。</string>
+    <string name="livesort_song_progress">%1$d / %2$d 曲目</string>
+    <string name="livesort_finding_sequence">最適な順序を検索中…</string>
+    <string name="livesort_tracks_connected">%1$d トラックをシームレスに接続</string>
+    <string name="livesort_n_failed">%1$d トラックをスキップ（分析失敗）</string>
+    <string name="bpm_label">BPM</string>
+    <string name="energy_label">エネルギー</string>
+
+    <!-- ログインステータス -->
+    <string name="switched_to_provider">%1$s に切り替えました</string>
+    <string name="please_login_provider">%1$s にログインしてください</string>
+    <string name="getting_qr_code">QRコードを取得中...</string>
+    <string name="switched_to_account">%1$s に切り替えました</string>
+    <string name="failed_to_get_qr_key">QRキーの取得に失敗しました</string>
+    <string name="captcha_sent">認証コードを送信しました</string>
+    <string name="failed_to_send_captcha">認証コードの送信に失敗しました</string>
+    <string name="logged_out">ログアウトしました</string>
+    <string name="login_failed">ログインに失敗しました</string>
+    <string name="parse_error">解析エラー</string>
+    <string name="user_nickname">ユーザー</string>
+    <string name="guest_nickname">ゲスト</string>
+
+    <!-- お気に入りの音楽 -->
+    <string name="liked_music">お気に入りの音楽</string>
+
+    <!-- 不明なユーザー -->
+    <string name="unknown_user">不明なユーザー</string>
+
+    <!-- プレイリスト詳細 -->
+    <string name="play_it">すべて再生</string>
+    <string name="shuffle">シャッフル</string>
+    <string name="add">追加</string>
+    <string name="reorder">並べ替え</string>
+    <string name="remove_from_playlist">プレイリストから削除</string>
+    <string name="song_count_simple">%1$d 曲</string>
+    <string name="share_playlist_text">このプレイリストをチェック：%1$s\n%2$s</string>
+
+    <!-- ナビゲーションバー -->
+    <string name="navigation_bar">ナビゲーションバー</string>
+    <string name="hide_navbar_on_scroll">スクロール時にバーを自動非表示</string>
+    <string name="hide_navbar_on_scroll_desc">ページを下にスクロールするとバーを非表示にし、上にスクロールで再表示します</string>
+
+    <!-- プレーヤースタイル -->
+    <string name="player_style">プレーヤースタイル</string>
+    <string name="wavy_progress">ウェーブ進捗バー</string>
+    <string name="wavy_progress_desc">ウェーブアニメーションの進捗バーを使用します。オフにするとフラットなバーになります</string>
+
+    <!-- 発見ページ -->
+    <string name="discover">発見</string>
+    <string name="toplists">ランキング</string>
+    <string name="recommended_new_songs">おすすめ新曲</string>
+    <string name="new_songs_express">新曲速報</string>
+    <string name="quality_playlists">プレミアムプレイリスト</string>
+    <string name="view_more">もっと見る</string>
+
+    <!-- DSP -->
+    <string name="dsp_equalizer">DSP &amp; イコライザー</string>
+    <string name="dsp_effects">DSP &amp; エフェクト</string>
+    <string name="dsp_equalizer_desc">イコライザーと空間エフェクトを設定</string>
+</resources>
