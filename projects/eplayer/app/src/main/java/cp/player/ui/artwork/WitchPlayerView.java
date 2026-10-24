@@ -18,6 +18,7 @@ public final class WitchPlayerView extends FrameLayout {
     private final Bitmap reference,sky,portrait;
     private final Typeface brush,hand;
     private final Art art;
+    private final Assets assets;
     private final Button previous,play,next,title;
     private final SeekBar seek,volume;
     private final android.media.AudioManager audio;
@@ -40,13 +41,34 @@ public final class WitchPlayerView extends FrameLayout {
         audioUri=uri;
     }
 
+    private static volatile Assets cachedAssets;
+    private static final class Assets {
+        final Bitmap reference,sky,portrait;
+        final Typeface brush,hand;
+        final CharacterRig rig;
+        Assets(Context context) {
+            reference=load(context,"player-reference.jpg");sky=load(context,"player-sky.png");
+            portrait=CharacterArtwork.prepare(load(context,"elaina-layer.png"),load(context,"skin-restoration.png"));
+            brush=Typeface.createFromAsset(context.getAssets(),"fonts/YujiBoku-Player.ttf");
+            hand=androidx.core.content.res.ResourcesCompat.getFont(context,cp.player.R.font.travel_hand);
+            rig=new CharacterRig(portrait);
+        }
+    }
+    public static synchronized void prepareAssets(Context context) {
+        if(cachedAssets==null)cachedAssets=new Assets(context.getApplicationContext());
+    }
+    public static synchronized void clearAssetCache(){cachedAssets=null;}
+    private static Bitmap load(Context context,String name){
+        try(InputStream in=context.getAssets().open(name)){
+            Bitmap result=BitmapFactory.decodeStream(in);result.setDensity(Bitmap.DENSITY_NONE);return result;
+        }catch(IOException e){throw new IllegalStateException("Missing illustration: "+name,e);}
+    }
     public WitchPlayerView(Context context) {
         super(context);
         setBackgroundColor(Color.WHITE);
-        reference=bitmap("player-reference.jpg"); sky=bitmap("player-sky.png");
-        portrait=CharacterArtwork.prepare(bitmap("elaina-layer.png"),bitmap("skin-restoration.png"));
-        brush=Typeface.createFromAsset(context.getAssets(),"fonts/YujiBoku-Player.ttf");
-        hand=androidx.core.content.res.ResourcesCompat.getFont(context,cp.player.R.font.travel_hand);
+        prepareAssets(context);assets=cachedAssets;
+        reference=assets.reference;sky=assets.sky;portrait=assets.portrait;
+        brush=assets.brush;hand=assets.hand;
         audio=(android.media.AudioManager)context.getSystemService(Context.AUDIO_SERVICE);
         art=new Art(context); addView(art,new LayoutParams(-1,-1));
         previous=button("上一首",()->{if(controls!=null)controls.previous();});
@@ -75,12 +97,6 @@ public final class WitchPlayerView extends FrameLayout {
         volume.setProgress(audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC));
         art.invalidate();
     }
-    private Bitmap bitmap(String name){
-        try(InputStream in=getContext().getAssets().open(name)){
-            Bitmap result=BitmapFactory.decodeStream(in);result.setDensity(Bitmap.DENSITY_NONE);return result;
-        }
-        catch(IOException e){throw new IllegalStateException("Missing illustration: "+name,e);}
-    }
     private Button button(String description,Runnable action){
         Button b=new Button(getContext());b.setText("");b.setContentDescription(description);b.setBackgroundColor(Color.TRANSPARENT);
         b.setMinimumWidth(0);b.setMinWidth(0);b.setMinHeight(0);b.setPadding(0,0,0,0);
@@ -106,7 +122,7 @@ public final class WitchPlayerView extends FrameLayout {
     private final class Art extends View {
         final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
         final CharacterMotion motion=new CharacterMotion();
-        final CharacterRig rig=new CharacterRig(portrait);
+        final CharacterRig rig=assets.rig;
         long lastFrame;
         Art(Context c){super(c);setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);}
         void crop(Canvas c,int x,int y,int x2,int y2){c.drawBitmap(reference,new Rect(x,y,x2,y2),new RectF(x,y,x2,y2),paint);}

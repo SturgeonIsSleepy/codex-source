@@ -50,6 +50,9 @@ fun EPlayerApp(model: EPlayerViewModel, showPlayer: Boolean, onShowPlayer: (Bool
     val library by model.library.collectAsState()
     val results by model.results.collectAsState()
     val searching by model.searching.collectAsState()
+    val searched by model.searched.collectAsState()
+    val searchFailure by model.searchFailure.collectAsState()
+    val downloading by model.downloading.collectAsState()
     val importing by model.importing.collectAsState()
     val providers by model.providers.collectAsState()
     val active by model.activeSource.collectAsState()
@@ -65,6 +68,7 @@ fun EPlayerApp(model: EPlayerViewModel, showPlayer: Boolean, onShowPlayer: (Bool
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
+    val listStates = remember { List(3) { androidx.compose.foundation.lazy.LazyListState() } }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
@@ -124,7 +128,7 @@ fun EPlayerApp(model: EPlayerViewModel, showPlayer: Boolean, onShowPlayer: (Bool
             if (page == 1) FloatingActionButton(onClick = { importAudio.launch(arrayOf("audio/*")) }) { Icon(Icons.Default.Add, "导入音频") }
         }
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 88.dp),
+        LazyColumn(Modifier.fillMaxSize().padding(padding), state = listStates[page], contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             if (page == 0) {
                 item {
@@ -140,7 +144,17 @@ fun EPlayerApp(model: EPlayerViewModel, showPlayer: Boolean, onShowPlayer: (Bool
                 if (results.isNotEmpty()) {
                     items(results, key = { "${it.source}:${it.song.id}" }) { track ->
                         SongRow(track, state.song?.id == track.song.id, { model.play(track, results); onShowPlayer(true) }) {
-                            IconButton(onClick = { model.download(track) }) { Icon(Icons.Default.Download, "下载 ${track.song.name}") }
+                            IconButton(enabled = "${track.source}:${track.song.id}" !in downloading, onClick = { model.download(track) }) {
+                                if ("${track.source}:${track.song.id}" in downloading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                                else Icon(Icons.Default.Download, "下载 ${track.song.name}")
+                            }
+                        }
+                    }
+                } else if (searched) {
+                    item {
+                        Column(Modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            if (!searching) Text(searchFailure ?: "没有找到歌曲")
+                            TextButton(onClick = { query = ""; model.clearSearch() }) { Text("返回旅途") }
                         }
                     }
                 } else {
@@ -249,11 +263,19 @@ private fun SongRow(track: Track, selected: Boolean, play: () -> Unit, trailing:
 @Composable
 private fun Player(model: EPlayerViewModel, state: Playback, close: () -> Unit) {
     val animate by model.animate.collectAsState()
+    val artworkContext = LocalContext.current.applicationContext
+    val artworkReady by produceState(initialValue = !animate, key1 = animate) {
+        if (animate) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { WitchPlayerView.prepareAssets(artworkContext) }
+        value = true
+    }
     val favorites by model.favorites.collectAsState()
+    val currentPosition by model.position.collectAsState()
+    DisposableEffect(model) { model.setProgressVisible(true); onDispose { model.setProgressVisible(false) } }
     var queue by remember { mutableStateOf(false) }
     var lyrics by remember { mutableStateOf<String?>(null) }
     var seeking by remember { mutableStateOf<Float?>(null) }
     val scope = rememberCoroutineScope()
+    LaunchedEffect(state.song?.id) { seeking = null }
     Dialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding().padding(horizontal = 20.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -267,8 +289,9 @@ private fun Player(model: EPlayerViewModel, state: Playback, close: () -> Unit) 
             if (!state.song?.artist.isNullOrBlank()) Text(state.song!!.artist,
                 modifier = Modifier.padding(horizontal = 12.dp), style = MaterialTheme.typography.bodyMedium)
             Box(Modifier.weight(1f).fillMaxWidth()) {
-                if (animate) AndroidView(factory = { WitchPlayerView(it).apply { setArtworkOnly(true) } }, modifier = Modifier.fillMaxSize(), update = { view ->
-                    view.update(state.song?.name.orEmpty(), state.playing, state.buffering, state.position, state.duration, object : WitchPlayerView.Controls {
+                if (animate && !artworkReady) CircularProgressIndicator(Modifier.align(Alignment.Center))
+                else if (animate) AndroidView(factory = { WitchPlayerView(it).apply { setArtworkOnly(true) } }, modifier = Modifier.fillMaxSize(), update = { view ->
+                    view.update(state.song?.name.orEmpty(), state.playing, state.buffering, currentPosition, state.duration, object : WitchPlayerView.Controls {
                         override fun playPause() = model.playPause()
                         override fun previous() = model.previous()
                         override fun next() = model.next()
@@ -278,11 +301,11 @@ private fun Player(model: EPlayerViewModel, state: Playback, close: () -> Unit) 
                 }) else AsyncImage("file:///android_asset/elaina-layer.png", null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
             }
             if (state.buffering) LinearProgressIndicator(Modifier.fillMaxWidth())
-            Slider(value = seeking ?: state.position.coerceAtMost(state.duration).toFloat(), onValueChange = { seeking = it },
+            Slider(value = seeking ?: currentPosition.coerceAtMost(state.duration).toFloat(), onValueChange = { seeking = it },
                 onValueChangeFinished = { seeking?.let { model.seek(it.toLong()) }; seeking = null },
                 valueRange = 0f..state.duration.coerceAtLeast(1).toFloat(), enabled = state.duration > 0)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(time((seeking ?: state.position.toFloat()).toLong()), style = MaterialTheme.typography.labelMedium)
+                Text(time((seeking ?: currentPosition.toFloat()).toLong()), style = MaterialTheme.typography.labelMedium)
                 Text(time(state.duration), style = MaterialTheme.typography.labelMedium)
             }
             Row(Modifier.fillMaxWidth().padding(vertical = 20.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {

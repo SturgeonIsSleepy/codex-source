@@ -26,6 +26,11 @@ class CPApplication : Application(), SingletonImageLoader.Factory {
 
     }
 
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) cp.player.ui.artwork.WitchPlayerView.clearAssetCache()
+    }
+
     override fun newImageLoader(context: PlatformContext): ImageLoader {
         return ImageLoader.Builder(context)
             .components {
