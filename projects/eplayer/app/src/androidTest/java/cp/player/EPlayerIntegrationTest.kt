@@ -56,6 +56,7 @@ class EPlayerIntegrationTest {
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", fixture)
         val destination = File(context.filesDir, "witch/audio-0")
         val secondDestination = File(context.filesDir, "witch/audio-1")
+        val savedEngine = cp.player.util.UserPreferences.getAudioEngine(context)
         var controller: MediaController? = null
         try {
             WitchPlaylist.import(context, 0, uri)
@@ -77,6 +78,12 @@ class EPlayerIntegrationTest {
             val future = MediaController.Builder(context, token).buildAsync()
             controller = future.get(30, TimeUnit.SECONDS)
             val player = controller!!
+            fun engine(value: Int) {
+                lateinit var reply: ListenableFuture<SessionResult>
+                main { reply = player.sendCustomCommand(SessionCommand("SET_ENGINE", Bundle.EMPTY), Bundle().apply { putInt("engine", value) }) }
+                assertEquals(SessionResult.RESULT_SUCCESS, reply.get(10, TimeUnit.SECONDS).resultCode)
+            }
+            engine(0)
             val started = java.util.concurrent.atomic.AtomicBoolean(false)
             main {
                 player.addListener(object : Player.Listener {
@@ -186,12 +193,34 @@ class EPlayerIntegrationTest {
             main { player.pause() }
             SystemClock.sleep(1200)
             capture("player-paused")
+            // Exercise the packaged Rust backend and real session replacement, not only JNI init.
+            assertEquals(SessionResult.RESULT_SUCCESS, timer(180000))
+            engine(1)
+            main { player.play() }
+            await(90000) {
+                var playing = false
+                main { assertNull("Rust playback must not fail", player.playerError)
+                    playing = player.isPlaying && player.duration > 0 && player.currentMediaItem?.mediaId == "witch_0" }
+                playing
+            }
+            main {
+                assertEquals(2, player.mediaItemCount)
+                assertTrue("Engine switch must retain the service sleep timer", player.sessionExtras.getLong(PlaybackSleepTimer.DEADLINE) > SystemClock.elapsedRealtime())
+                player.pause(); player.seekTo(2000)
+            }
+            await { var sought = false; main { sought = !player.playWhenReady && player.currentPosition in 1900..3000 }; sought }
+            engine(0)
+            main { player.play() }
+            await { var playing = false; main { assertNull(player.playerError); playing = player.isPlaying }; playing }
+            assertEquals(SessionResult.RESULT_SUCCESS, timer(0))
+            android.util.Log.i("EPlayerTest", "Rust playback/seek/pause and return to ExoPlayer passed")
         } finally {
             controller?.let { player -> main {
                 player.sendCustomCommand(SessionCommand(PlaybackSleepTimer.COMMAND, Bundle.EMPTY),
                     Bundle().apply { putLong(PlaybackSleepTimer.DURATION_MS, 0) })
                 player.stop()
                 player.clearMediaItems()
+                player.sendCustomCommand(SessionCommand("SET_ENGINE", Bundle.EMPTY), Bundle().apply { putInt("engine", savedEngine) })
                 player.repeatMode = Player.REPEAT_MODE_OFF
                 player.release()
             } }

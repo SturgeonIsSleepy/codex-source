@@ -6,7 +6,7 @@
 
 | 层 | 入口 | 责任与限制 |
 | --- | --- | --- |
-| Android 播放会话 | `service/MusicService.kt` | 唯一 MediaSession、前台通知、队列恢复、引擎切换、系统音频焦点与 noisy 广播；不能依赖 Compose 生命周期维持播放 |
+| Android 播放会话 | `service/MusicService.kt`、`RustAudioFocus.kt` | 唯一 MediaSession、前台通知、队列恢复、引擎切换、系统音频焦点与 noisy 广播；不能依赖 Compose 生命周期维持播放 |
 | 音频实现 | `engine/CPPlayerManager.kt`、`FlickPlayer.kt`、`RustEngine.kt` | Media3 与 Rust 的播放、解码、DSP 适配；保持 JNI 名称和普通系统路由，默认不编译 USB 独占 |
 | 音乐源协议 | `provider/`、`app/SourceStore.kt`、`MusicRepository.kt` | 模块生命周期、统一请求、平台响应映射；不能放到 UI 组件中调用或保存账号数据 |
 | 曲库与下载 | `app/LibraryStore.kt`、`Downloads.kt` | 导入校验、原子保存、手机扫描、系统 DownloadManager、失败重试；后台传输由系统持有 |
@@ -25,3 +25,11 @@
 ## 后续顺序
 
 先保持可复核的 MediaSession 播放基线；用独立的播放页完成横竖屏和大字体适配。随后统一暂停/恢复命令语义，修复缓冲期无法暂停的问题，并让关闭角色动画仍使用相同修复底图。再逐项恢复缺失的控制入口与自动检查，最后按真实依赖删除已经替代且无必要调用的旧层。不得用一轮大规模删除代替功能迁移。
+
+## 焦点所有权补充
+
+Rust 焦点请求绑定固定 Player，关闭旧所有者后忽略排队回调；ExoPlayer 继续使用自身焦点管理，不另建第二套请求。临时失焦可恢复原播放请求（包括缓冲期），永久失焦、定时停止与 noisy 暂停取消恢复意图。重复的临时失焦不能覆盖首次恢复意图。切引擎与服务结束显式释放请求。
+
+四项纯 JVM 策略回归通过；这不是系统电话、蓝牙、耳机等实机路由验证。双引擎真实 WAV 播放/暂停/拖动、切回与定时保留已加入集成检查，待新提交 CI。尚未验证所有外部控制器在失焦期间的交互，不据此声称焦点验收完成。
+
+代码审查另发现 `FlickPlayer.handleSetMediaItems` 忽略 `startPositionMs`，可能使切到 Rust 或恢复队列时从头开始；尚未增加断点保持验收，需在双引擎基本播放确认后修复并增加实际位置检查，不能宣称完整切换/恢复能力已验收。
