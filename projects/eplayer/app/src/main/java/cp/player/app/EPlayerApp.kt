@@ -32,6 +32,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil3.compose.AsyncImage
@@ -354,43 +356,55 @@ private fun Settings(model: EPlayerViewModel, close: () -> Unit) {
 private fun SourceLogin(source: String) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    var open by remember(source) { mutableStateOf(false) }
-    var image by remember(source) { mutableStateOf<String?>(null) }
-    var status by remember(source) { mutableStateOf("") }
-    OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) { Text("登录") }
-    LaunchedEffect(open, source) {
+    var open by rememberSaveable(source) { mutableStateOf(false) }
+    var key by rememberSaveable(source) { mutableStateOf<String?>(null) }
+    var url by rememberSaveable(source) { mutableStateOf<String?>(null) }
+    var image by remember(source) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var status by rememberSaveable(source) { mutableStateOf("") }
+    var refresh by remember { mutableIntStateOf(0) }
+    var logged by remember(source) { mutableStateOf(!UserPreferences.getPrefs(context).getString("cookie_$source", null).isNullOrBlank()) }
+    fun close() { open = false; key = null; url = null; image = null }
+    OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) { Text(if (logged) "已登录" else "登录") }
+    LaunchedEffect(open, source, refresh) {
         if (!open) return@LaunchedEffect
-        image = null; status = "加载中"
+        status = "加载中"
         try {
-            val key = SourceStore.call(context, source, "login/qr/key").getAsJsonObject("data").get("unikey").asString
-            image = SourceStore.call(context, source, "login/qr/create", mapOf("key" to key, "qrimg" to "true"))
-                .getAsJsonObject("data").get("qrimg").asString
+            if (key == null || url == null) {
+                key = QrLogin.key(SourceStore.call(context, source, "login/qr/key"))
+                url = QrLogin.url(SourceStore.call(context, source, "login/qr/create", mapOf("key" to key!!)))
+            }
+            image = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { QrLogin.bitmap(url!!) }
             status = "等待扫码"
-            while (open) {
-                delay(2000)
-                if (!lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) continue
-                val response = SourceStore.call(context, source, "login/qr/check", mapOf("key" to key))
-                when (response.get("code")?.asInt) {
-                    800 -> { status = "二维码已过期"; break }
-                    802 -> status = "等待确认"
-                    803 -> {
-                        val cookie = response.get("cookie")?.asString
-                        check(!cookie.isNullOrBlank()) { "登录未返回会话" }
-                        UserPreferences.getPrefs(context).edit().putString("cookie_$source", cookie).apply()
-                        SourceStore.clearResolved(source)
-                        status = "已登录"; break
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (open) {
+                    delay(2000)
+                    val response = SourceStore.call(context, source, "login/qr/check", mapOf("key" to key!!))
+                    when (response.get("code")?.asInt) {
+                        800 -> { status = "二维码已过期"; image = null; break }
+                        801 -> status = "等待扫码"
+                        802 -> status = "等待确认"
+                        803 -> {
+                            val cookie = response.get("cookie")?.takeIf { it.isJsonPrimitive }?.asString
+                            check(!cookie.isNullOrBlank()) { "登录未返回会话，请刷新重试" }
+                            UserPreferences.getPrefs(context).edit().putString("cookie_$source", cookie).apply()
+                            SourceStore.clearResolved(source)
+                            logged = true; status = "已登录"; image = null; break
+                        }
+                        else -> error(response.get("msg")?.takeIf { it.isJsonPrimitive }?.asString ?: "登录检查失败，请刷新重试")
                     }
                 }
             }
         } catch (error: kotlinx.coroutines.CancellationException) { throw error }
-        catch (error: Exception) { status = error.message ?: "登录失败" }
+        catch (error: Exception) { status = error.message ?: "登录失败，请重试" }
     }
-    if (open) AlertDialog(onDismissRequest = { open = false }, title = { Text("扫码登录") }, text = {
+    if (open) AlertDialog(onDismissRequest = ::close, title = { Text("扫码登录") }, text = {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            image?.let { AsyncImage(it, "登录二维码", Modifier.fillMaxWidth().aspectRatio(1f)) }
+            image?.let { androidx.compose.foundation.Image(it.asImageBitmap(), "登录二维码",
+                Modifier.fillMaxWidth().aspectRatio(1f), filterQuality = androidx.compose.ui.graphics.FilterQuality.None) }
             Text(status)
         }
-    }, confirmButton = { TextButton(onClick = { open = false }) { Text("关闭") } })
+    }, confirmButton = { TextButton(onClick = ::close) { Text(if (status == "已登录") "完成" else "关闭") } },
+        dismissButton = { if (status != "已登录") TextButton(onClick = { key = null; url = null; image = null; refresh++ }) { Text("刷新") } })
 }
 
 private fun time(milliseconds: Long): String {

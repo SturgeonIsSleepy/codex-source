@@ -176,6 +176,7 @@ dependencies {
 
     // Networking
     implementation libs.androidx.palette.ktx
+    implementation "com.google.zxing:core:3.5.3"
     implementation libs.gson
     implementation libs.okhttp
     def coil_version = "3.4.0"

@@ -47,3 +47,5 @@
 -keep class cp.player.engine.MusicPulse { *; }
 -keep class cp.player.engine.RustEngine { *; }
 -keep class cp.player.manager.WitchPlaylist { *; }
+
+-keep class cp.player.app.QrLogin { *; }
