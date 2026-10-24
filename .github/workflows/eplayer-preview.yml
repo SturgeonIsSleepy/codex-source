@@ -5,6 +5,9 @@ on:
       - 'projects/eplayer/**'
       - '.github/workflows/eplayer-preview.yml'
   workflow_dispatch:
+concurrency:
+  group: eplayer-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:

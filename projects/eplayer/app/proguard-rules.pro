@@ -52,3 +52,6 @@
 
 # Keep the codec available to the release QR round-trip device check.
 -keep class com.google.zxing.** { *; }
+
+# AndroidJUnitRunner shares this runtime dependency with the shrunk application.
+-keep class androidx.tracing.** { *; }
