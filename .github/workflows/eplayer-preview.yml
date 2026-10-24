@@ -3,11 +3,15 @@ on:
   push:
     paths:
       - 'projects/eplayer/**'
+      - '!projects/eplayer/docs/**'
+      - '!projects/eplayer/*.md'
+      - '.github/scripts/run_eplayer_device_checks.py'
       - '.github/workflows/eplayer-preview.yml'
   workflow_dispatch:
 concurrency:
   group: eplayer-${{ github.ref }}
-  cancel-in-progress: true
+  # Complete active device checks; queue the next source checkpoint instead of erasing evidence.
+  cancel-in-progress: false
 permissions:
   contents: read
 jobs:

@@ -42,6 +42,33 @@ class EPlayerIntegrationTest {
         }
         assertTrue("Condition did not become true", predicate())
     }
+    private fun capture(name: String) {
+        val folder = File(context.getExternalFilesDir(null), "visual-check").apply { mkdirs() }
+        val bitmap = instrumentation.uiAutomation.takeScreenshot()
+        assertNotNull("Native screenshot is available", bitmap)
+        File(folder, "$name.png").outputStream().use {
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+        }
+        bitmap.recycle()
+    }
+    private fun openFromNotification(title: String) {
+        assertTrue("Notification shade opens", instrumentation.uiAutomation.performGlobalAction(
+            android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS))
+        await(15000) {
+            val root = instrumentation.uiAutomation.rootInActiveWindow
+            if (root?.packageName?.toString() != "com.android.systemui") false
+            else {
+                val label = root.findAccessibilityNodeInfosByText(title).firstOrNull { it.isVisibleToUser }
+                var target = label
+                while (target != null && !target.isClickable) target = target.parent
+                if (target == null) false else {
+                    capture("notification-controls")
+                    target.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+                }
+            }
+        }
+    }
+
     @Test fun importAndMediaSessionPlayback() {
         assertEquals("ePlayer", context.getString(R.string.app_name))
         // This test replaces the active queue and default-song files. Never run it
@@ -161,11 +188,8 @@ class EPlayerIntegrationTest {
             await { var paused = false; main { paused = !player.playWhenReady && player.sessionExtras.getLong(PlaybackSleepTimer.DEADLINE) == 0L }; paused }
             main { assertFalse("Service timer pauses while the activity is backgrounded", player.isPlaying); player.play() }
             await { var playing = false; main { playing = player.isPlaying }; playing }
-            main {
-                val returnToPlayer = player.sessionActivity
-                assertNotNull("MediaSession exposes the notification return intent", returnToPlayer)
-                returnToPlayer!!.send()
-            }
+            main { assertNotNull("MediaSession exposes the notification return intent", player.sessionActivity) }
+            openFromNotification(WitchPlaylist.songs[0].name)
             await(60000) {
                 var expanded = false
                 main {
@@ -179,15 +203,6 @@ class EPlayerIntegrationTest {
                 }
                 expanded
             }
-            val screenshots = File(context.getExternalFilesDir(null), "visual-check").apply { mkdirs() }
-            fun capture(name: String) {
-                val bitmap = instrumentation.uiAutomation.takeScreenshot()
-                assertNotNull("Native screenshot is available", bitmap)
-                File(screenshots, "$name.png").outputStream().use {
-                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
-                }
-                bitmap.recycle()
-            }
             SystemClock.sleep(1200)
             capture("player-playing")
             main { player.pause() }
@@ -195,7 +210,10 @@ class EPlayerIntegrationTest {
             capture("player-paused")
             // Exercise the packaged Rust backend and real session replacement, not only JNI init.
             assertEquals(SessionResult.RESULT_SUCCESS, timer(180000))
+            main { player.seekTo(12000) }
+            await { var sought = false; main { sought = player.currentPosition in 11900..13000 }; sought }
             engine(1)
+            await { var retained = false; main { retained = !player.playWhenReady && player.currentPosition in 11900..13000 }; retained }
             main { player.play() }
             await(90000) {
                 var playing = false
@@ -203,12 +221,21 @@ class EPlayerIntegrationTest {
                     playing = player.isPlaying && player.duration > 0 && player.currentMediaItem?.mediaId == "witch_0" }
                 playing
             }
+            await(7000) {
+                // A from-zero restart cannot reach 12 seconds inside this window.
+                cp.player.engine.RustEngine.getProgress()?.positionSecs?.let { it in 11.8..20.0 } == true
+            }
             main {
                 assertEquals(2, player.mediaItemCount)
                 assertTrue("Engine switch must retain the service sleep timer", player.sessionExtras.getLong(PlaybackSleepTimer.DEADLINE) > SystemClock.elapsedRealtime())
                 player.pause(); player.seekTo(2000)
             }
             await { var sought = false; main { sought = !player.playWhenReady && player.currentPosition in 1900..3000 }; sought }
+            await { cp.player.engine.RustEngine.getState().equals("paused", ignoreCase = true) }
+            main { player.seekTo(1, 6000) }
+            await { var parked = false; main { parked = !player.playWhenReady && player.currentMediaItem?.mediaId == "witch_1" && player.currentPosition in 5900..7000 }; parked }
+            main { player.removeMediaItem(1) }
+            await { var parked = false; main { parked = !player.playWhenReady && player.currentMediaItem?.mediaId == "witch_0" && player.currentPosition == 0L }; parked }
             engine(0)
             main { player.play() }
             await { var playing = false; main { assertNull(player.playerError); playing = player.isPlaying }; playing }

@@ -23,8 +23,14 @@
 - 已实际查看第二阶段的 `visual-check/player-playing.png`、`layout-check/landscape-1.0.png`、`layout-check/portrait-2.0.png`，第三阶段的 `release-home.png`；确认文字与插画分区、操作区可达，首页显示默认双曲导入。第二阶段证据见 CI 40121564864。
 - 旧的 Material 进度轨道较粗，与插画风格不协调，第四阶段改为墨线与圆点，尚待新截图复核。没有为此重绘角色或改变头发/手/皮肤图层。
 
+## 第四阶段已完成
+
+源码 `37ad87f9336d9710802a52762d311f1c61b8f949`，[CI 40123797367](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40123797367)：26 项中 25 通过、真实登录 1 项条件跳过，51.685 秒。后台定时到期与取消、Session PendingIntent 返回、设置交互、无障碍 seek 通过，R8 冷启动 smoke 通过（1835 ms）。已查看 `visual-check/player-playing.png`、`layout-check/landscape-2.0.png`、`layout-check/sleep-timer.png`，墨线/圆点和大字体操作正常。
+
+[设备证据](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40123797367/artifacts/12572094416)，ZIP SHA256 `474b2fa7180a10afa5a99d4c582b6aa6931eaae84200cb4458a37fe7eb7cccc3`。fastRelease APK `39973e9e1f71207bb70d49c79a2514c6e8e617f4167d06cf1ebf9e823ae10c56`，R8 APK `15a933c8368d4231e55d22ab5a1f84876a7975f3a8f443297a4c73f2ecf2c65d`；测试 APK `936e2e1444ae04e91feb247060ee89759b9f98f9c25ebe252afe6e6de06ca57c`。仅证明上述模拟器范围，没有通知面板点击或实机证据。
+
 ## 尚未完成
 
-第四阶段源码 `37ad87f9336d9710802a52762d311f1c61b8f949` 的定时停止、实际 Session PendingIntent 返回、无障碍进度操作及新进度条截图待 CI 40123797367。第五阶段固定 Player 焦点与真实 Rust 播放/切回、第六阶段纯画布的像素/布局检查待合并的新 CI；本地 JVM 共 13 项通过，应用及测试包编译通过。实机焦点、耳机路由、真实源账号、长时间播放、完整 R8 音乐功能和全页视觉均未验收。DSP 编辑和淡入淡出入口仍需迁移。
+第五/六阶段源码 `74ac16fc663705239a617f027f0d815c1714af33` 的焦点/真实 Rust 播放与纯画布回归待 CI 40124903082；本地 JVM 共 13 项通过。第七阶段 Rust 断点及真实通知卡片点击已加入检查，尚未设备运行。实机焦点、耳机路由、真实源账号、长时间播放、完整 R8 音乐功能和全页视觉均未验收。DSP 编辑和淡入淡出入口仍需迁移。
 
 早先 CI 40120164035 因 R8 目标剔除测试共享 Kotlin 类，未执行用例；CI 40121564864 为 23 通过、1 初始化失败，不能把这些失败覆盖为全通过。历史 0.1.1 具体公开交付仍保持原审批断点，本轮未重新发布该包。
