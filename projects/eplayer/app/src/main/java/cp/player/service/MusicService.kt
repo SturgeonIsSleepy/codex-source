@@ -11,6 +11,9 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.media3.common.Player
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
@@ -24,6 +27,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import cp.player.MainActivity
 import cp.player.app.QueueStore
 import cp.player.core.playback.togglePlayback
+import cp.player.core.playback.PlaybackSleepTimer
 import cp.player.engine.CPPlayerManager
 import cp.player.util.UserPreferences
 import cp.player.widget.MusicWidgetProvider
@@ -37,6 +41,15 @@ class MusicService : MediaSessionService() {
     private var focus: AudioFocusRequest? = null
     private var resumeAfterFocus = false
     private var engine = 0
+    private val handler = Handler(Looper.getMainLooper())
+    private val sleepTimer = PlaybackSleepTimer(SystemClock::elapsedRealtime, { delay, action ->
+        val task = Runnable { action() }
+        handler.postDelayed(task, delay)
+        val cancel: () -> Unit = { handler.removeCallbacks(task) }
+        cancel
+    }, { resumeAfterFocus = false; player.pause() }, { deadline ->
+        session?.setSessionExtras(Bundle().apply { putLong(PlaybackSleepTimer.DEADLINE, deadline) })
+    })
     private val noisy = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) { player.pause() }
     }
@@ -87,10 +100,20 @@ class MusicService : MediaSessionService() {
                 override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
                     return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                         .setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
-                            .add(SessionCommand("SET_ENGINE", Bundle.EMPTY)).build()).build()
+                            .add(SessionCommand("SET_ENGINE", Bundle.EMPTY))
+                            .add(SessionCommand(PlaybackSleepTimer.COMMAND, Bundle.EMPTY)).build()).build()
                 }
                 override fun onCustomCommand(session: MediaSession, controller: MediaSession.ControllerInfo,
                     command: SessionCommand, args: Bundle): ListenableFuture<SessionResult> {
+                    if (command.customAction == PlaybackSleepTimer.COMMAND) {
+                        if (!args.containsKey(PlaybackSleepTimer.DURATION_MS))
+                            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+                        val duration = args.getLong(PlaybackSleepTimer.DURATION_MS, -1)
+                        if (duration !in 0..PlaybackSleepTimer.MAX_DURATION_MS)
+                            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+                        sleepTimer.set(duration)
+                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
                     if (command.customAction != "SET_ENGINE") return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
                     val requested = args.getInt("engine").coerceIn(0, 1)
                     if (requested != engine) {
@@ -125,6 +148,7 @@ class MusicService : MediaSessionService() {
     }
     override fun onTaskRemoved(rootIntent: Intent?) { if (!player.playWhenReady) stopSelf() }
     override fun onDestroy() {
+        sleepTimer.set(0)
         QueueStore.save(this, player)
         unregisterReceiver(noisy)
         player.removeListener(listener)

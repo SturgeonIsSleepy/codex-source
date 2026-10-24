@@ -13,6 +13,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import cp.player.core.playback.togglePlayback
+import cp.player.core.playback.PlaybackSleepTimer
 import cp.player.manager.DownloadRegistry
 import cp.player.manager.WitchPlaylist
 import cp.player.model.Song
@@ -56,6 +57,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     val favorites = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getStringSet("favorites", emptySet()).orEmpty().toSet())
     val quality = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getString("quality", "standard") ?: "standard")
     val animate = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getBoolean("animate", true))
+    val sleepDeadline = MutableStateFlow(0L)
     private var controller: MediaController? = null
     private var pendingPlay: (() -> Unit)? = null
     private var visible = false
@@ -63,7 +65,11 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private var ticker: Job? = null
     private var radioSource: String? = null
     private var loadingRadio = false
-    private val future = MediaController.Builder(app, SessionToken(app, ComponentName(app, MusicService::class.java))).buildAsync()
+    private val future = MediaController.Builder(app, SessionToken(app, ComponentName(app, MusicService::class.java))).setListener(object : MediaController.Listener {
+        override fun onExtrasChanged(controller: MediaController, extras: Bundle) {
+            sleepDeadline.value = extras.getLong(PlaybackSleepTimer.DEADLINE)
+        }
+    }).buildAsync()
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
             publish()
@@ -81,7 +87,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { reloadLibrary(); recent.value = withContext(Dispatchers.IO) { RecentStore.read(app) } }
         future.addListener({
             runCatching { future.get() }.onSuccess {
-                controller = it; it.addListener(listener); publish()
+                controller = it; sleepDeadline.value = it.sessionExtras.getLong(PlaybackSleepTimer.DEADLINE); it.addListener(listener); publish()
                 pendingPlay?.invoke(); pendingPlay = null
             }.onFailure { message.value = "播放服务连接失败：${it.cause?.message ?: it.message}" }
         }, MoreExecutors.directExecutor())
@@ -201,6 +207,16 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         app.getSharedPreferences("eplayer_ui", 0).edit().putStringSet("favorites", next).apply()
     }
     fun setAnimate(value: Boolean) { animate.value = value; app.getSharedPreferences("eplayer_ui", 0).edit().putBoolean("animate", value).apply() }
+    fun setSleepTimer(minutes: Int) {
+        val player = controller ?: run { message.value = "播放服务尚未连接"; return }
+        val result = player.sendCustomCommand(SessionCommand(PlaybackSleepTimer.COMMAND, Bundle.EMPTY),
+            Bundle().apply { putLong(PlaybackSleepTimer.DURATION_MS, minutes * 60000L) })
+        result.addListener({
+            runCatching { result.get() }.onSuccess {
+                if (it.resultCode != androidx.media3.session.SessionResult.RESULT_SUCCESS) message.value = "无法设置定时停止"
+            }.onFailure { message.value = "定时停止设置失败" }
+        }, MoreExecutors.directExecutor())
+    }
     fun setEngine(engine: Int) { controller?.sendCustomCommand(SessionCommand("SET_ENGINE", Bundle.EMPTY), Bundle().apply { putInt("engine", engine) }) }
     fun importSource(uri: Uri) = sourceAction { SourceStore.import(app, uri) }
     fun selectSource(source: BackendProvider) = sourceAction { SourceStore.select(app, source) }

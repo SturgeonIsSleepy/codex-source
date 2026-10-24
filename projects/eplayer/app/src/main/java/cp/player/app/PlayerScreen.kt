@@ -1,9 +1,11 @@
 package cp.player.app
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -12,9 +14,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
@@ -146,14 +155,33 @@ internal fun PlayerHeader(close: () -> Unit, lyrics: () -> Unit, comments: (() -
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun PlayerTransport(state: Playback, position: Long, seeking: Float?, seek: (Float) -> Unit, finishSeek: () -> Unit,
                              playPause: () -> Unit, previous: () -> Unit, next: () -> Unit, shuffle: () -> Unit,
                              repeat: () -> Unit, liked: Boolean, favorite: () -> Unit) {
     Column(Modifier.fillMaxWidth().testTag("player-transport")) {
-        Slider(value = seeking ?: position.coerceIn(0, state.duration.coerceAtLeast(0)).toFloat(), onValueChange = seek,
-            onValueChangeFinished = finishSeek, valueRange = 0f..state.duration.coerceAtLeast(1).toFloat(), enabled = state.duration > 0,
-            modifier = Modifier.testTag("player-seek"))
+        val limit = state.duration.coerceAtLeast(1).toFloat()
+        val value = (seeking ?: position.toFloat()).coerceIn(0f, limit)
+        val ink = MaterialTheme.colorScheme.onSurface
+        val quietInk = MaterialTheme.colorScheme.outline
+        val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+        Slider(value = value, onValueChange = seek, onValueChangeFinished = finishSeek,
+            valueRange = 0f..limit, enabled = state.duration > 0,
+            modifier = Modifier.testTag("player-seek").semantics {
+                contentDescription = "播放进度"
+                stateDescription = "${playerTime(value.toLong())} / ${playerTime(state.duration)}"
+            },
+            thumb = { Surface(Modifier.size(12.dp), shape = CircleShape,
+                color = if (state.duration > 0) ink else quietInk) {} },
+            track = { slider -> Canvas(Modifier.fillMaxWidth().height(2.dp)) {
+                val fraction = (slider.value / limit).coerceIn(0f, 1f)
+                val start = if (rtl) size.width else 0f
+                val end = if (rtl) 0f else size.width
+                val thumb = start + (end - start) * fraction
+                drawLine(quietInk, Offset(start, center.y), Offset(end, center.y), 2.dp.toPx(), StrokeCap.Round)
+                drawLine(ink, Offset(start, center.y), Offset(thumb, center.y), 2.dp.toPx(), StrokeCap.Round)
+            } })
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(playerTime((seeking ?: position.toFloat()).toLong()), style = MaterialTheme.typography.labelMedium)
             Text(playerTime(state.duration), style = MaterialTheme.typography.labelMedium)

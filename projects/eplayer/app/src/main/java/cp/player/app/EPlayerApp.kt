@@ -331,35 +331,6 @@ internal fun SongRow(track: Track, selected: Boolean, play: () -> Unit, trailing
 }
 
 @Composable
-private fun Settings(model: EPlayerViewModel, close: () -> Unit) {
-    val context = LocalContext.current
-    val animate by model.animate.collectAsState()
-    var engine by remember { mutableIntStateOf(UserPreferences.getAudioEngine(context)) }
-    AlertDialog(onDismissRequest = close, title = { Text("设置") }, text = {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) { Text("角色动画", Modifier.weight(1f)); Switch(animate, model::setAnimate) }
-            val quality by model.quality.collectAsState()
-            var qualityMenu by remember { mutableStateOf(false) }
-            val qualities = listOf("标准" to "standard", "极高" to "exhigh", "无损" to "lossless", "Hi-Res" to "hires")
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("音质", Modifier.weight(1f))
-                Box {
-                    TextButton(onClick = { qualityMenu = true }) { Text(qualities.firstOrNull { it.second == quality }?.first ?: "标准") }
-                    DropdownMenu(qualityMenu, { qualityMenu = false }) { qualities.forEach { choice ->
-                        DropdownMenuItem(text = { Text(choice.first) }, onClick = { model.setQuality(choice.second); qualityMenu = false })
-                    } }
-                }
-            }
-            listOf("系统音频", "Rust 音频").forEachIndexed { index, label ->
-                Row(Modifier.fillMaxWidth().clickable { engine = index; model.setEngine(index) }, verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(engine == index, { engine = index; model.setEngine(index) }); Text(label)
-                }
-            }
-        }
-    }, confirmButton = { TextButton(onClick = close) { Text("完成") } })
-}
-
-@Composable
 private fun SourceLogin(source: String) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle

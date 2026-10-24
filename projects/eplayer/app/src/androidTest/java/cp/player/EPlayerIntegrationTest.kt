@@ -3,6 +3,11 @@ package cp.player
 import android.content.ComponentName
 import android.content.Intent
 import android.os.SystemClock
+import android.os.Bundle
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import com.google.common.util.concurrent.ListenableFuture
+import cp.player.core.playback.PlaybackSleepTimer
 import androidx.core.content.FileProvider
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -133,7 +138,27 @@ class EPlayerIntegrationTest {
                 main { advances = player.isPlaying && player.currentPosition > backgroundPosition + 500 }
                 advances
             }
-            context.startActivity(Intent(context, MainActivity::class.java).setAction("ACTION_SHOW_PLAYER").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            fun timer(duration: Long): Int {
+                lateinit var reply: ListenableFuture<SessionResult>
+                main { reply = player.sendCustomCommand(SessionCommand(PlaybackSleepTimer.COMMAND, Bundle.EMPTY),
+                    Bundle().apply { putLong(PlaybackSleepTimer.DURATION_MS, duration) }) }
+                return reply.get(10, TimeUnit.SECONDS).resultCode
+            }
+            assertEquals(SessionResult.RESULT_ERROR_BAD_VALUE, timer(-1))
+            assertEquals(SessionResult.RESULT_ERROR_BAD_VALUE, timer(PlaybackSleepTimer.MAX_DURATION_MS + 1))
+            assertEquals(SessionResult.RESULT_SUCCESS, timer(60000))
+            await { var active = false; main { active = player.sessionExtras.getLong(PlaybackSleepTimer.DEADLINE) > SystemClock.elapsedRealtime() }; active }
+            assertEquals(SessionResult.RESULT_SUCCESS, timer(0))
+            await { var cancelled = false; main { cancelled = player.sessionExtras.getLong(PlaybackSleepTimer.DEADLINE) == 0L }; cancelled }
+            assertEquals(SessionResult.RESULT_SUCCESS, timer(1200))
+            await { var paused = false; main { paused = !player.playWhenReady && player.sessionExtras.getLong(PlaybackSleepTimer.DEADLINE) == 0L }; paused }
+            main { assertFalse("Service timer pauses while the activity is backgrounded", player.isPlaying); player.play() }
+            await { var playing = false; main { playing = player.isPlaying }; playing }
+            main {
+                val returnToPlayer = player.sessionActivity
+                assertNotNull("MediaSession exposes the notification return intent", returnToPlayer)
+                returnToPlayer!!.send()
+            }
             await(60000) {
                 var expanded = false
                 main {
@@ -163,6 +188,8 @@ class EPlayerIntegrationTest {
             capture("player-paused")
         } finally {
             controller?.let { player -> main {
+                player.sendCustomCommand(SessionCommand(PlaybackSleepTimer.COMMAND, Bundle.EMPTY),
+                    Bundle().apply { putLong(PlaybackSleepTimer.DURATION_MS, 0) })
                 player.stop()
                 player.clearMediaItems()
                 player.repeatMode = Player.REPEAT_MODE_OFF

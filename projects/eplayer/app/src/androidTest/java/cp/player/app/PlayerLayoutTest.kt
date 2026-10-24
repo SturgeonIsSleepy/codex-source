@@ -5,8 +5,10 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.Density
@@ -41,6 +43,7 @@ class PlayerLayoutTest {
         compose.waitUntil(15000) {
             compose.activity.resources.configuration.orientation == if (wide) Configuration.ORIENTATION_LANDSCAPE else Configuration.ORIENTATION_PORTRAIT
         }
+        val sought = mutableStateOf<Float?>(null)
         val clicks = AtomicInteger()
         val action = { clicks.incrementAndGet(); Unit }
         val state = Playback(song = song, buffering = requested, duration = 60000, queue = listOf(song, song.copy(id = "second")), playRequested = requested)
@@ -56,7 +59,7 @@ class PlayerLayoutTest {
                             artwork = { modifier -> AndroidView(factory = { context ->
                                 WitchPlayerView(context).apply { setArtworkOnly(true) }
                             }, modifier = modifier) },
-                            controls = { PlayerTransport(state, 0, null, {}, {}, action, action, action, action, action, false, action) })
+                            controls = { PlayerTransport(state, 0, sought.value, { sought.value = it }, {}, action, action, action, action, action, false, action) })
                     }
                 }
             }
@@ -80,7 +83,8 @@ class PlayerLayoutTest {
         assertEquals("All transport callbacks remain connected", 6, clicks.get())
         val seek = compose.onNodeWithTag("player-seek")
         if (wide) seek.performScrollTo()
-        seek.assertIsDisplayed()
+        seek.assertIsDisplayed().performSemanticsAction(SemanticsActions.SetProgress) { set -> set(30000f) }
+        assertEquals("Seek stays accessible without dragging the custom thumb", 30000f, sought.value!!, .01f)
         if (wide) compose.onNodeWithContentDescription("收起播放器").performScrollTo()
         // Keep a native component render for visual review; it is not an audio test result.
         val folder = File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null), "layout-check").apply { mkdirs() }
