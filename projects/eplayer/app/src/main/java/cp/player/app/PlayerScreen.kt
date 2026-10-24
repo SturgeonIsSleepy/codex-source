@@ -12,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
@@ -20,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import coil3.compose.AsyncImage
 import cp.player.model.Song
 import cp.player.ui.artwork.WitchPlayerView
 import kotlinx.coroutines.Dispatchers
@@ -35,8 +33,8 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
                           more: () -> Unit, comments: () -> Unit, close: () -> Unit) {
     val animate by model.animate.collectAsState()
     val context = LocalContext.current.applicationContext
-    val artworkReady by produceState(initialValue = !animate, key1 = animate) {
-        if (animate) withContext(Dispatchers.IO) { WitchPlayerView.prepareAssets(context) }
+    val artworkReady by produceState(initialValue = false, key1 = context) {
+        withContext(Dispatchers.IO) { WitchPlayerView.prepareAssets(context) }
         value = true
     }
     val favorites by model.favorites.collectAsState()
@@ -56,10 +54,12 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
             state.song, state.buffering,
             header = { PlayerHeader(close, openLyrics, if (state.source != null) comments else null, more) { queue = true } },
             artwork = { modifier ->
-                if (animate && !artworkReady) Box(modifier, contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                else if (animate) AndroidView(
+                if (!artworkReady) Box(modifier, contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                else AndroidView(
                     factory = { WitchPlayerView(it).apply { setArtworkOnly(true) } }, modifier = modifier,
-                    update = { view -> view.update(state.song?.name.orEmpty(), state.playing, state.buffering, position, state.duration,
+                    update = { view ->
+                        view.setMotionEnabled(animate)
+                        view.update(state.song?.name.orEmpty(), state.playing, state.buffering, state.playRequested, position, state.duration,
                         object : WitchPlayerView.Controls {
                             override fun playPause() = model.playPause()
                             override fun previous() = model.previous()
@@ -67,7 +67,6 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
                             override fun seek(position: Long) = model.seek(position)
                             override fun queue() { queue = true }
                         }) })
-                else AsyncImage("file:///android_asset/elaina-layer.png", null, modifier, contentScale = ContentScale.Fit)
             },
             controls = {
                 PlayerTransport(state, position, seeking, { seeking = it }, {
@@ -163,8 +162,8 @@ internal fun PlayerTransport(state: Playback, position: Long, seeking: Float?, s
             verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = previous, enabled = state.queue.size > 1) { Icon(Icons.Default.SkipPrevious, "上一首", Modifier.size(34.dp)) }
             FilledIconButton(onClick = playPause, modifier = Modifier.size(64.dp)) { Icon(
-                if (state.playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                if (state.playing) "暂停" else "播放", Modifier.size(38.dp)) }
+                if (state.playRequested) Icons.Default.Pause else Icons.Default.PlayArrow,
+                if (state.playRequested) "暂停" else "播放", Modifier.size(38.dp)) }
             IconButton(onClick = next, enabled = state.queue.size > 1) { Icon(Icons.Default.SkipNext, "下一首", Modifier.size(34.dp)) }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {

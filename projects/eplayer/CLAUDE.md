@@ -24,9 +24,12 @@ JDK 21，SDK Platform 37.0，Build Tools 36.0.0；targetSdk 36。正常包 app.e
 
 ```sh
 ./gradlew assembleStandardDebug assembleStandardDebugAndroidTest -PwithRust=false
-./gradlew assembleStandardRelease assembleStandardReleaseAndroidTest -PwithRust=false -PtestBuildType=release
+./gradlew testStandardFastReleaseUnitTest assembleStandardFastRelease assembleStandardFastReleaseAndroidTest -PwithRust=false -PtestBuildType=fastRelease
+./gradlew assembleStandardRelease -PwithRust=false
 ```
 
 测试源码在 app/src/androidTest。eplayer-preview 工作流先构建，再在 Android 16 加速模拟器验证普通版，保留单独的结果和组件渲染；不自动登录真实账号，不把自用模块嵌入普通版。不要反复强制完整 speed 预编译，不把大构建和慢速本地模拟器抢占同一资源。
 
 做播放器或 UI 改动要执行相关构建和检查；纯交接文档变更无需安装设备。提交前运行根目录检查及相关测试，及时 commit/push。Release 的公开发布需遵守实际审批结果，已有被拒绝交付不能绕过审批重传。
+
+CI 的完整 Instrumentation 使用非调试 fastRelease。R8 release 另做构建和无 Instrumentation 的冷启动检查：测试框架共享 Kotlin/Compose 类，不能把这些类被 R8 删除后的测试运行器启动失败当作应用功能验收。不要为测试框架盲目扩大生产 keep 规则，也不能把 fastRelease 结果说成 R8 全功能通过。

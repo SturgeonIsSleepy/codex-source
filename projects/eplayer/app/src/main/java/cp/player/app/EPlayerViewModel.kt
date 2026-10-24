@@ -12,6 +12,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
+import cp.player.core.playback.togglePlayback
 import cp.player.manager.DownloadRegistry
 import cp.player.manager.WitchPlaylist
 import cp.player.model.Song
@@ -32,7 +33,7 @@ import kotlinx.coroutines.withContext
 
 data class Playback(val song: Song? = null, val playing: Boolean = false, val buffering: Boolean = false,
     val position: Long = 0, val duration: Long = 0, val queue: List<Song> = emptyList(),
-    val shuffle: Boolean = false, val repeat: Int = Player.REPEAT_MODE_OFF, val error: String? = null, val source: String? = null, val remoteId: String? = null)
+    val shuffle: Boolean = false, val repeat: Int = Player.REPEAT_MODE_OFF, val error: String? = null, val source: String? = null, val remoteId: String? = null, val playRequested: Boolean = playing)
 
 class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private val catalog by lazy { LibraryStore(app) }
@@ -93,7 +94,8 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
             player.playbackState == Player.STATE_BUFFERING, player.currentPosition.coerceAtLeast(0),
             player.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0,
             (0 until player.mediaItemCount).map { player.getMediaItemAt(it).toSong() },
-            player.shuffleModeEnabled, player.repeatMode, player.playerError?.message, player.currentMediaItem?.mediaMetadata?.extras?.getString("source"), player.currentMediaItem?.mediaMetadata?.extras?.getString("remoteId"))
+            player.shuffleModeEnabled, player.repeatMode, player.playerError?.message, player.currentMediaItem?.mediaMetadata?.extras?.getString("source"), player.currentMediaItem?.mediaMetadata?.extras?.getString("remoteId"),
+            playRequested = player.playWhenReady && player.playbackState != Player.STATE_ENDED && player.playerError == null)
         position.value = player.currentPosition.coerceAtLeast(0)
         restartTicker()
     }
@@ -180,7 +182,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
             finally { loadingRadio = false }
         }
     }
-    fun playPause() { controller?.let { if (it.isPlaying) it.pause() else { if (it.playbackState == Player.STATE_IDLE) it.prepare(); if (it.playbackState == Player.STATE_ENDED) it.seekToDefaultPosition(); it.play() } } }
+    fun playPause() { controller?.togglePlayback() }
     fun previous() { controller?.seekToPreviousMediaItem() }
     fun next() { controller?.seekToNextMediaItem() }
     fun seek(position: Long) { controller?.seekTo(position); publish() }

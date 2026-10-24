@@ -14,6 +14,9 @@ final class CharacterMotion {
         step(seconds,playing,rhythm,positionMs,Float.NaN);
     }
     void step(float seconds,boolean playing,AudioRhythm rhythm,int positionMs,float liveEnergy) {
+        step(seconds,playing,rhythm,positionMs,liveEnergy,playing);
+    }
+    void step(float seconds,boolean playing,AudioRhythm rhythm,int positionMs,float liveEnergy,boolean eyesClosed) {
         float dt=Math.max(0,Math.min(seconds,.12f));
         boolean live=Float.isFinite(liveEnergy);
         float targetEnergy=rhythm!=null?rhythm.level(positionMs):live?liveEnergy:.35f;
@@ -45,7 +48,7 @@ final class CharacterMotion {
                 secondary[i]+=secondaryVelocity[i]*h;
             }
         }
-        if(playing) eyeOpen=Math.max(0,eyeOpen-dt/.18f);
+        if(eyesClosed) eyeOpen=Math.max(0,eyeOpen-dt/.18f);
         else eyeOpen=Math.min(1,eyeOpen+dt/.26f);
         if(!playing && strength<.001f) strength=0;
         if(strength==0 && Math.abs(torso)<.001f && Math.abs(velocity)<.003f) torso=velocity=0;
@@ -65,8 +68,13 @@ final class CharacterMotion {
     float bodyAngle() { return 0; }
     float bodyX() { return 0; }
     float bodyY() { return 0; }
-    boolean transitioning(boolean playing) {
-        if(strength>0 || Math.abs(torso)>.001f || Math.abs(velocity)>.001f || Math.abs(eyeOpen-(playing?0:1))>.001f) return true;
+    void settle(boolean eyesClosed) {
+        strength=torso=velocity=0;phase=breathTime=0;
+        eyeOpen=eyesClosed?0:1;
+        java.util.Arrays.fill(secondary,0);java.util.Arrays.fill(secondaryVelocity,0);
+    }
+    boolean transitioning(boolean eyesClosed) {
+        if(strength>0 || Math.abs(torso)>.001f || Math.abs(velocity)>.001f || Math.abs(eyeOpen-(eyesClosed?0:1))>.001f) return true;
         for(int i=0;i<secondary.length;i++) if(secondary[i]!=0 || secondaryVelocity[i]!=0) return true;
         return false;
     }

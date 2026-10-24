@@ -69,4 +69,50 @@ public class ArtIntegrityTest {
         assertEquals(1,motion.eyeOpen,0);assertEquals(0,motion.torsoAngle(),.001f);
         assertFalse(motion.transitioning(false));
     }
+    @Test public void bufferingKeepsEyesClosedWhileMotionSettles(){
+        CharacterMotion motion=new CharacterMotion();
+        for(int i=0;i<360;i++)motion.step(1/60f,true);
+        for(int i=0;i<720;i++)motion.step(1/60f,false,null,0,Float.NaN,true);
+        assertEquals(0,motion.eyeOpen,0);assertEquals(0,motion.torsoAngle(),.001f);
+        assertFalse(motion.transitioning(true));
+        for(int i=0;i<60;i++)motion.step(1/60f,false,null,0,Float.NaN,false);
+        assertEquals(1,motion.eyeOpen,0);
+    }
+    @Test public void staticModePreservesTheRepairedPortraitAndChangesOnlyEyelids()throws Exception {
+        final Bitmap[] frames=new Bitmap[3];
+        final java.util.concurrent.atomic.AtomicReference<Throwable> failure=new java.util.concurrent.atomic.AtomicReference<>();
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(()->{
+            try {
+                WitchPlayerView view=new WitchPlayerView(context);view.setArtworkOnly(true);
+                int width=android.view.View.MeasureSpec.makeMeasureSpec(865,android.view.View.MeasureSpec.EXACTLY);
+                int height=android.view.View.MeasureSpec.makeMeasureSpec(1280,android.view.View.MeasureSpec.EXACTLY);
+                view.measure(width,height);view.layout(0,0,865,1280);
+                for(int i=0;i<3;i++) {
+                    if(i>0)view.setMotionEnabled(false);
+                    view.update("fixture",false,i==1,i==1,0,0,null);
+                    frames[i]=Bitmap.createBitmap(865,1280,Bitmap.Config.ARGB_8888);
+                    view.draw(new Canvas(frames[i]));
+                }
+            }catch(Throwable error){failure.set(error);}
+        });
+        if(failure.get()!=null)throw new AssertionError(failure.get());
+        int[][] pixels=new int[3][865*1280];
+        for(int i=0;i<3;i++)frames[i].getPixels(pixels[i],0,865,0,0,865,1280);
+        assertArrayEquals("Disabling motion and returning to pause must keep the same repaired portrait",pixels[0],pixels[2]);
+        Bitmap original=asset("elaina-layer.png");
+        float sx=663f/original.getWidth(),sy=994f/original.getHeight();original.recycle();
+        Rect left=new Rect((int)(91+472*sx)-3,(int)(183+350*sy)-3,(int)Math.ceil(91+516*sx)+3,(int)Math.ceil(183+380*sy)+3);
+        Rect right=new Rect((int)(91+547*sx)-3,(int)(183+341*sy)-3,(int)Math.ceil(91+590*sx)+3,(int)Math.ceil(183+377*sy)+3);
+        int changed=0;
+        for(int y=0;y<1280;y++)for(int x=0;x<865;x++) {
+            int i=y*865+x;
+            if(pixels[0][i]!=pixels[1][i]){
+                changed++;
+                assertTrue("Buffering/static expressions must not change face, hair, hat or hands",left.contains(x,y)||right.contains(x,y));
+            }
+        }
+        assertTrue("Requested playback still closes eyes with motion disabled",changed>20);
+        for(Bitmap frame:frames)frame.recycle();
+    }
+
 }

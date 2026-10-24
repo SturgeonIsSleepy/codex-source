@@ -32,7 +32,9 @@ class PlayerLayoutTest {
     @Test fun landscapeSeparatesArtworkAndControls() = checkLayout(true, 1f)
     @Test fun landscapeLargeTextKeepsEveryActionReachable() = checkLayout(true, 2f)
 
-    private fun checkLayout(wide: Boolean, fontScale: Float) {
+    @Test fun bufferingRequestStillOffersPause() = checkLayout(false, 1f, requested = true)
+
+    private fun checkLayout(wide: Boolean, fontScale: Float, requested: Boolean = false) {
         compose.runOnUiThread {
             compose.activity.requestedOrientation = if (wide) ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
@@ -41,7 +43,7 @@ class PlayerLayoutTest {
         }
         val clicks = AtomicInteger()
         val action = { clicks.incrementAndGet(); Unit }
-        val state = Playback(song = song, duration = 60000, queue = listOf(song, song.copy(id = "second")))
+        val state = Playback(song = song, buffering = requested, duration = 60000, queue = listOf(song, song.copy(id = "second")), playRequested = requested)
         // MainActivity is already a Compose host. Replacing its content avoids a test-only
         // Activity or launcher entry being included in production/release builds.
         compose.runOnUiThread {
@@ -70,7 +72,7 @@ class PlayerLayoutTest {
             assertTrue("The entire title block precedes the artwork", metadata.bottom <= artwork.top)
             compose.onNodeWithTag("player-transport").assertIsDisplayed()
         }
-        for (description in listOf("播放", "上一首", "下一首", "随机播放", "喜欢", "循环关闭")) {
+        for (description in listOf(if (requested) "暂停" else "播放", "上一首", "下一首", "随机播放", "喜欢", "循环关闭")) {
             val button = compose.onNodeWithContentDescription(description)
             if (wide) button.performScrollTo()
             button.assertIsDisplayed().assertHasClickAction().performClick()
@@ -83,7 +85,7 @@ class PlayerLayoutTest {
         // Keep a native component render for visual review; it is not an audio test result.
         val folder = File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null), "layout-check").apply { mkdirs() }
         val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
-        File(folder, "${if (wide) "landscape" else "portrait"}-$fontScale.png").outputStream().use {
+        File(folder, "${if (wide) "landscape" else "portrait"}-$fontScale${if (requested) "-buffering" else ""}.png").outputStream().use {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
         }
     }

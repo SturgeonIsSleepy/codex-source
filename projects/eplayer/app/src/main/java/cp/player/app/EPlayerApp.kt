@@ -121,7 +121,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                             }
                             IconButton(onClick = model::playPause) {
                                 if (state.buffering) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-                                else Icon(if (state.playing) Icons.Default.Pause else Icons.Default.PlayArrow, if (state.playing) "暂停" else "播放")
+                                else Icon(if (state.playRequested) Icons.Default.Pause else Icons.Default.PlayArrow, if (state.playRequested) "暂停" else "播放")
                             }
                             IconButton(onClick = model::next, enabled = state.queue.size > 1) { Icon(Icons.Default.SkipNext, "下一首") }
                         }

@@ -23,6 +23,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import cp.player.MainActivity
 import cp.player.app.QueueStore
+import cp.player.core.playback.togglePlayback
 import cp.player.engine.CPPlayerManager
 import cp.player.util.UserPreferences
 import cp.player.widget.MusicWidgetProvider
@@ -116,7 +117,7 @@ class MusicService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            "ACTION_TOGGLE_PLAY" -> if (player.isPlaying) player.pause() else { if (player.playbackState == Player.STATE_IDLE) player.prepare(); player.play() }
+            "ACTION_TOGGLE_PLAY" -> player.togglePlayback()
             "ACTION_NEXT" -> player.seekToNextMediaItem()
             "ACTION_PREVIOUS" -> player.seekToPreviousMediaItem()
         }

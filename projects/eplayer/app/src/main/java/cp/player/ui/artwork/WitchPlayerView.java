@@ -22,7 +22,7 @@ public final class WitchPlayerView extends FrameLayout {
     private final Button previous,play,next,title;
     private final SeekBar seek,volume;
     private final android.media.AudioManager audio;
-    private boolean playing,buffering,dragging,visible=true;
+    private boolean playing,playRequested,buffering,dragging,visible=true,motionEnabled=true;
     private String songTitle="リテラチュア";
     private long position,duration;
     private float scale,left,top;
@@ -35,6 +35,10 @@ public final class WitchPlayerView extends FrameLayout {
         previous.setVisibility(visibility);play.setVisibility(visibility);next.setVisibility(visibility);
         title.setVisibility(visibility);seek.setVisibility(visibility);volume.setVisibility(visibility);
         art.invalidate();
+    }
+    public void setMotionEnabled(boolean value) {
+        if(motionEnabled==value)return;
+        motionEnabled=value;art.lastFrame=0;art.invalidate();
     }
     public void setAudioUri(String uri) {
         // Live PCM metering already drives motion; do not decode the entire track a second time.
@@ -90,9 +94,12 @@ public final class WitchPlayerView extends FrameLayout {
         });
     }
     public void update(String name,boolean isPlaying,boolean isBuffering,long current,long total,Controls callbacks){
-        songTitle=name; playing=isPlaying;buffering=isBuffering;position=current;duration=Math.max(0,total);controls=callbacks;
+        update(name,isPlaying,isBuffering,isPlaying,current,total,callbacks);
+    }
+    public void update(String name,boolean isPlaying,boolean isBuffering,boolean requested,long current,long total,Controls callbacks){
+        songTitle=name; playing=isPlaying;playRequested=requested;buffering=isBuffering;position=current;duration=Math.max(0,total);controls=callbacks;
         if(!dragging)seek.setProgress(duration>0?(int)(10000*position/duration):0);
-        seek.setEnabled(duration>0);play.setContentDescription(playing?"暂停":"播放");
+        seek.setEnabled(duration>0);play.setContentDescription(playRequested?"暂停":"播放");
         title.setContentDescription(name+"，播放队列");
         volume.setProgress(audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC));
         art.invalidate();
@@ -127,13 +134,16 @@ public final class WitchPlayerView extends FrameLayout {
         Art(Context c){super(c);setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);}
         void crop(Canvas c,int x,int y,int x2,int y2){c.drawBitmap(reference,new Rect(x,y,x2,y2),new RectF(x,y,x2,y2),paint);}
         @Override protected void onDraw(Canvas c){
-            long now=SystemClock.uptimeMillis();motion.step(lastFrame==0?0:(now-lastFrame)/1000f,playing,rhythm,(int)Math.min(Integer.MAX_VALUE,position),cp.player.engine.MusicPulse.sample());lastFrame=now;
+            long now=SystemClock.uptimeMillis();
+            if(motionEnabled)motion.step(lastFrame==0?0:(now-lastFrame)/1000f,playing,rhythm,(int)Math.min(Integer.MAX_VALUE,position),cp.player.engine.MusicPulse.sample(),playRequested);
+            else motion.settle(playRequested);
+            lastFrame=now;
             c.save();c.translate(left,top);c.scale(scale,scale);
             paint.setColor(Color.BLACK);paint.setStyle(Paint.Style.FILL);paint.setAlpha(255);
             c.drawBitmap(sky,null,new RectF(0,0,865,1280),paint);
             if(artworkOnly){
                 rig.draw(c,paint,motion);c.restore();
-                if(visible&&(playing||motion.transitioning(playing)))postInvalidateDelayed(33);
+                if(visible&&motionEnabled&&(playing||motion.transitioning(playRequested)))postInvalidateDelayed(33);
                 return;
             }
             paint.setTypeface(brush);paint.setTextSize(44);
@@ -148,7 +158,7 @@ public final class WitchPlayerView extends FrameLayout {
             c.drawCircle(84+680*seek.getProgress()/10000f,939,6.7f,paint);
             crop(c,175,1033,254,1115);crop(c,599,1032,677,1115);
             Path icon=new Path();
-            if(playing){
+            if(playRequested){
                 icon.moveTo(402,1032);icon.lineTo(423,1035);icon.lineTo(421,1109);icon.lineTo(402,1115);icon.close();
                 icon.moveTo(443,1035);icon.lineTo(464,1031);icon.lineTo(463,1114);icon.lineTo(442,1109);icon.close();
             }else{icon.moveTo(395,1026);icon.lineTo(481,1073);icon.lineTo(395,1120);icon.close();}
@@ -161,7 +171,7 @@ public final class WitchPlayerView extends FrameLayout {
             paint.setTypeface(brush);paint.setTextSize(25);c.drawText(time(dragging?duration*seek.getProgress()/10000:position),84,975,paint);
             paint.setTextAlign(Paint.Align.RIGHT);c.drawText(time(duration),764,975,paint);paint.setTextAlign(Paint.Align.LEFT);
             if(buffering){paint.setTypeface(hand);paint.setTextSize(22);c.drawText("加载中…",85,814,paint);}
-            c.restore();if(visible&&(playing||motion.transitioning(playing)))postInvalidateDelayed(33);
+            c.restore();if(visible&&motionEnabled&&(playing||motion.transitioning(playRequested)))postInvalidateDelayed(33);
         }
         String time(long ms){long secs=Math.max(0,ms)/1000;return String.format(Locale.ROOT,"%d:%02d",secs/60,secs%60);}
     }

@@ -41,7 +41,7 @@ jobs:
       - name: Build preview and device tests
         run: |
           bash tools/prepare-local-signing.sh
-          bash gradlew assembleStandardRelease assembleInternalRelease assembleStandardReleaseAndroidTest assembleInternalReleaseAndroidTest -PwithRust=false -PtestBuildType=release --console=plain
+          bash gradlew testStandardFastReleaseUnitTest assembleStandardRelease assembleInternalRelease assembleStandardFastRelease assembleStandardFastReleaseAndroidTest -PwithRust=false -PtestBuildType=fastRelease --console=plain
       - name: Upload preview and device tests
         uses: actions/upload-artifact@v4
         with:
@@ -51,8 +51,8 @@ jobs:
             projects/eplayer/app/build/outputs/apk/standard/release/*x86_64*.apk
             projects/eplayer/app/build/outputs/apk/internal/release/*universal*.apk
             projects/eplayer/app/build/outputs/apk/internal/release/*x86_64*.apk
-            projects/eplayer/app/build/outputs/apk/androidTest/standard/release/*.apk
-            projects/eplayer/app/build/outputs/apk/androidTest/internal/release/*.apk
+            projects/eplayer/app/build/outputs/apk/standard/fastRelease/*x86_64*.apk
+            projects/eplayer/app/build/outputs/apk/androidTest/standard/fastRelease/*.apk
           if-no-files-found: error
   device-check:
     needs: build
