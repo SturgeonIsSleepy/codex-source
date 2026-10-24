@@ -66,6 +66,14 @@ class LibraryStore(private val context: Context) {
         } finally { temporary.delete() }
     }
 
+    @Synchronized fun removeImported(track: Track) {
+        val index = imports.indexOfFirst { it.song.id == track.song.id }
+        require(index >= 0) { "此文件不属于导入曲库" }
+        val removed = imports.removeAt(index)
+        try { save() } catch (error: Exception) { imports.add(index, removed); throw error }
+        File(context.filesDir, "audio/${track.song.id}.audio").delete()
+    }
+
     fun scan(): List<Track> {
         val result = mutableListOf<Track>()
         context.contentResolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,

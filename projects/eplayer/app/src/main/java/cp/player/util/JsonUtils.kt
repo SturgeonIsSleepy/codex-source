@@ -31,7 +31,7 @@ object JsonUtils {
         val obj = item.get("songInfo")?.obj ?: item
 
         val artists = obj.get("ar")?.arr ?: obj.get("artists")?.arr
-        val artistObj = artists?.get(0)?.obj
+        val artistObj = artists?.firstOrNull()?.obj
         val artistName = artistObj?.get("name")?.str ?: "Unknown"
         val artistId = artistObj?.get("id")?.str
         val album = obj.get("al")?.obj ?: obj.get("album")?.obj

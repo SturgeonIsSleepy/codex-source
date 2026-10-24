@@ -3,7 +3,6 @@ package cp.player.provider
 import android.content.Context
 import android.util.Log
 import cp.player.util.DebugLog
-import cp.player.manager.ProviderSettingsManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -148,10 +147,6 @@ object ProviderManager {
                 currentPort = actualPort
                 try {
                     provider.startServer(context, actualPort)
-                    // 同步设置
-                    CoroutineScope(Dispatchers.IO).launch {
-                        ProviderSettingsManager.syncLocalSettingsOnStart(context, provider)
-                    }
                 } catch (e: Throwable) {
                     // 捕获 Throwable 以处理 JNI 原生崩溃（如 UnsatisfiedLinkError、SIGSEGV 转换的 Error）
                     Log.e(TAG, "Error starting new provider", e)
@@ -219,7 +214,7 @@ object ProviderManager {
      * 自动在 [Dispatchers.IO] 上执行，避免阻塞调用线程。
      * 自动通过 [BackendProvider.apiMap] 映射方法名。
      * 如果方法被映射为 "unsupported"，返回不支持提示。
-     * 监控记录由上层 [cp.player.api.MusicApiServiceImpl.callApi] 统一处理。
+     * 监控记录由上层 [cp.player.app.SourceStore.call] 统一处理。
      */
     suspend fun callApi(method: String, params: Map<String, String>): String = withContext(Dispatchers.IO) {
         val provider = currentProvider ?: return@withContext """{"code": 500, "msg": "No active provider"}"""

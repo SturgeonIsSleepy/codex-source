@@ -126,6 +126,16 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
             finally { reloadLibrary(); importing.value = false }
         }
     }
+    fun removeImported(track: Track) = viewModelScope.launch {
+        try {
+            controller?.let { player ->
+                val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == track.song.id }
+                if (index != null) player.removeMediaItem(index)
+            }
+            withContext(Dispatchers.IO) { catalog.removeImported(track) }
+            reloadLibrary()
+        } catch (error: Exception) { message.value = error.message ?: "删除失败" }
+    }
     fun scanLibrary() = viewModelScope.launch {
         try { scanned = withContext(Dispatchers.IO) { catalog.scan() }; reloadLibrary() }
         catch (error: Exception) { message.value = error.message ?: "读取失败" }

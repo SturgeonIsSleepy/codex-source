@@ -2,7 +2,7 @@ package cp.player
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import cp.player.api.MusicApiServiceFactory
+import cp.player.app.SourceStore
 import cp.player.provider.ModuleManager
 import cp.player.provider.ProviderManager
 import kotlinx.coroutines.runBlocking
@@ -81,10 +81,9 @@ class ProviderIntegrationTest {
             val provider = ModuleManager.getProvider(id)
             assertNotNull(provider)
             assertTrue(ProviderManager.switchProvider(provider, context, save = false))
-            val api = MusicApiServiceFactory.instance
-            val search = api.search("旅途", 1)
+            val search = SourceStore.call(context, id, "cloudsearch", mapOf("keywords" to "旅途", "type" to "1"))
             assertEquals("旅途测试音", search.getAsJsonObject("result").getAsJsonArray("songs")[0].asJsonObject.get("name").asString)
-            val urls = api.callApi("song/url/v1", mapOf("id" to "987654"))
+            val urls = SourceStore.call(context, id, "song/url/v1", mapOf("id" to "987654"))
             assertTrue(urls.getAsJsonArray("data")[0].asJsonObject.get("url").asString.endsWith("/fixture.wav"))
             assertTrue("Provider API map must be applied", requests.contains("/search"))
             assertTrue("Unicode search text must survive the provider transport", queries.contains("旅途"))

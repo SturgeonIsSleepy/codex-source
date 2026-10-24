@@ -102,10 +102,10 @@ class MusicService : MediaSessionService() {
                         engine = requested
                         UserPreferences.saveAudioEngine(this@MusicService, engine)
                         player = CPPlayerManager.createPlayer(this@MusicService, engine)
-                        if (items.isNotEmpty()) { player.setMediaItems(items, index, position); player.prepare(); player.playWhenReady = playing }
                         player.addListener(listener)
                         session.setPlayer(player)
                         previous.release()
+                        if (items.isNotEmpty()) { player.setMediaItems(items, index, position); player.prepare(); player.playWhenReady = playing }
                     }
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }

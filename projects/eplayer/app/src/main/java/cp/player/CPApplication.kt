@@ -18,8 +18,6 @@ class CPApplication : Application(), SingletonImageLoader.Factory {
 
         android.util.Log.i("CPApplication", "Application onCreate")
         cp.player.manager.DownloadRegistry.init(this)
-        cp.player.manager.LocalMusicManager.init(this)
-        cp.player.api.MusicApiServiceFactory.init(this)
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO).launch {
             cp.player.app.SourceStore.initialize(this@CPApplication)
         }

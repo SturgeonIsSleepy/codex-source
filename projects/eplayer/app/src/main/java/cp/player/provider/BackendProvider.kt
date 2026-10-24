@@ -19,7 +19,7 @@ import android.content.Context
  *
  * @see ProviderManager 管理 Provider 生命周期和切换
  * @see ModuleManager 从模块包加载 Provider
- * @see cp.player.api.MusicApiService 统一的 API 调用入口
+ * @see cp.player.app.SourceStore 统一的 API 调用入口
  */
 interface BackendProvider {
     /** Provider 唯一标识符（如 "netease"、"my-custom"） */

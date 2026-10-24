@@ -66,6 +66,7 @@ fun EPlayerApp(model: EPlayerViewModel, showPlayer: Boolean, onShowPlayer: (Bool
     var onlyFavorites by rememberSaveable { mutableStateOf(false) }
     var settings by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<BackendProvider?>(null) }
+    var pendingTrackDelete by remember { mutableStateOf<Track?>(null) }
     var witchTarget by rememberSaveable { mutableIntStateOf(0) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -214,6 +215,7 @@ fun EPlayerApp(model: EPlayerViewModel, showPlayer: Boolean, onShowPlayer: (Bool
                         IconButton(onClick = { model.favorite(track.song) }) {
                             Icon(if (track.song.id in favorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "收藏 ${track.song.name}")
                         }
+                        if (track.song.id.startsWith("import_")) IconButton(onClick = { pendingTrackDelete = track }) { Icon(Icons.Default.DeleteOutline, "删除 ${track.song.name}") }
                     }
                 }
             } else {
@@ -245,6 +247,10 @@ fun EPlayerApp(model: EPlayerViewModel, showPlayer: Boolean, onShowPlayer: (Bool
     pendingDelete?.let { source -> AlertDialog(onDismissRequest = { pendingDelete = null }, title = { Text("移除 ${source.name}？") },
         confirmButton = { TextButton(onClick = { model.removeSource(source); pendingDelete = null }) { Text("移除") } },
         dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("取消") } }) }
+    pendingTrackDelete?.let { track -> AlertDialog(onDismissRequest = { pendingTrackDelete = null },
+        title = { Text("删除 ${track.song.name}？") },
+        confirmButton = { TextButton(onClick = { model.removeImported(track); pendingTrackDelete = null }) { Text("删除") } },
+        dismissButton = { TextButton(onClick = { pendingTrackDelete = null }) { Text("取消") } }) }
     if (showPlayer) Player(model, state) { onShowPlayer(false) }
 }
 
