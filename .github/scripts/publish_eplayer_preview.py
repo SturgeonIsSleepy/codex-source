@@ -122,8 +122,8 @@ Native libraries, raw validation logs/screenshots including failed runs, and SHA
     files = sorted(path for path in OUT.iterdir() if path.is_file() and path.name != 'SHA256SUMS')
     (OUT / 'SHA256SUMS').write_text(''.join(f'{digest(path)}  {path.name}\n' for path in files))
     files.append(OUT / 'SHA256SUMS')
-    release = json.loads(gh('api', f'repos/{REPO}/releases/tags/{TAG}'))
-    if release['target_commitish'] != SOURCE:
+    release = json.loads(gh('api', f'repos/{REPO}/releases/423603768'))
+    if release['tag_name'] != TAG or release['target_commitish'] != SOURCE:
         raise RuntimeError('Existing release targets different source')
     existing = {asset['name']: asset for asset in release['assets']}
     if set(existing) - {path.name for path in files}:
