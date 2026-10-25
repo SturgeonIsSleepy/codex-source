@@ -1,14 +1,14 @@
-name: Publish verified ePlayer preview # exact CI candidate
+name: Publish verified ePlayer preview
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/eplayer-publish-preview.yml']
+    paths: ['.github/eplayer-delivery.json']
   workflow_dispatch:
 permissions:
   actions: read
   contents: write
 concurrency:
-  group: eplayer-v0.3.0-delivery
+  group: eplayer-delivery
   cancel-in-progress: false
 jobs:
   publish:
@@ -16,24 +16,34 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - name: Validate source and preserve an already published delivery
+        id: manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/publish_eplayer_preview.py inspect
       - uses: actions/setup-java@v4
+        if: steps.manifest.outputs.published == 'false'
         with:
           distribution: temurin
           java-version: '21'
       - uses: actions/download-artifact@v4
+        if: steps.manifest.outputs.published == 'false'
         with:
-          name: eplayer-preview-a62e0fb60a1aa3215cbb924f5204698153cc738f
-          run-id: 40222561908
+          name: ${{ steps.manifest.outputs.artifact }}
+          run-id: ${{ steps.manifest.outputs.run_id }}
           github-token: ${{ github.token }}
           path: delivery-input
       - name: Prepare the unchanged verified candidate
+        if: steps.manifest.outputs.published == 'false'
         run: python3 .github/scripts/publish_eplayer_preview.py prepare
       - name: Enable emulator acceleration
+        if: steps.manifest.outputs.published == 'false'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Verify exact universal delivery APK on Android 16
+        if: steps.manifest.outputs.published == 'false'
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 36
@@ -42,14 +52,15 @@ jobs:
           disable-animations: true
           script: python3 .github/scripts/publish_eplayer_preview.py smoke
       - name: Archive evidence and publish only after verification
+        if: steps.manifest.outputs.published == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 .github/scripts/publish_eplayer_preview.py publish
       - name: Preserve delivery evidence even when publishing fails
-        if: always()
+        if: always() && steps.manifest.outputs.published != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: eplayer-v0.3.0-delivery-${{ github.run_id }}
+          name: eplayer-delivery-${{ github.run_id }}
           path: |
             device-evidence/
             delivery/*.json
