@@ -2,6 +2,13 @@ package cp.player.app
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.Uri
+import cp.player.core.audio.EqualizerProfile
+import cp.player.util.AutoEqParser
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withContext
 import cp.player.engine.ExoAudioFxManager
 import cp.player.util.DspPreferences as Prefs
 import cp.player.util.PeqBand
@@ -20,10 +27,31 @@ internal data class SoundSettingsState(
 )
 
 /** Application-layer preference adapter. UI sends edits; audio engines own effect application. */
-internal class SoundSettingsStore(context: Context, scope: CoroutineScope) : AutoCloseable {
+internal class SoundSettingsStore(context: Context, private val scope: CoroutineScope) : AutoCloseable {
     private val app = context.applicationContext
     private val _state = MutableStateFlow(read())
     val state = _state.asStateFlow()
+    private val _profile = MutableStateFlow<EqualizerProfile?>(null)
+    val profile = _profile.asStateFlow()
+    private val _importIssue = MutableStateFlow<String?>(null)
+    val importIssue = _importIssue.asStateFlow()
+    private var importJob: Job? = null
+    fun dismissImport() { importJob?.cancel(); _profile.value = null; _importIssue.value = null }
+    fun previewProfile(uri: Uri) {
+        dismissImport()
+        importJob = scope.launch {
+            try { _profile.value = withContext(Dispatchers.IO) { AutoEqParser.readProfile(app, uri) } }
+            catch (cancel: CancellationException) { throw cancel }
+            catch (error: Exception) { _importIssue.value = error.message ?: "无法导入均衡器文件" }
+        }
+    }
+    fun applyProfileBands() {
+        val imported = _profile.value ?: return
+        if (state.value.engine != 1) { _importIssue.value = "请切换到 Rust 音频后导入"; _profile.value = null; return }
+        Prefs.setPeqBands(app, imported.bands.map { PeqBand(it.frequency, it.gain, it.q) })
+        Prefs.setEqEnabled(app, true)
+        dismissImport()
+    }
     private val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> refresh() }
     init {
         Prefs.addListener(app, listener)
@@ -44,7 +72,7 @@ internal class SoundSettingsStore(context: Context, scope: CoroutineScope) : Aut
             else caps.frequencies.mapIndexed { index, freq -> SoundBand(freq.toFloat(),
                 if (Prefs.getExoPreset(app) >= 0) ExoAudioFxManager.getBandLevel(index.toShort()) / 100f
                 else (gains[index.toShort()] ?: 0) / 100f) },
-            if (native) -12f else caps.minGain, if (native) 12f else caps.maxGain,
+            if (native) -24f else caps.minGain, if (native) 24f else caps.maxGain,
             Prefs.getFxEnabled(app), Prefs.getFxSize(app), Prefs.getFxMix(app), Prefs.getFxWidth(app),
             Prefs.getExoVirtualizerEnabled(app), Prefs.getExoVirtualizerStrength(app) / 1000f,
             Prefs.getExoBassBoostEnabled(app), Prefs.getExoBassBoostStrength(app) / 1000f,
@@ -88,6 +116,7 @@ internal class SoundSettingsStore(context: Context, scope: CoroutineScope) : Aut
         }
     }
     override fun close() {
+        importJob?.cancel()
         Prefs.removeListener(app, listener)
         UserPreferences.getPrefs(app).unregisterOnSharedPreferenceChangeListener(listener)
     }

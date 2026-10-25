@@ -1,6 +1,8 @@
 package cp.player.app
 
 import android.os.SystemClock
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -20,6 +22,10 @@ import kotlinx.coroutines.isActive
 @Composable
 internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
     val sound by model.soundSettings.state.collectAsState()
+    val store = model.soundSettings
+    val profile by store.profile.collectAsState()
+    val importIssue by store.importIssue.collectAsState()
+    val importFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(store::previewProfile) }
     var showSound by remember { mutableStateOf(false) }
     Dialog(onDismissRequest = { if (showSound) showSound = false else close() },
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
@@ -31,12 +37,26 @@ internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
                 }
                 HorizontalDivider()
                 if (showSound) {
-                    val store = model.soundSettings
-                    SoundSettingsScreen(sound, store::equalizer, store::band, store::flat, store::toggle, store::amount)
+                    SoundSettingsScreen(sound, store::equalizer, store::band, store::flat, store::toggle, store::amount) { importFile.launch(arrayOf("text/*")) }
                 } else PlaybackSettings(model, sound.engine) { showSound = true }
             }
         }
     }
+    profile?.let { imported ->
+        AlertDialog(onDismissRequest = store::dismissImport, title = { Text("导入均衡器") }, text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("将替换当前 ${sound.bands.size} 段，应用文件中的 ${imported.bands.size} 段滤波器并启用均衡器。")
+                imported.preamp?.takeIf { it != 0f }?.let { Text("文件的前置增益 $it dB 尚未支持，不会应用。") }
+                imported.warnings.forEach { Text(it) }
+            }
+        }, confirmButton = { TextButton(store::applyProfileBands) { Text("仅应用频段") } },
+            dismissButton = { TextButton(store::dismissImport) { Text("取消") } })
+    }
+    importIssue?.let { issue ->
+        AlertDialog(onDismissRequest = store::dismissImport, title = { Text("导入未完成") }, text = { Text(issue) },
+            confirmButton = { TextButton(store::dismissImport) { Text("知道了") } })
+    }
+
 }
 
 @Composable

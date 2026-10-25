@@ -78,3 +78,17 @@
 第七/八阶段的 Rust 断点、错误回传和真实通知卡片点击待对应设备检查；本地 JVM 13 项及主程序/测试包构建通过。实机焦点、耳机路由、真实源账号、长时间播放、完整 R8 音乐功能和全页视觉均未验收。DSP 编辑和淡入淡出入口仍需迁移。
 
 早先 CI 40120164035 因 R8 目标剔除测试共享 Kotlin 类，未执行用例；CI 40121564864 为 23 通过、1 初始化失败，不能把这些失败覆盖为全通过。实际核对旧 0.1.1 Release 已于 2026-10-24 发布，APK 摘要一致，本轮未重传。
+
+## 声音阶段：真实 EQ（CI 40226093507）
+
+源码 54ba908a218238812ee8d31598a2cae91accd7c5；[运行](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40226093507)。Android 16 普通 fastRelease 共 27 项：26 通过、1 真实登录条件跳过，54.383 秒。release_start 为 not_requested；不能把本阶段写成完整 R8 或实机验收。
+
+新增 LiveEqualizerTest：真实原生合成 440Hz 播放，保存 EQ 设置后实时提升，关闭恢复，不暂停。原生幅度经 MusicPulse 可视归一化的读数为 baseline 0.13161638、boosted 0.18562597、disabled 0.13057631；这些是归一化幅度，并非声卡测得的声压或原始 RMS 数值。
+
+设备证据 artifact 12610979058，ZIP SHA256 b7e39fd0f28eb009e8cb729a130de0719bfac410835f905eb15e65ee3b56d83d；instrumentation.txt、instrumentation-runtime.txt、build.json 与截图在同包。其后声音页 ed74b9b 正在 CI 40226536372，不以此轮 EQ 结果代替新页面验收。
+
+## 0.3.0 精确交付
+
+[Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0)，源码 a62e0fb；原始 universal R8 APK SHA256 9106fbbee4154a4c2a4c4b877a4976d364d9e65ba514ff110b6272d69bb49d40，证书 8f89883030d7d64aecb6358b43eddeb8e9cd5ac323f8ab9916af4070186f08dc。CI 40226257524 精确安装/冷启动通过，TotalTime 1562ms。证据 artifact 12610789084 ZIP SHA256 06c1af550082f2d502613bab7a0553dead37030834b89894cb93bd9296b897a7；device-evidence/release-home.png 已实际查看，纸白/蓝天/双曲导入首页可见。对应交付截图也在 Release validation ZIP。
+
+前一发布工作流 40225961951 的交付 smoke 通过，但发布阶段按未创建 tag 查询空草稿返回 404，整轮失败，未上传附件；修复为按草稿 ID 核对，第二轮成功。旧 CLI 401 未通过读取或上传凭据解决；改用仓库授权的 Actions GITHUB_TOKEN 正常发布 CI 产物，无 Git 二进制运输、无私钥上传。签名与旧 0.1.1 不兼容，后续稳定升级签名仍是已知缺口。

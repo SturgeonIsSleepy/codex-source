@@ -21,11 +21,12 @@ import java.util.Locale
 @Composable
 internal fun SoundSettingsScreen(state: SoundSettingsState, equalizer: (Boolean) -> Unit,
     gain: (Int, Float) -> Unit, flat: () -> Unit, toggle: (String, Boolean) -> Unit,
-    amount: (String, Float) -> Unit) {
+    amount: (String, Float) -> Unit, importProfile: (() -> Unit)? = null) {
     Column(Modifier.fillMaxSize().testTag("sound-settings").verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(if (state.engine == 1) "Rust 音频 · 声音手记" else "系统音频 · 声音手记", style = MaterialTheme.typography.headlineSmall)
         Text("从平直开始，慢慢找到喜欢的声音。", style = MaterialTheme.typography.bodyMedium)
+        if (state.engine == 1 && importProfile != null) OutlinedButton(importProfile, Modifier.fillMaxWidth()) { Text("导入 AutoEQ 文本") }
         HorizontalDivider()
         EffectToggle("均衡器", state.equalizer, state.engine == 1 || state.bands.isNotEmpty(), equalizer)
         if (state.engine == 0 && state.bands.isEmpty()) {
