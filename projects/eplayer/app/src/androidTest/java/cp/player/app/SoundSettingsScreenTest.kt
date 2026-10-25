@@ -12,7 +12,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.test.platform.app.InstrumentationRegistry
 import cp.player.MainActivity
-import cp.player.engine.ExoAudioFxManager
+import cp.player.core.audio.AudioEffectCapabilities
 import cp.player.ui.theme.EPlayerTheme
 import java.io.File
 import org.junit.Assert.*
@@ -23,7 +23,7 @@ class SoundSettingsScreenTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
     private fun state(engine: Int = 1) = SoundSettingsState(engine, true,
         listOf(SoundBand(125f, 0f), SoundBand(1000f, 0f), SoundBand(8000f, 0f)), -12f, 12f,
-        true, .55f, .25f, 1f, false, 0f, false, 0f, false, 0f, ExoAudioFxManager.Capabilities())
+        true, .55f, .25f, 1f, false, 0f, false, 0f, false, 0f, AudioEffectCapabilities())
 
     @Test fun realSettingsNavigationReturnsToTheSameHome() {
         compose.onNodeWithContentDescription("设置").performClick()

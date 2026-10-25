@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
 import cp.player.core.audio.EqualizerProfile
+import cp.player.core.audio.AudioEffectCapabilities
 import cp.player.util.AutoEqParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -23,7 +24,7 @@ internal data class SoundSettingsState(
     val engine: Int, val equalizer: Boolean, val bands: List<SoundBand>, val minGain: Float, val maxGain: Float,
     val space: Boolean, val size: Float, val mix: Float, val width: Float,
     val virtualizer: Boolean, val virtualizerStrength: Float, val bass: Boolean, val bassStrength: Float,
-    val loudness: Boolean, val loudnessGain: Float, val capabilities: ExoAudioFxManager.Capabilities
+    val loudness: Boolean, val loudnessGain: Float, val capabilities: AudioEffectCapabilities
 )
 
 /** Application-layer preference adapter. UI sends edits; audio engines own effect application. */

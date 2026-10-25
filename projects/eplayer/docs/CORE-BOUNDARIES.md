@@ -67,3 +67,7 @@ SoundSettingsStore 是偏好到界面状态的应用层适配；声音编辑组�
 ## 缓存入口审计（尚未接 UI）
 
 Exo 使用服务持有的 SimpleCache（cache/media），本地/导入文件直接走 DefaultDataSource，不重复缓存；现有 clearAudioCache 会 release 后递归删目录，而既有 CacheDataSource 仍持有旧对象，不能直接接按钮。CacheManager.clearAll 将 SEARCH_HISTORY 和 LOCAL_SONGS 等持久数据也列入缓存类型，亦不能直接接“清缓存”。恢复入口前应按数据职责拆分：保留历史、账号、曲库与下载，使用会话命令序列化播放缓存清理并验证后续可继续播放。当前没有暴露或执行清理，不删除用户数据。
+
+## 第十五阶段（独立分支进行中）
+
+系统音效能力值移入 core/audio/AudioEffectCapabilities；应用状态与呈现仅传纯数据，不引用 Exo 管理器的嵌套类型。返回设置时取消未完成的 AutoEQ 读取/预览，防止离开声音页后弹出迟到的结果。既有 19 项 JVM、debug 主程序/设备测试包构建通过；尚未取得本阶段设备结果，b34e679 的通过记录仅对应第十四阶段。后续缓存操作必须以服务和存储职责明确为前提，不调用旧 release/delete 清理。

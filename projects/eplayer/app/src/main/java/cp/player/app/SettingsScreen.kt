@@ -29,13 +29,16 @@ internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
     val importFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(store::previewProfile) }
     var showSound by rememberSaveable { mutableStateOf(false) }
     DisposableEffect(store) { onDispose { store.dismissImport() } }
-    Dialog(onDismissRequest = { if (showSound) showSound = false else close() },
+    val back: () -> Unit = {
+        if (showSound) { store.dismissImport(); showSound = false } else close()
+    }
+    Dialog(onDismissRequest = back,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Surface(Modifier.fillMaxSize().testTag("settings-panel")) {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(if (showSound) "声音" else "设置", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
-                    TextButton(onClick = { if (showSound) showSound = false else close() }) { Text(if (showSound) "返回设置" else "完成") }
+                    TextButton(onClick = back) { Text(if (showSound) "返回设置" else "完成") }
                 }
                 HorizontalDivider()
                 if (showSound) {
