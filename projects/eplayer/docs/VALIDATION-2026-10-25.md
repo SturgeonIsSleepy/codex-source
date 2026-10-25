@@ -116,3 +116,13 @@ artifact 12611378871，ZIP SHA256 c81d6c734989a4a6fb65e02f105e47b126c0ae4fe6f75c
 设备 artifact 12612042754 ZIP SHA256 5671b0778c9676d526841de70023c51d4b158900ef291310d805951f45f5b8da。已下载查看 instrumentation.txt/runtime.txt；旧测试缺少失败时幅度和播放状态数值，不能武断判为采样抖动或已证实的停止竞态。原生写命令顺序存在独立已确认风险，正在 agent/eplayer-031-native-order 修复并补诊断。
 
 R8 候选 artifact 12612652207 ZIP SHA256 c3a462eeec8b5941318fba30662db8762f664d05ae24287191fd497d80be237b。原始 universal APK 0.3.1/code46，SHA256 5f60192c2ba51a4c46727ef3eda094a488a897fbd4a8b0d4055ebc6462ab1c0d，证书 9ad8248ac5d246d9da74b38858a40ba510b35b53c5370d66f055043687a8bdf4；签名/版本/三 ABI 已实际校验，但不发布该失败源码候选。发布清单必须继续固定已发布的 0.3.0。
+
+## 独立边界阶段十五（CI 40228679080）
+
+源码 49c9eec3b07ffd5279dbc61fb513544b0f5c523b，30 项共 29 通过/1 登录条件跳过，74.221 秒；R8 not_requested。设备 artifact 12612457911 ZIP SHA256 e383c70303d45dc4ea6f1c2bf3f14353ddcd962083778a49233269d0d9fed5d0。纯能力模型/返回取消导入的现有软件流程通过；不覆盖失败的主线 a25a90b，也不能证明偶发 EQ 已解决。
+
+## 独立缓存与实际弹窗（CI 40229369907）
+
+源码 a48027065f016b863f358877c738a2122a7a4e47，32 项共 31 通过/1 登录条件跳过，72.218 秒。PlaybackCacheTest 实际由应用完整 DataSourceFactory 首读 loopback 合成 WAV、确认缓存长度，再关闭服务端，新建 DataSource 读回同一字节；只删除测试 UUID cache key。SoundSettingsScreenTest 实际点击取消、仅应用频段与错误提示，确认预览/取消不写偏好、有效参数落盘、OFF/前置增益不应用、无效文件不覆盖已有配置。没有操作系统文件选择器。
+
+设备 artifact 12611714141 ZIP SHA256 cbe573b3714efa3c810eb89b895915a88271bcdab0edef2cdb2f8f9f4849a9e4，已下载并实际查看 layout-check/autoeq-preview-dialog.png；标题、替换数量、前置增益说明、取消/确认按钮均可读。预览 artifact 12612099296 SHA256 490dbf51f3f969787ba78ad246ea44051c8c2c39635cd0baa5617a6d7360635b。R8 not_requested；该分支尚未合入，主线 EQ 失败与 0.3.1 发布暂停状态保持。
