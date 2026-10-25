@@ -1,6 +1,6 @@
 # ePlayer 转移交接
 
-[PR #1](https://github.com/SturgeonIsSleepy/codex-source/pull/1) 已合入主线 `a62e0fb60a1aa3215cbb924f5204698153cc738f`。完整双引擎软件流程在 Android 16 为 25 通过/1 真实登录条件跳过，主线正在完成 R8 候选构建与启动检查。实机、音质、耳机/焦点、真实账号仍未验收。
+[PR #1](https://github.com/SturgeonIsSleepy/codex-source/pull/1) 已合入主线 `a62e0fb60a1aa3215cbb924f5204698153cc738f`。完整双引擎软件流程在 Android 16 为 25 通过/1 真实登录条件跳过，主线 CI 40222561908 已完成普通/自用 R8 构建和普通版冷启动（1728ms）；R8 完整音乐流程尚未验证。实机、音质、耳机/焦点、真实账号仍未验收。
 
 后续声音/DSP 入口接续分支为 `agent/eplayer-20261026-sound-controls`；保留 main 的已验证基线，不重复迁移或修改 Android Cloud 下载入口。旧 `agent/eplayer-20261025-playback-layout` 的结果已合入本页及项目验证索引。旧 0.1.1 Release 已实际核对为已发布，不重复上传。
 
@@ -127,3 +127,11 @@ Android 16 软件 TCG 模拟器非常慢；测试与大构建不要并行，不�
 [发布归档工作流](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40062807892) 与同提交的 Repository checks 均成功。`.github/handoff-assets.json` 记录校验清单；临时传输对象没有进入源码提交树。两个 Release 已发布，无需再次执行转存。
 
 每日自动开发已启用；本次仅完成迁移与任务设置，没有把未完成的播放器功能验收改写为通过。下一轮直接从开发计划和真实验收断点继续。
+
+## 0.3.0 发布断点（2026-10-26 北京时间）
+
+主线验证：[CI 40222561908](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40222561908)，源码 a62e0fb；25 通过/1 登录条件跳过，双引擎播放/暂停/定位/重播/错误恢复、真实 PCM 静音恢复、后台及系统通知返回已通过。
+
+本地 Release 上传先在 uploads.github.com 返回 401，随后 CLI API 也凭据失效；连接器仍可操作源码。eplayer-v0.3.0 目前是无附件空草稿（ID 423603768），不能称为已发布。新增专用发布工作流从上述成功 CI 获取原始 universal R8 APK，校验 SHA256，API36 安装/启动通过后才归档历史失败/通过证据、原生库并发布；不向 Git 传二进制或私钥。APK SHA256 9106fbbee4154a4c2a4c4b877a4976d364d9e65ba514ff110b6272d69bb49d40；CI 临时证书 8f89883030d7d64aecb6358b43eddeb8e9cd5ac323f8ab9916af4070186f08dc，与 0.1.1 不兼容，未来稳定签名交付仍待解决。
+
+不要发布本地重新签名的中间候选，也不要将其 c5b1… 证书或 aa781… 哈希误记为最终 CI 原始 APK。新增发布工作流尚未运行，最终附件、交付 smoke 和发布状态需回查。
