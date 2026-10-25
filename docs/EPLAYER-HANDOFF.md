@@ -2,7 +2,7 @@
 
 [PR #1](https://github.com/SturgeonIsSleepy/codex-source/pull/1) 已合入主线 `a62e0fb60a1aa3215cbb924f5204698153cc738f`。完整双引擎软件流程在 Android 16 为 25 通过/1 真实登录条件跳过，主线 CI 40222561908 已完成普通/自用 R8 构建和普通版冷启动（1728ms）；R8 完整音乐流程尚未验证。实机、音质、耳机/焦点、真实账号仍未验收。
 
-后续声音/DSP 入口接续分支为 `agent/eplayer-20261026-sound-controls`；保留 main 的已验证基线，不重复迁移或修改 Android Cloud 下载入口。旧 `agent/eplayer-20261025-playback-layout` 的结果已合入本页及项目验证索引。旧 0.1.1 Release 已实际核对为已发布，不重复上传。
+后续声音/DSP 入口为[草稿 PR #2](https://github.com/SturgeonIsSleepy/codex-source/pull/2)，接续分支 `agent/eplayer-20261026-sound-controls`；先读[该分支计划](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-20261026-sound-controls/projects/eplayer/docs/DEVELOPMENT-PLAN.md)和[验证索引](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-20261026-sound-controls/projects/eplayer/docs/VALIDATION-2026-10-25.md)。保留 main 的已验证基线，不重复迁移或修改 Android Cloud 下载入口。旧 `agent/eplayer-20261025-playback-layout` 的结果已合入本页及项目验证索引。旧 0.1.1 Release 已实际核对为已发布，不重复上传。
 
 更新：2026-10-24。主线为 [projects/eplayer](../projects/eplayer/)，原独立参考版为 [projects/witch-player](../projects/witch-player/)。原 ePlayer 工作树最后提交 `d196c0d`；迁移后的后续工作以本仓库提交为准。
 
@@ -137,3 +137,9 @@ Android 16 软件 TCG 模拟器非常慢；测试与大构建不要并行，不�
 不要发布本地重新签名的中间候选，也不要将其 c5b1… 证书或 aa781… 哈希误记为最终 CI 原始 APK。新增发布工作流尚未运行，最终附件、交付 smoke 和发布状态需回查。
 
 发布更新：上述空草稿已在 [CI 40226257524](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40226257524) 完成原始 universal APK 的精确安装/冷启动检查后发布：[eplayer-v0.3.0](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0)。五个附件（APK、native-libs、validation、notes、SHA256SUMS）已通过 GitHub API 核对名称、大小与 digest。APK SHA256 与上述 CI 原始值一致。此前发布工作流 40225961951 的精确安装/启动已通过，但按未创建 tag 查询草稿返回 404，发布失败；随后改按 Release ID 核对目标，未覆盖附件。
+
+## 当前 0.3.1 开发断点
+
+PR #2 已实现实时 DSP、整页声音设置、系统能力感知、AutoEQ 有界读取/预览，移除经检索无引用的旧外观访问器。54ba908 的真实 EQ 回归 26 通过/1 登录跳过；ed74b9b 声音页 28 通过/1 跳过；361dd59 AutoEQ 首版 28 通过/1 跳过。19 项 JVM 与本地构建通过。最新 b34e679d5bfb33552b2d59fe3c77a03f967bfd7f 在 [CI 40227528360](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40227528360)，待执行 URI→预览→确认→实际音频、完整设置返回与旧 UI 剥离回归，暂不合入主线。
+
+中间 8c69e39 的 CI 40227292073 在等待队列被后续提交替换而取消，未执行设备检查，不标通过；后续提交包含其全部检查。缓存入口的旧方法会释放仍被 DataSource 引用的对象，旧 clearAll 还涉及历史/本地曲库，已记录审计，不直接接 UI。所有后续操作以分支最新交接为准，保护本地 agent 实机职责。
