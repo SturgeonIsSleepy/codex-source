@@ -1,4 +1,4 @@
-name: Publish verified ePlayer preview
+name: Publish verified ePlayer preview # exact CI candidate
 on:
   push:
     branches: [main]
