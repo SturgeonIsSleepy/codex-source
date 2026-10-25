@@ -29,9 +29,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.graphics.asImageBitmap
@@ -41,7 +38,6 @@ import coil3.compose.AsyncImage
 import cp.player.BuildConfig
 import cp.player.manager.WitchPlaylist
 import cp.player.provider.BackendProvider
-import cp.player.ui.artwork.WitchPlayerView
 import cp.player.util.UserPreferences
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -125,7 +121,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                             }
                             IconButton(onClick = model::playPause) {
                                 if (state.buffering) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-                                else Icon(if (state.playing) Icons.Default.Pause else Icons.Default.PlayArrow, if (state.playing) "暂停" else "播放")
+                                else Icon(if (state.playRequested) Icons.Default.Pause else Icons.Default.PlayArrow, if (state.playRequested) "暂停" else "播放")
                             }
                             IconButton(onClick = model::next, enabled = state.queue.size > 1) { Icon(Icons.Default.SkipNext, "下一首") }
                         }
@@ -316,7 +312,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
         confirmButton = { TextButton(enabled = playlistName.isNotBlank(), onClick = { cloud.create(playlistName); createPlaylist = false; playlistName = "" }) { Text("创建") } },
         dismissButton = { TextButton(onClick = { createPlaylist = false }) { Text("取消") } })
     CloudDetailScreen(cloud, model, { onShowPlayer(true) }) { track, playlist -> selectedTrack = track to playlist }
-    if (showPlayer) Player(model, cloud, state, { selectedTrack = model.currentTrack()?.let { it to null } }, { commentTrack = model.currentTrack() }) { onShowPlayer(false) }
+    if (showPlayer) PlayerScreen(model, cloud, state, { selectedTrack = model.currentTrack()?.let { it to null } }, { commentTrack = model.currentTrack() }) { onShowPlayer(false) }
     selectedTrack?.let { (track, playlist) -> SongOptions(track, playlist, cloud, model, { commentTrack = it }, { entry -> onShowPlayer(false); cloud.open(entry) }) { selectedTrack = null } }
     commentTrack?.let { track -> CommentsSheet(track) { commentTrack = null } }
 }
@@ -332,115 +328,6 @@ internal fun SongRow(track: Track, selected: Boolean, play: () -> Unit, trailing
         }
         trailing()
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun Player(model: EPlayerViewModel, cloud: CloudViewModel, state: Playback, more: () -> Unit, comments: () -> Unit, close: () -> Unit) {
-    val animate by model.animate.collectAsState()
-    val artworkContext = LocalContext.current.applicationContext
-    val artworkReady by produceState(initialValue = !animate, key1 = animate) {
-        if (animate) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { WitchPlayerView.prepareAssets(artworkContext) }
-        value = true
-    }
-    val favorites by model.favorites.collectAsState()
-    val currentPosition by model.position.collectAsState()
-    DisposableEffect(model) { model.setProgressVisible(true); onDispose { model.setProgressVisible(false) } }
-    var queue by remember { mutableStateOf(false) }
-    var lyrics by remember { mutableStateOf<String?>(null) }
-    var seeking by remember { mutableStateOf<Float?>(null) }
-    val scope = rememberCoroutineScope()
-    LaunchedEffect(state.song?.id) { seeking = null }
-    Dialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding().padding(horizontal = 20.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = close) { Icon(Icons.Default.KeyboardArrowDown, "收起播放器") }
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = { scope.launch { lyrics = model.lyrics() } }) { Icon(Icons.Default.Lyrics, "歌词") }
-                if (state.source != null) IconButton(onClick = comments) { Icon(Icons.Default.ChatBubbleOutline, "评论") }
-                IconButton(onClick = more) { Icon(Icons.Default.MoreHoriz, "更多歌曲操作") }
-                IconButton(onClick = { queue = true }) { Icon(Icons.Default.QueueMusic, "播放队列") }
-            }
-            Text(state.song?.name ?: "未选择音乐", style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), maxLines = 3, overflow = TextOverflow.Ellipsis)
-            if (!state.song?.artist.isNullOrBlank()) Text(state.song!!.artist,
-                modifier = Modifier.padding(horizontal = 12.dp), style = MaterialTheme.typography.bodyMedium)
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                if (animate && !artworkReady) CircularProgressIndicator(Modifier.align(Alignment.Center))
-                else if (animate) AndroidView(factory = { WitchPlayerView(it).apply { setArtworkOnly(true) } }, modifier = Modifier.fillMaxSize(), update = { view ->
-                    view.update(state.song?.name.orEmpty(), state.playing, state.buffering, currentPosition, state.duration, object : WitchPlayerView.Controls {
-                        override fun playPause() = model.playPause()
-                        override fun previous() = model.previous()
-                        override fun next() = model.next()
-                        override fun seek(position: Long) = model.seek(position)
-                        override fun queue() { queue = true }
-                    })
-                }) else AsyncImage("file:///android_asset/elaina-layer.png", null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-            }
-            if (state.buffering) LinearProgressIndicator(Modifier.fillMaxWidth())
-            Slider(value = seeking ?: currentPosition.coerceAtMost(state.duration).toFloat(), onValueChange = { seeking = it },
-                onValueChangeFinished = { seeking?.let { model.seek(it.toLong()) }; seeking = null },
-                valueRange = 0f..state.duration.coerceAtLeast(1).toFloat(), enabled = state.duration > 0)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(time((seeking ?: currentPosition.toFloat()).toLong()), style = MaterialTheme.typography.labelMedium)
-                Text(time(state.duration), style = MaterialTheme.typography.labelMedium)
-            }
-            Row(Modifier.fillMaxWidth().padding(vertical = 20.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = model::shuffle) { Icon(Icons.Default.Shuffle, "随机播放", tint = if (state.shuffle) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.outline) }
-                IconButton(onClick = model::previous, enabled = state.queue.size > 1) { Icon(Icons.Default.SkipPrevious, "上一首", Modifier.size(34.dp)) }
-                FilledIconButton(onClick = model::playPause, modifier = Modifier.size(72.dp)) { Icon(if (state.playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    if (state.playing) "暂停" else "播放", Modifier.size(38.dp)) }
-                IconButton(onClick = model::next, enabled = state.queue.size > 1) { Icon(Icons.Default.SkipNext, "下一首", Modifier.size(34.dp)) }
-                IconButton(onClick = model::repeat) { Icon(if (state.repeat == 1) Icons.Default.RepeatOne else Icons.Default.Repeat, "循环模式",
-                    tint = if (state.repeat != 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.outline) }
-            }
-            state.song?.let { song ->
-                val likes by cloud.likes.collectAsState()
-                val liked = if (state.source == null) song.id in favorites else (state.remoteId ?: song.id) in likes[state.source].orEmpty()
-                IconButton(onClick = { if (state.source == null) model.favorite(song) else model.currentTrack()?.let(cloud::like) }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                    Icon(if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "喜欢")
-                }
-            }
-        }
-    }
-    if (queue) ModalBottomSheet(onDismissRequest = { queue = false }) {
-        LazyColumn(contentPadding = PaddingValues(20.dp)) {
-            items(state.queue.size) { index -> SongRow(Track(state.queue[index]), state.queue[index].id == state.song?.id,
-                { model.queueIndex(index); queue = false }) }
-        }
-    }
-    lyrics?.let { text -> ModalBottomSheet(onDismissRequest = { lyrics = null }) {
-        LazyColumn(contentPadding = PaddingValues(24.dp)) { items(text.lines()) { Text(it, modifier = Modifier.padding(vertical = 8.dp)) } }
-    } }
-}
-
-@Composable
-private fun Settings(model: EPlayerViewModel, close: () -> Unit) {
-    val context = LocalContext.current
-    val animate by model.animate.collectAsState()
-    var engine by remember { mutableIntStateOf(UserPreferences.getAudioEngine(context)) }
-    AlertDialog(onDismissRequest = close, title = { Text("设置") }, text = {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) { Text("角色动画", Modifier.weight(1f)); Switch(animate, model::setAnimate) }
-            val quality by model.quality.collectAsState()
-            var qualityMenu by remember { mutableStateOf(false) }
-            val qualities = listOf("标准" to "standard", "极高" to "exhigh", "无损" to "lossless", "Hi-Res" to "hires")
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("音质", Modifier.weight(1f))
-                Box {
-                    TextButton(onClick = { qualityMenu = true }) { Text(qualities.firstOrNull { it.second == quality }?.first ?: "标准") }
-                    DropdownMenu(qualityMenu, { qualityMenu = false }) { qualities.forEach { choice ->
-                        DropdownMenuItem(text = { Text(choice.first) }, onClick = { model.setQuality(choice.second); qualityMenu = false })
-                    } }
-                }
-            }
-            listOf("系统音频", "Rust 音频").forEachIndexed { index, label ->
-                Row(Modifier.fillMaxWidth().clickable { engine = index; model.setEngine(index) }, verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(engine == index, { engine = index; model.setEngine(index) }); Text(label)
-                }
-            }
-        }
-    }, confirmButton = { TextButton(onClick = close) { Text("完成") } })
 }
 
 @Composable
@@ -497,9 +384,4 @@ private fun SourceLogin(source: String) {
         }
     }, confirmButton = { TextButton(onClick = ::close) { Text(if (status == "已登录") "完成" else "关闭") } },
         dismissButton = { if (status != "已登录") TextButton(onClick = { key = null; url = null; image = null; refresh++ }) { Text("刷新") } })
-}
-
-private fun time(milliseconds: Long): String {
-    val seconds = milliseconds.coerceAtLeast(0) / 1000
-    return "%d:%02d".format(java.util.Locale.ROOT, seconds / 60, seconds % 60)
 }

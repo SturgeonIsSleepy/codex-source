@@ -9,6 +9,7 @@ import android.util.Log
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player.Commands
 import androidx.media3.common.SimpleBasePlayer
 import com.google.common.util.concurrent.Futures
@@ -33,7 +34,7 @@ import java.util.concurrent.atomic.AtomicLong
  * 线程模型：
  * - 所有 JNI 调用通过 [RustEngine.engineDispatcher] 在专用 IO 线程执行，不阻塞主线程。
  * - 状态更新在主线程（通过 SharedFlow collect）。
- * - 进度由 RustEngine 事件驱动，不再独立轮询。
+ * - 进度由 RustEngine 事件及播放期间的校验更新，暂停时取消进度任务。
  */
 class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMainLooper()) {
 
@@ -51,7 +52,12 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     private var currentMediaItemIndex = 0
     private var playWhenReady = false
     private var isPlaying = false
+    @Volatile private var released = false
+    private var playbackError: PlaybackException? = null
+    @Volatile private var playerVolume = 1f
     private var playbackState = Player.STATE_IDLE
+    // Null once native playback has started; retain restored/paused seeks until then.
+    private var pendingStartPositionMs: Long? = 0L
 
     private val currentPositionMs = AtomicLong(0L)
     private val positionUpdateTimeMs = AtomicLong(0L)
@@ -238,7 +244,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     private fun observeRustEvents() {
         engineEventJob = scope.launch {
             RustEngine.audioEvents.collect { event ->
-                if (playlist.isEmpty()) return@collect
+                if (playlist.isEmpty() || pendingStartPositionMs != null || playbackError != null) return@collect
                 when (event) {
                     is AudioEvent.StateChanged -> handleStateChanged(event.state, event.path)
                     is AudioEvent.Progress -> handleProgress(event)
@@ -263,7 +269,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         stateReconcileJob = scope.launch {
             while (isActive) {
                 delay(3000)
-                if (playlist.isEmpty() || currentPlayingPath == null) continue
+                if (playlist.isEmpty() || currentPlayingPath == null || pendingStartPositionMs != null || playbackError != null) continue
 
                 // 在引擎线程查询真实状态，避免主线程 JNI 调用
                 val engineState = withContext(RustEngine.engineDispatcher) {
@@ -282,6 +288,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
                     bufferingActive = false
                     positionUpdateTimeMs.set(System.currentTimeMillis())
                     invalidateState()
+                    startPositionPolling()
                 }
                 // 引擎已停止但 FlickPlayer 认为在播放 → 修正状态
                 else if (!engineIsPlaying && isPlaying && !pauseRequested &&
@@ -356,6 +363,8 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
                 invalidateState()
             }
             "stopped", "idle" -> {
+                // EOF is a completed queue, not an explicit stop. Preserve replay semantics.
+                if (playbackState == Player.STATE_ENDED) return
                 // 流媒体缓冲期间的 stopped/idle 也可能是缓冲不足导致的
                 if (bufferingActive && isDownloading && !downloadComplete) {
                     Log.d(TAG, "Ignoring engine '$state' during active buffering")
@@ -478,6 +487,8 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
             Log.i(TAG, "Track ended, no more tracks")
             isPlaying = false
             playbackState = Player.STATE_ENDED
+            if (durationMs > 0) currentPositionMs.set(durationMs)
+            stopPositionPolling()
             invalidateState()
         }
     }
@@ -495,8 +506,12 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
             return
         }
 
+        playbackError = PlaybackException("音频无法播放，请重试或切换系统音频", IllegalStateException(message), PlaybackException.ERROR_CODE_DECODING_FAILED)
         playbackState = Player.STATE_IDLE
         isPlaying = false
+        playWhenReady = false
+        pauseRequested = true
+        stopPositionPolling()
         invalidateState()
     }
 
@@ -619,22 +634,19 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     // Position / Progress
     // ═══════════════════════════════════════════════
 
-    /** 位置更新协程，每50ms从Rust引擎轮询进度 */
+    /** 播放期间每500ms校验原生进度，暂停时取消；seek 保护期不采用旧值。 */
     private var positionPollJob: Job? = null
 
     private fun startPositionPolling() {
         positionPollJob?.cancel()
-        positionPollJob = scope.launch(Dispatchers.IO) {
+        positionPollJob = scope.launch {
             while (isActive) {
-                if (isPlaying && playbackState == Player.STATE_READY) {
-                    val progress = RustEngine.getProgress()
-                    if (progress != null) {
-                        val newPos = (progress.positionSecs * 1000).toLong()
-                        if (newPos >= 0) {
-                            currentPositionMs.set(newPos)
-                            positionUpdateTimeMs.set(System.currentTimeMillis())
-                            withContext(Dispatchers.Main) { invalidateState() }
-                        }
+                if (isPlaying && playbackState == Player.STATE_READY && System.currentTimeMillis() - lastSeekTimeMs.get() >= 1000) {
+                    val progress = withContext(RustEngine.engineDispatcher) { RustEngine.getProgress() }
+                    // Some packaged native engines expose progress only through this getter.
+                    // Use the same reducer as events so duration and buffering update as well.
+                    if (progress != null && isPlaying && playWhenReady && !pauseRequested && playbackState == Player.STATE_READY) {
+                        handleProgress(progress)
                     }
                 }
                 delay(if (isPlaying) 500 else 1500)
@@ -728,8 +740,10 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
             )
             .setPlayWhenReady(playWhenReady, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
             .setPlaybackState(playbackState)
+            .setPlayerError(playbackError)
             .setRepeatMode(repeatMode)
             .setShuffleModeEnabled(shuffleModeEnabled)
+            .setVolume(playerVolume)
 
         if (playlist.isNotEmpty()) {
             val mediaItemDataList = playlist.mapIndexed { index, pItem ->
@@ -752,7 +766,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
             stateBuilder.setPlaylist(mediaItemDataList)
             stateBuilder.setCurrentMediaItemIndex(currentMediaItemIndex)
             stateBuilder.setContentPositionMs {
-                // 位置由 positionPollJob 每50ms从Rust引擎轮询更新，不再插值
+                // 使用原生事件/校验更新的位置，不自行插值
                 currentPositionMs.get()
             }
         } else {
@@ -778,6 +792,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     }
 
     override fun handlePrepare(): ListenableFuture<*> {
+        playbackError = null
         playbackState = Player.STATE_BUFFERING
         invalidateState()
         return Futures.immediateVoidFuture()
@@ -788,10 +803,10 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         if (playWhenReady) {
             pauseRequested = false
             if (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_ENDED) {
-                if (playlist.isNotEmpty()) playCurrentItem()
+                if (playlist.isNotEmpty()) playCurrentItem(pendingStartPositionMs ?: 0)
             } else {
                 // JNI 调用移到引擎线程
-                scope.launch(Dispatchers.IO) { RustEngine.resume() }
+                scope.launch(RustEngine.engineDispatcher) { RustEngine.resume() }
             }
         } else {
             // 用户主动暂停：清除缓冲恢复相关标志
@@ -801,7 +816,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
             seekWatchdogJob?.cancel()
             pauseRequested = true
             stopPositionPolling()
-            scope.launch(Dispatchers.IO) { RustEngine.pause() }
+            scope.launch(RustEngine.engineDispatcher) { RustEngine.pause() }
         }
         invalidateState()
         return Futures.immediateVoidFuture()
@@ -815,9 +830,21 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         playlist = mediaItems.map { PlaylistItem(java.util.UUID.randomUUID(), it) }
         currentMediaItemIndex = if (startIndex in mediaItems.indices) startIndex else 0
         cancelPreCache()
-        if (playWhenReady && playlist.isNotEmpty()) playCurrentItem()
+        parkCurrentItem(startPositionMs.takeUnless { it == C.TIME_UNSET }?.coerceAtLeast(0) ?: 0L)
+        if (playlist.isEmpty()) scope.launch(RustEngine.engineDispatcher) { RustEngine.stop() }
+        else if (playWhenReady) playCurrentItem(pendingStartPositionMs!!)
         invalidateState()
         return Futures.immediateVoidFuture()
+    }
+
+    private fun parkCurrentItem(positionMs: Long) {
+        playbackError = null
+        stopPositionPolling()
+        isPlaying = false
+        playbackState = Player.STATE_IDLE
+        durationMs = playlist.getOrNull(currentMediaItemIndex)?.item?.mediaMetadata?.extras?.getLong("duration") ?: 0L
+        pendingStartPositionMs = positionMs
+        updatePosition(positionMs)
     }
 
     override fun handleAddMediaItems(index: Int, mediaItems: List<MediaItem>): ListenableFuture<*> {
@@ -868,12 +895,12 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
             } else if (currentMediaItemIndex >= validFrom) {
                 currentMediaItemIndex = validFrom.coerceAtMost(playlist.size - 1).coerceAtLeast(0)
                 if (playlist.isEmpty()) {
-                    scope.launch(Dispatchers.IO) { RustEngine.stop() }
+                    scope.launch(RustEngine.engineDispatcher) { RustEngine.stop() }
                     isPlaying = false
                     playbackState = Player.STATE_IDLE
                 } else if (playWhenReady) {
                     playCurrentItem()
-                }
+                } else parkCurrentItem(0)
             }
             currentMediaItemIndex = currentMediaItemIndex.coerceIn(0, (playlist.size - 1).coerceAtLeast(0))
             cancelPreCache()
@@ -890,11 +917,17 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         if (playWhenReady) {
             pauseRequested = false
         }
-        val targetPosition = if (positionMs == C.TIME_UNSET) 0L else positionMs
+        val targetPosition = if (positionMs == C.TIME_UNSET) 0L else positionMs.coerceAtLeast(0)
         if (mediaItemIndex != currentMediaItemIndex && mediaItemIndex in playlist.indices) {
             currentMediaItemIndex = mediaItemIndex
             cancelPreCache()
-            playCurrentItem()
+            if (playWhenReady) playCurrentItem(targetPosition)
+            else parkCurrentItem(targetPosition)
+        } else if (playbackState == Player.STATE_ENDED) {
+            if (playWhenReady) playCurrentItem(targetPosition) else parkCurrentItem(targetPosition)
+        } else if (pendingStartPositionMs != null) {
+            pendingStartPositionMs = targetPosition
+            updatePosition(targetPosition)
         } else {
             lastSeekTimeMs.set(System.currentTimeMillis())
 
@@ -925,7 +958,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
                     underrunWatchJob?.cancel()
                     seekWatchdogJob?.cancel()
 
-                    scope.launch(Dispatchers.IO) {
+                    scope.launch(RustEngine.engineDispatcher) {
                         RustEngine.seek(targetSecs)
                     }
                     updatePosition(targetPosition)
@@ -933,7 +966,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
                 }
             } else {
                 // 本地文件或下载完成 → 直接 seek
-                scope.launch(Dispatchers.IO) {
+                scope.launch(RustEngine.engineDispatcher) {
                     RustEngine.seek(targetPosition / 1000.0)
                 }
                 updatePosition(targetPosition)
@@ -957,12 +990,13 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     }
 
     override fun handleStop(): ListenableFuture<*> {
-        scope.launch(Dispatchers.IO) { RustEngine.stop() }
+        scope.launch(RustEngine.engineDispatcher) { RustEngine.stop() }
         pauseRequested = false
         bufferingActive = false
         seekDuringStreaming = false
         seekRecoveryJob?.cancel()
         playWhenReady = false
+        pendingStartPositionMs = currentPositionMs.get()
         playbackState = Player.STATE_IDLE
         isPlaying = false
         cancelPreCache()
@@ -972,6 +1006,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     }
 
     override fun handleRelease(): ListenableFuture<*> {
+        released = true
         // 取消所有协程，然后在引擎线程停止引擎
         engineEventJob?.cancel()
         streamProxyJob?.cancel()
@@ -990,7 +1025,10 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     }
 
     override fun handleSetVolume(volume: Float): ListenableFuture<*> {
-        scope.launch(Dispatchers.IO) { RustEngine.setVolume(volume) }
+        playerVolume = volume.coerceIn(0f, 1f)
+        val applied = playerVolume
+        scope.launch(RustEngine.engineDispatcher) { RustEngine.setVolume(applied) }
+        invalidateState()
         return Futures.immediateVoidFuture()
     }
 
@@ -1052,11 +1090,13 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
      * 无论用户点击播放还是自动下一首，都走这个方法。
      * 流程：stop() 清理引擎 → play() 开始新曲目。
      */
-    private fun playCurrentItem() {
+    private fun playCurrentItem(startPositionMs: Long = 0) {
         if (playlist.isEmpty()) return
 
         val item = playlist[currentMediaItemIndex].item
-        updatePosition(0L)
+        playbackError = null
+        pendingStartPositionMs = null
+        updatePosition(startPositionMs)
         durationMs = item.mediaMetadata.extras?.getLong("duration") ?: 0L
         isDownloading = false
         downloadComplete = false
@@ -1091,29 +1131,28 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
 
         if (actualPath.startsWith("cp://") || actualPath.startsWith("http://") || actualPath.startsWith("https://")) {
             if (preCachedPath != null && preCachedItemIndex == currentMediaItemIndex) {
-                currentPlayingPath = preCachedPath
+                val cachedPath = preCachedPath!!
+                currentPlayingPath = cachedPath
                 isDownloading = false
                 downloadComplete = true
                 preCachedPath = null
                 preCachedItemIndex = -1
                 // JNI 调用移到引擎线程
-                scope.launch(Dispatchers.IO) {
-                    RustEngine.play(currentPlayingPath!!)
-                    applyDspOnce()
+                scope.launch(RustEngine.engineDispatcher) {
+                    startNativeItem(cachedPath, startPositionMs)
                 }
                 startPreCacheNextTrack()
             } else {
-                streamToRustEngine(item)
+                streamToRustEngine(item, startPositionMs)
             }
             return
         }
 
         currentPlayingPath = actualPath
         // JNI 调用移到引擎线程：先 stop 再 play
-        scope.launch(Dispatchers.IO) {
+        scope.launch(RustEngine.engineDispatcher) {
             RustEngine.stop()
-            RustEngine.play(actualPath)
-            applyDspOnce()
+            startNativeItem(actualPath, startPositionMs)
         }
         startPreCacheNextTrack()
     }
@@ -1122,7 +1161,24 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     // 流媒体下载
     // ═══════════════════════════════════════════════
 
-    private fun streamToRustEngine(item: MediaItem) {
+    // Native commands use one dispatcher so Play -> Seek cannot be reversed by IO scheduling.
+    private fun startNativeItem(path: String, startPositionMs: Long) {
+        if (released) return
+        if (startPositionMs > 0) lastSeekTimeMs.set(System.currentTimeMillis())
+        val started = RustEngine.play(path)
+        // The native output is created lazily by Play; setters before that can be rejected.
+        val configured = started && RustEngine.setVolume(playerVolume)
+        val positioned = configured && (startPositionMs == 0L || RustEngine.seek(startPositionMs / 1000.0))
+        if (!positioned) {
+            scope.launch {
+                if (!released && currentPlayingPath == path) handleError("Native startup command was rejected")
+            }
+            return
+        }
+        applyDspOnce()
+    }
+
+    private fun streamToRustEngine(item: MediaItem, startPositionMs: Long) {
         streamProxyJob?.cancel()
         underrunWatchJob?.cancel()
         val uri = item.localConfiguration?.uri ?: return
@@ -1150,7 +1206,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
                                 currentPlayingPath = readyFile.absolutePath
                                 Log.i(TAG, "Pre-buffer ready, starting playback: ${readyFile.name}")
                                 // JNI 调用在 IO 线程执行
-                                scope.launch(Dispatchers.IO) { RustEngine.play(readyFile.absolutePath); applyDspOnce() }
+                                scope.launch(RustEngine.engineDispatcher) { startNativeItem(readyFile.absolutePath, startPositionMs) }
                                 startPreCacheNextTrack()
                             }
                         },

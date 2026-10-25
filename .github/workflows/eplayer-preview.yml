@@ -3,11 +3,15 @@ on:
   push:
     paths:
       - 'projects/eplayer/**'
+      - '!projects/eplayer/docs/**'
+      - '!projects/eplayer/*.md'
+      - '.github/scripts/run_eplayer_device_checks.py'
       - '.github/workflows/eplayer-preview.yml'
   workflow_dispatch:
 concurrency:
   group: eplayer-${{ github.ref }}
-  cancel-in-progress: true
+  # Complete active device checks; queue the next source checkpoint instead of erasing evidence.
+  cancel-in-progress: false
 permissions:
   contents: read
 jobs:
@@ -41,7 +45,10 @@ jobs:
       - name: Build preview and device tests
         run: |
           bash tools/prepare-local-signing.sh
-          bash gradlew assembleStandardRelease assembleInternalRelease assembleStandardReleaseAndroidTest assembleInternalReleaseAndroidTest -PwithRust=false -PtestBuildType=release --console=plain
+          bash gradlew testStandardFastReleaseUnitTest assembleStandardFastRelease assembleInternalFastRelease assembleStandardFastReleaseAndroidTest -PwithRust=false -PtestBuildType=fastRelease --console=plain
+      - name: Build shrunk release candidates
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'workflow_dispatch'
+        run: bash gradlew assembleStandardRelease assembleInternalRelease -PwithRust=false --console=plain
       - name: Upload preview and device tests
         uses: actions/upload-artifact@v4
         with:
@@ -51,6 +58,45 @@ jobs:
             projects/eplayer/app/build/outputs/apk/standard/release/*x86_64*.apk
             projects/eplayer/app/build/outputs/apk/internal/release/*universal*.apk
             projects/eplayer/app/build/outputs/apk/internal/release/*x86_64*.apk
-            projects/eplayer/app/build/outputs/apk/androidTest/standard/release/*.apk
-            projects/eplayer/app/build/outputs/apk/androidTest/internal/release/*.apk
+            projects/eplayer/app/build/outputs/apk/standard/fastRelease/*universal*.apk
+            projects/eplayer/app/build/outputs/apk/standard/fastRelease/*x86_64*.apk
+            projects/eplayer/app/build/outputs/apk/internal/fastRelease/*universal*.apk
+            projects/eplayer/app/build/outputs/apk/internal/fastRelease/*x86_64*.apk
+            projects/eplayer/app/build/outputs/apk/androidTest/standard/fastRelease/*.apk
           if-no-files-found: error
+  device-check:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/download-artifact@v4
+        with:
+          name: eplayer-preview-${{ github.sha }}
+          path: device-apks
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Verify standard playback and responsive layout on Android 16
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          EPLAYER_CHECK_RELEASE: ${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'workflow_dispatch') && '1' || '0' }}
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: python3 .github/scripts/run_eplayer_device_checks.py
+      - name: Preserve device results and component renders
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eplayer-device-checks-${{ github.sha }}
+          path: device-evidence/
+          if-no-files-found: warn

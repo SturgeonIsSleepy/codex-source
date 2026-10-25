@@ -1,0 +1,101 @@
+name: ePlayer delivery check
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release containing the prepared APK
+        required: true
+        type: string
+      apk_asset:
+        description: Exact standard APK asset name
+        required: true
+        type: string
+      sha256:
+        description: Expected APK SHA256
+        required: true
+        type: string
+      source_commit:
+        description: Full source commit used for the APK
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      APK_ASSET: ${{ inputs.apk_asset }}
+      EXPECTED_SHA256: ${{ inputs.sha256 }}
+      BUILD_SOURCE: ${{ inputs.source_commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_commit }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Download and verify the exact delivery asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, os, re, subprocess
+          from pathlib import Path
+          asset = os.environ['APK_ASSET']
+          expected = os.environ['EXPECTED_SHA256'].lower()
+          if not re.fullmatch(r'[A-Za-z0-9_.-]+\.apk', asset) or not re.fullmatch(r'[0-9a-f]{64}', expected):
+              raise SystemExit('Invalid APK name or SHA256')
+          if not re.fullmatch(r'[0-9a-fA-F]{40}', os.environ['BUILD_SOURCE']):
+              raise SystemExit('A full source commit is required')
+          subprocess.run(['gh', 'release', 'download', '--repo', os.environ['GITHUB_REPOSITORY'],
+              '--pattern', asset, '--dir', 'delivery', '--', os.environ['RELEASE_TAG']], check=True)
+          actual = hashlib.sha256((Path('delivery') / asset).read_bytes()).hexdigest()
+          if actual != expected:
+              raise SystemExit('Delivery APK checksum mismatch')
+          PY
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install and cold-start the prepared standard APK
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: |
+            python3 - <<'PY'
+            import importlib.util, json, os, re, subprocess
+            from pathlib import Path
+            spec = importlib.util.spec_from_file_location('device_checks', '.github/scripts/run_eplayer_device_checks.py')
+            checks = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(checks)
+            report = {'source_commit': os.environ['BUILD_SOURCE'], 'apk': os.environ['APK_ASSET'],
+                'sha256': os.environ['EXPECTED_SHA256'], 'scope': 'Exact delivery APK install/cold-start on Android 16 emulator; music tests and physical acceptance not run here', 'status': 'incomplete'}
+            try:
+                checks.verify_release_start(Path('delivery') / os.environ['APK_ASSET'])
+                package = checks.adb('shell', 'dumpsys', 'package', 'app.eplayer.music', capture_output=True, text=True).stdout
+                for field in ['versionCode', 'versionName', 'targetSdk']:
+                    match = re.search(r'\b' + field + r'=([^\s]+)', package)
+                    report[field] = match.group(1) if match else None
+                report['status'] = 'passed'
+            except Exception:
+                report['status'] = 'failed'
+                raise
+            finally:
+                checks.output.joinpath('delivery.json').write_text(json.dumps(report, indent=2))
+                logs = subprocess.run(['adb', 'logcat', '-d', '-s', 'AndroidRuntime'], capture_output=True, text=True)
+                checks.output.joinpath('runtime.txt').write_text(logs.stdout)
+            PY
+      - name: Preserve exact-APK launch evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eplayer-delivery-check-${{ github.run_id }}
+          path: device-evidence/
+          if-no-files-found: warn

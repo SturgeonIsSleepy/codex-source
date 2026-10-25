@@ -1,0 +1,80 @@
+# 2026-10-25 北京时间：云端验证索引
+
+本页记录 Android 16 硬件加速模拟器检查，不能替代实机、音质、耳机或真实账号验收。源码工作分支为 `agent/eplayer-20261025-playback-layout`，汇总见 [PR #1](https://github.com/SturgeonIsSleepy/codex-source/pull/1)。
+
+## 已完成的第三阶段
+
+源码 `5a6304f71f5f5d17480a142b7fae86dd082cb4fe`，[CI 40122737899](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40122737899)。构建成功；Instrumentation 用时 42.126 秒，25 项中 **24 项通过、1 项条件跳过**。跳过项为普通版的真实模块登录校验，没有联网登录成功证据。
+
+通过范围：合成 WAV 导入、无效文件拒绝、替换音频缓存失效、MediaSession 播放/暂停/拖动/切歌、后台进度、原有返回播放器动作、PCM/原生库/源协议、四种布局与缓冲暂停、共用修复插画与眼睑像素/动作检查、系统 DownloadManager 的失败重试/取消及私有音频副本保留。测试音仅存在于 androidTest。
+
+压缩 release 另行冷启动 `Status: ok`，COLD，TotalTime 1906 ms，3 秒后进程仍在；只证明冷启动 smoke，不是完整 R8 播放验收。测试运行于 `sdk_gphone64_x86_64`、API 36。
+
+| 产物 | SHA256 |
+| --- | --- |
+| fastRelease x86_64 APK | `43ba076cbb8055d9c72add2067548b849fede5d07572e590da392173e27ef92a` |
+| R8 release x86_64 APK | `4829e16fe6f316b732216abf5f21a7d7fa87f1a185bb834159fbbe4bc0c3cf41` |
+| 测试 APK | `b4459a2911503919647d3fcd693527c0443d5eea157a7aac1c237c7081e446e0` |
+
+## 证据入口与人工查看
+
+- [设备证据 Artifact](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40122737899/artifacts/12571508933)：ZIP SHA256 `0e64a7d06eeb30523f3b18a6736703ef29ed67abab086d764a3760ad72a2cc00`。保留 build.json、instrumentation.txt、release-launch.txt、runtime.txt、release-home.png，以及 visual-check、layout-check、art-check。
+- [中间构建 Artifact](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40122737899/artifacts/12571896935)：普通/自用构建与对应测试 APK；不是最终交付包，不包含私钥。CI Artifact 有保留期，不能当永久 Release。
+- 已实际查看第二阶段的 `visual-check/player-playing.png`、`layout-check/landscape-1.0.png`、`layout-check/portrait-2.0.png`，第三阶段的 `release-home.png`；确认文字与插画分区、操作区可达，首页显示默认双曲导入。第二阶段证据见 CI 40121564864。
+- 旧的 Material 进度轨道较粗，与插画风格不协调，第四阶段改为墨线与圆点，尚待新截图复核。没有为此重绘角色或改变头发/手/皮肤图层。
+
+## 第四阶段已完成
+
+源码 `37ad87f9336d9710802a52762d311f1c61b8f949`，[CI 40123797367](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40123797367)：26 项中 25 通过、真实登录 1 项条件跳过，51.685 秒。后台定时到期与取消、Session PendingIntent 返回、设置交互、无障碍 seek 通过，R8 冷启动 smoke 通过（1835 ms）。已查看 `visual-check/player-playing.png`、`layout-check/landscape-2.0.png`、`layout-check/sleep-timer.png`，墨线/圆点和大字体操作正常。
+
+[设备证据](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40123797367/artifacts/12572094416)，ZIP SHA256 `474b2fa7180a10afa5a99d4c582b6aa6931eaae84200cb4458a37fe7eb7cccc3`。fastRelease APK `39973e9e1f71207bb70d49c79a2514c6e8e617f4167d06cf1ebf9e823ae10c56`，R8 APK `15a933c8368d4231e55d22ab5a1f84876a7975f3a8f443297a4c73f2ecf2c65d`；测试 APK `936e2e1444ae04e91feb247060ee89759b9f98f9c25ebe252afe6e6de06ca57c`。仅证明上述模拟器范围，没有通知面板点击或实机证据。
+
+## 第五/六阶段失败与通过范围
+
+源码 `74ac16fc663705239a617f027f0d815c1714af33`，[CI 40124903082](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40124903082)：26 项中 **24 通过、1 失败、1 条件跳过**，117.399 秒。纯画布的像素/动作、横竖屏布局等用例通过，已查看本轮播放截图，人物资源与墨线进度条保持一致。
+
+唯一失败为完整集成流程第 200 行等待 Rust `isPlaying`、有效 duration 和当前曲目；90 秒内条件未满足。不是自然进程崩溃；没有获得真实 Rust 播放/拖动/切回的通过证据。现有 runtime.txt 仅采集 AndroidRuntime/EPlayerTest，缺失原生细节，不能从该日志推断具体根因。因为测试组失败，R8 冷启动 smoke 未执行。
+
+[失败证据](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40124903082/artifacts/12572746847)，ZIP SHA256 `0fa2099257b76ce38021c40616268df0a4cdb3cda23edb1d9d890178ce07fe02`；fastRelease APK SHA256 `2af260784d9e87badbebc76b01d431988f45d5e608d03ac67fca886aedf202d8`。本轮所有 APK/日志仍是 CI 中间证据，不宣称正式交付。
+
+第七阶段源码 `ed716144c091b022b1d3d6bff7bde0f8f363a8f3` 已推送，[CI 40125811298](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40125811298) 运行中。第八阶段补充原生/会话状态、仅限 Rust 初始化和传输的日志摘要、失败截图，以及 RustAudioEngine/FlickPlayer 等日志标签；不导出整个账号/模块日志缓冲。非缓冲原生错误与 JNI 拒绝通过 Media3 playerError 回传，重试/换曲清除旧错误。未取得新设备结果，不能把这些改动记作 Rust 阻塞已修复。
+
+## 第七阶段：通知点击通过，Rust 仍失败
+
+[CI 40125811298](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40125811298)，源码 `ed716144c091b022b1d3d6bff7bde0f8f363a8f3`：24 通过、1 失败、1 条件跳过，125.699 秒。系统通知面板实际点击歌曲卡片，随后展开播放器检查通过；切引擎后暂停状态保持 12 秒的位置检查也通过。后续第 218 行等待 Rust 有效播放仍失败，未执行原生真实断点读数、Rust 拖动和切回，未执行 R8 smoke。
+
+[设备证据](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40125811298/artifacts/12572803104)，ZIP SHA256 `27774e4ca48cca27b3a640cadffff70e79c51282427ee35305fe7adbfa4a5ead`。已实际查看 `visual-check/notification-controls.png`，确认 Android 系统媒体卡片显示《灰色のサーガ》与播放器控制，非应用内伪造通知。
+
+第八阶段源码 `ffad7b3b6c00259635c5c798ba4e16cef18ab6f2` 的原生错误/诊断在 CI 40126620638 运行中，尚无结果。
+
+## 第八阶段：时长缺失已定位，修复待验收
+
+[CI 40126620638](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40126620638)，源码 `ffad7b3b6c00259635c5c798ba4e16cef18ab6f2`：24 通过、1 失败、1 条件跳过。`visual-check/playback-diagnostics.txt` 记录 controller 已到 witch_1、position=44640、duration=TIME_UNSET；日志显示原生解码并完成两首测试音频。原生端没有 Progress 事件产生点，适配层时长只在事件处理器更新，原轮询只更新位置，导致有效时长检查始终不能通过。后续断点/错误恢复/通知步骤及 R8 启动没有通过证据。
+
+[设备证据](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40126620638/artifacts/12572734586)，ZIP SHA256 `ca1a890e818cac7b712deed5f156e0d4fd8689ff0b79576ae104d6521124c744`。这是实际读取的诊断，不代表手机音质验收。
+
+第九阶段统一事件和轮询的进度处理，更新时长/幅度/状态流，保留循环、随机、音量并修复曲终/重播；13 项 JVM、本地构建和 15 项根脚本检查通过，三 ABI 幅度符号存在，新增真实回归待 CI。开发分支 R8 标为未请求，main/release/*/手动触发仍要求构建与冷启动检查；未通过检查不会被改成跳过或通过。
+
+## 第九阶段：Rust 主流程通过，恢复检查需 prepare
+
+[CI 40219333532](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40219333532)，源码 `0e87c8d26af6e13d8afe9b311e32f9fcfde0b2d9`：26 项中 24 通过、1 失败、1 条件跳过，84.686 秒。同一集成流程中，真实 Rust 播放与有效时长、原生 12 秒断点、非零幅度、暂停/拖动、配置状态保持、暂停跨曲/移除、曲终稳定和重播的断言已通过。已实际查看 `player-rust-playing.png` 与 `player-rust-paused.png`，分别显示播放闭眼/暂停睁眼，时长 0:45、进度正常。
+
+唯一失败落在第 291 行：故意触发无效原生输入后，仅换曲就等待 controller.playerError 清除，未执行实际界面重试使用的 prepare。错误传播和取消播放请求检查已通过；切回系统引擎与末尾通知检查因此未执行。第十阶段按 `EPlayerViewModel.play` 的真实调用顺序补 prepare，继续验证恢复。整体仍失败，不能称全部通过。R8 在开发分支为 not_requested，没有被当作通过。
+
+[设备证据](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40219333532/artifacts/12608478206)，ZIP SHA256 `19b976b6d5ba1e9dec167e46bbdcf8487c17f264fe14a8c18c73ec58d83456de`。fastRelease x86_64 APK SHA256 `75700d040a13625a94e071c3d6590769009f816b6f128a267fe70fdf298e7495`；测试 APK `fb72462d08381ff145f45c81b3aebb3d270e361409bdc6cd4edbab28344fd988`。
+
+第十阶段还处理懒加载原生输出：构造阶段的音量设置可能因引擎尚未创建被拒绝，启动后必须重新应用。新增“带零音量切入 Rust，连续读取真实渲染 RMS 为零，再恢复到 .65 并取得非零 RMS”的检查；验证真正输出而非仅检查界面值。编译与 JVM 检查通过，设备待新 CI。
+
+## 第十阶段：完整软件流程通过
+
+[CI 40220536019](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40220536019)，源码 `9e091f4aa559fc3ab831d7d87fb77038b564b034`：**25 通过、1 项真实模块登录条件跳过**，52.265 秒。真实 Rust 播放/有效时长/12 秒断点、渲染 PCM 静音与恢复、暂停/拖动、循环/随机/音量状态、暂停跨曲/移除、曲终稳定/重播、无效输入错误与 prepare 恢复、切回 Exo、后台及真实通知卡片返回均通过。已查看 `notification-return.png`；Native 播放/暂停图沿用同一人物与眼睑区域。
+
+[设备证据](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40220536019/artifacts/12608754845)，ZIP SHA256 `a3f5fa0d8b989fb350c618efd76a785ffffa92726d7dd47047f88f8a762f5e59`。fastRelease x86_64 APK SHA256 `bcc0e73aee0b193d93e1a5c66a3d869207f1b87a2869c4ad73848de3a1b69453`；测试 APK `8dffca0066cedfe8d6d1b87cdb66b508a4672bc908d40dacf31302129580b773`。
+
+本轮 R8 明确 not_requested。后续主线完整构建和独立精确交付 APK 安装/启动检查另记；实机、音质、耳机、电话/焦点打断、真实账号和网络远端断点没有通过证据。
+
+## 尚未完成
+
+第七/八阶段的 Rust 断点、错误回传和真实通知卡片点击待对应设备检查；本地 JVM 13 项及主程序/测试包构建通过。实机焦点、耳机路由、真实源账号、长时间播放、完整 R8 音乐功能和全页视觉均未验收。DSP 编辑和淡入淡出入口仍需迁移。
+
+早先 CI 40120164035 因 R8 目标剔除测试共享 Kotlin 类，未执行用例；CI 40121564864 为 23 通过、1 初始化失败，不能把这些失败覆盖为全通过。实际核对旧 0.1.1 Release 已于 2026-10-24 发布，APK 摘要一致，本轮未重传。
