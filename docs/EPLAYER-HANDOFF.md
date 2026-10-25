@@ -1,12 +1,12 @@
 # ePlayer 转移交接
 
-[PR #1](https://github.com/SturgeonIsSleepy/codex-source/pull/1) 已合入主线 `a62e0fb60a1aa3215cbb924f5204698153cc738f`。完整双引擎软件流程在 Android 16 为 25 通过/1 真实登录条件跳过，主线 CI 40222561908 已完成普通/自用 R8 构建和普通版冷启动（1728ms）；R8 完整音乐流程尚未验证。实机、音质、耳机/焦点、真实账号仍未验收。
+当前主线已合入 [PR #2](https://github.com/SturgeonIsSleepy/codex-source/pull/2)：`a25a90b7a58977c974bc8d3652a0ffc5de542973`，开发版本 0.3.1。Android 16 软件功能基线 29 通过/1 登录条件跳过，真实原生 EQ、URI 应用及整页导航通过；[主线 CI 40228396656](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40228396656) 正在完成普通/自用 R8 构建及启动验证，尚无 0.3.1 Release。已发布 [0.3.0](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0) 固定旧基线，不覆盖附件。实机、音质、耳机/焦点、真实账号仍未验收。
 
-后续声音/DSP 入口为[草稿 PR #2](https://github.com/SturgeonIsSleepy/codex-source/pull/2)，接续分支 `agent/eplayer-20261026-sound-controls`；先读[该分支计划](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-20261026-sound-controls/projects/eplayer/docs/DEVELOPMENT-PLAN.md)和[验证索引](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-20261026-sound-controls/projects/eplayer/docs/VALIDATION-2026-10-25.md)。保留 main 的已验证基线，不重复迁移或修改 Android Cloud 下载入口。旧 `agent/eplayer-20261025-playback-layout` 的结果已合入本页及项目验证索引。旧 0.1.1 Release 已实际核对为已发布，不重复上传。
+后续接续 `agent/eplayer-20261026-core-boundaries`（49c9eec）：[计划](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-20261026-core-boundaries/projects/eplayer/docs/DEVELOPMENT-PLAN.md)、[证据索引](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-20261026-core-boundaries/projects/eplayer/docs/VALIDATION-2026-10-25.md)。仅新增纯能力模型和退出声音页取消导入，本地 19 项 JVM/构建通过，设备待执行。旧 sound-controls / playback-layout 分支的功能已合入，不重复迁移。缓存旧 API 的职责风险已审计，尚未向 UI 暴露。发布使用 `.github/eplayer-delivery.json`，仅登记已成功主线 CI 的确切 APK；清单当前仍为已发布 0.3.0，等主线结果后更新。
 
-更新：2026-10-24。主线为 [projects/eplayer](../projects/eplayer/)，原独立参考版为 [projects/witch-player](../projects/witch-player/)。原 ePlayer 工作树最后提交 `d196c0d`；迁移后的后续工作以本仓库提交为准。
+历史迁移记录（2026-10-24）：主线为 [projects/eplayer](../projects/eplayer/)，原独立参考版为 [projects/witch-player](../projects/witch-player/)。原 ePlayer 工作树最后提交 `d196c0d`；迁移后的后续工作以本仓库提交为准。
 
-## 每日云端开发当前状态（2026-10-25 北京时间）
+## 首轮云端开发历史（2026-10-25 北京时间）
 
 [已合入 PR #1](https://github.com/SturgeonIsSleepy/codex-source/pull/1)，分支 `agent/eplayer-20261025-playback-layout`；功能基线 `888f1a4`，最新功能提交 `ffad7b3b6c00259635c5c798ba4e16cef18ab6f2`。上述已验证软件基线已合入 main；后续新功能使用单独分支，未操作实机。下一轮先同步此分支和 main，保护本地 agent 的新增更改。
 
