@@ -92,3 +92,9 @@
 [Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0)，源码 a62e0fb；原始 universal R8 APK SHA256 9106fbbee4154a4c2a4c4b877a4976d364d9e65ba514ff110b6272d69bb49d40，证书 8f89883030d7d64aecb6358b43eddeb8e9cd5ac323f8ab9916af4070186f08dc。CI 40226257524 精确安装/冷启动通过，TotalTime 1562ms。证据 artifact 12610789084 ZIP SHA256 06c1af550082f2d502613bab7a0553dead37030834b89894cb93bd9296b897a7；device-evidence/release-home.png 已实际查看，纸白/蓝天/双曲导入首页可见。对应交付截图也在 Release validation ZIP。
 
 前一发布工作流 40225961951 的交付 smoke 通过，但发布阶段按未创建 tag 查询空草稿返回 404，整轮失败，未上传附件；修复为按草稿 ID 核对，第二轮成功。旧 CLI 401 未通过读取或上传凭据解决；改用仓库授权的 Actions GITHUB_TOKEN 正常发布 CI 产物，无 Git 二进制运输、无私钥上传。签名与旧 0.1.1 不兼容，后续稳定升级签名仍是已知缺口。
+
+## 声音页（CI 40226536372）
+
+源码 ed74b9bc8f4926fa481aa4f81121e68b329d37f6；[运行](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40226536372)。29 项共 28 通过/1 登录条件跳过，65.879 秒。新增大字体滑块可达、无障碍提交与复位、未提供系统音效禁用通过；真实 EQ 幅度回归仍通过。R8 not_requested。
+
+artifact 12611378871，ZIP SHA256 c81d6c734989a4a6fb65e02f105e47b126c0ae4fe6f75c66a3b26fa252f0fa0b。已实际查看 layout-check/sound-large-text.png 与 sound-system-unavailable.png：前者是滚动到混响后的组件截图，标题可在视口外；并非完整固定顶栏设置页截图。整体设置导航与 AutoEQ 文件路径新增检查仍待下一轮，不混为已验收。

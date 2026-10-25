@@ -137,3 +137,7 @@ Android 16 软件 TCG 模拟器非常慢；测试与大构建不要并行，不�
 不要发布本地重新签名的中间候选，也不要将其 c5b1… 证书或 aa781… 哈希误记为最终 CI 原始 APK。新增发布工作流尚未运行，最终附件、交付 smoke 和发布状态需回查。
 
 发布更新：上述空草稿已在 [CI 40226257524](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40226257524) 完成原始 universal APK 的精确安装/冷启动检查后发布：[eplayer-v0.3.0](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0)。五个附件（APK、native-libs、validation、notes、SHA256SUMS）已通过 GitHub API 核对名称、大小与 digest。APK SHA256 与上述 CI 原始值一致。此前发布工作流 40225961951 的精确安装/启动已通过，但按未创建 tag 查询草稿返回 404，发布失败；随后改按 Release ID 核对目标，未覆盖附件。
+
+## 当前开发：0.3.1 声音手记
+
+[草稿 PR #2](https://github.com/SturgeonIsSleepy/codex-source/pull/2)，agent/eplayer-20261026-sound-controls。实时 EQ 的 CI 40226093507 为 26 通过/1 登录跳过；声音页 CI 40226536372 为 28 通过/1 登录跳过。纸白声音页、系统能力感知、显式效果器释放和 AutoEQ 有界解析/预览已提交。最新 URI→确认→真实音频及完整设置返回导航尚待设备验收；不能以早一阶段结果代替。项目计划与验证索引登记源码和证据 hash；不要重做 0.3.0 发布，也不要覆盖其临时签名。

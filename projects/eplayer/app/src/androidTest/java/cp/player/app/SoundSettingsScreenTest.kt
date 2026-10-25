@@ -25,6 +25,20 @@ class SoundSettingsScreenTest {
         listOf(SoundBand(125f, 0f), SoundBand(1000f, 0f), SoundBand(8000f, 0f)), -12f, 12f,
         true, .55f, .25f, 1f, false, 0f, false, 0f, false, 0f, ExoAudioFxManager.Capabilities())
 
+    @Test fun realSettingsNavigationReturnsToTheSameHome() {
+        compose.onNodeWithContentDescription("设置").performClick()
+        compose.onNodeWithTag("open-sound-settings").assertIsDisplayed()
+        save("settings-full-page", "settings-panel")
+        compose.onNodeWithTag("open-sound-settings").performClick()
+        compose.onNodeWithTag("sound-settings").assertIsDisplayed()
+        save("sound-full-page", "settings-panel")
+        compose.onNodeWithText("返回设置").performClick()
+        compose.onNodeWithTag("open-sound-settings").assertIsDisplayed()
+        compose.onNodeWithText("完成").performClick()
+        compose.onNodeWithTag("settings-panel").assertDoesNotExist()
+        compose.onNodeWithContentDescription("设置").assertIsDisplayed()
+    }
+
     @Test fun largeTextSoundControlsRemainReachableAndAccessible() {
         val state = mutableStateOf(state())
         var gainEdit: Pair<Int, Float>? = null
@@ -66,10 +80,10 @@ class SoundSettingsScreenTest {
             compose.onNodeWithContentDescription(label).performScrollTo().assertIsNotEnabled()
         save("sound-system-unavailable")
     }
-    private fun save(name: String) {
+    private fun save(name: String, tag: String? = null) {
         val folder = File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null), "layout-check").apply { mkdirs() }
         File(folder, "$name.png").outputStream().use {
-            compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
+            (if (tag == null) compose.onRoot() else compose.onNodeWithTag(tag)).captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
         }
     }
 }

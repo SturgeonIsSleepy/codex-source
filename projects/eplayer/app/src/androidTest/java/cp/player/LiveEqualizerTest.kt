@@ -20,8 +20,12 @@ import cp.player.model.Song
 import cp.player.service.MusicService
 import cp.player.testing.SyntheticAudio
 import cp.player.util.DspPreferences
-import cp.player.util.PeqBand
 import cp.player.util.UserPreferences
+import cp.player.app.SoundSettingsStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import cp.player.util.toMediaItem
 import java.io.File
 import java.util.UUID
@@ -63,6 +67,11 @@ class LiveEqualizerTest {
         val savedEngine = UserPreferences.getAudioEngine(context)
         val file = File(context.cacheDir, "equalizer-fixture.wav").apply { writeBytes(SyntheticAudio.wav(12)) }
         val id = "equalizer-${UUID.randomUUID()}"
+        val profileFile = File(context.cacheDir, "$id-autoeq.txt").apply {
+            writeText("Filter 1: ON PK Fc 440 Hz Gain 6 dB Q 1\nFilter 2: OFF PK Fc 440 Hz Gain -12 dB Q 1")
+        }
+        val effectsScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        val settings = SoundSettingsStore(context, effectsScope)
         var player: MediaController? = null
         var volume = 1f
         try {
@@ -86,8 +95,12 @@ class LiveEqualizerTest {
             var baseline = 0f
             repeat(5) { baseline += level(); SystemClock.sleep(100) }
             baseline /= 5
-            DspPreferences.setPeqBands(context, listOf(PeqBand(440f, 6f, 1f)))
-            DspPreferences.setEqEnabled(context, true)
+            settings.previewProfile(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", profileFile))
+            await { settings.profile.value != null }
+            assertFalse("Preview must not enable EQ", DspPreferences.getEqEnabled(context))
+            assertTrue("Preview must not overwrite bands", DspPreferences.getPeqBands(context).isEmpty())
+            assertEquals("OFF filters must stay off", 1, settings.profile.value!!.bands.size)
+            main { settings.applyProfileBands() }
             var boosted = baseline
             await { boosted = level(); boosted.isFinite() && boosted > baseline + .025f }
             DspPreferences.setEqEnabled(context, false)
@@ -95,6 +108,7 @@ class LiveEqualizerTest {
             main { assertTrue("Changing EQ must not restart or pause playback", current.isPlaying) }
             android.util.Log.i("EPlayerTest", "Live native EQ: baseline=$baseline boosted=$boosted disabled=${level()}")
         } finally {
+            settings.close(); effectsScope.cancel(); profileFile.delete()
             dsp.edit().clear().commit() // Guard above requires an originally empty store.
             player?.let { current ->
                 lateinit var restore: ListenableFuture<SessionResult>
