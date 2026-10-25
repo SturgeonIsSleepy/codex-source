@@ -108,3 +108,11 @@ artifact 12611378871，ZIP SHA256 c81d6c734989a4a6fb65e02f105e47b126c0ae4fe6f75c
 设备 artifact 12612675467，ZIP SHA256 f8ed23c537602a5d1682e8cf956c2f50ff75b652a2518d7d89eeb1fa627a3358。预览 artifact 12611932023，ZIP SHA256 d68556075992fd1a8e9bdd8253c4139c1fbc319eb2d5db89c067fab08bcf2c04。R8 not_requested，实机/账号未执行。中间 8c69e39 的 CI 40227292073 被后续等待提交替换，cancelled，未执行设备回归；本轮已包含其测试。
 
 补记 AutoEQ 首版 361dd59：CI 40226942307 为 28 通过/1 登录条件跳过，69.294 秒；artifact 12612065536 SHA256 6f664f894e4f7f9517d9445c6e302132ee7489e1e23f3c585828a88032297b27，仍无完整 URI 确认链路，已由本轮补齐应用层部分。
+
+## 主线 0.3.1 失败：CI 40228396656
+
+源码 a25a90b7a58977c974bc8d3652a0ffc5de542973；普通/自用 R8 构建完成，普通 fastRelease 设备检查 28 通过/1 失败/1 登录条件跳过，73.853 秒。LiveEqualizerTest 第 105 行等待 EQ 幅度提升失败；初始播放、URI 预览与应用调用已走到，不能因此说实际 EQ 已生效。失败后 R8 cold-start 未执行。
+
+设备 artifact 12612042754 ZIP SHA256 5671b0778c9676d526841de70023c51d4b158900ef291310d805951f45f5b8da。已下载查看 instrumentation.txt/runtime.txt；旧测试缺少失败时幅度和播放状态数值，不能武断判为采样抖动或已证实的停止竞态。原生写命令顺序存在独立已确认风险，正在 agent/eplayer-031-native-order 修复并补诊断。
+
+R8 候选 artifact 12612652207 ZIP SHA256 c3a462eeec8b5941318fba30662db8762f664d05ae24287191fd497d80be237b。原始 universal APK 0.3.1/code46，SHA256 5f60192c2ba51a4c46727ef3eda094a488a897fbd4a8b0d4055ebc6462ab1c0d，证书 9ad8248ac5d246d9da74b38858a40ba510b35b53c5370d66f055043687a8bdf4；签名/版本/三 ABI 已实际校验，但不发布该失败源码候选。发布清单必须继续固定已发布的 0.3.0。
