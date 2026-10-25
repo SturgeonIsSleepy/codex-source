@@ -7,6 +7,7 @@ import android.media.audiofx.LoudnessEnhancer
 import android.util.Log
 
 import android.content.Context
+import android.content.SharedPreferences
 import cp.player.util.DspPreferences
 
 object ExoAudioFxManager {
@@ -34,8 +35,31 @@ object ExoAudioFxManager {
     var preampEnabled = false
     var preampGain = 0f // in dB
     private var isInitializedFromPrefs = false
+    private var preferencesListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     fun initPrefs(context: Context) {
+        if (preferencesListener == null) {
+            val app = context.applicationContext
+            preferencesListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+                isInitializedFromPrefs = false
+                initPrefs(app)
+                runCatching {
+                    setEqualizerEnabled(eqEnabled)
+                    if (currentPreset >= 0) usePreset(currentPreset)
+                    else {
+                        val saved = eqGains.toMap()
+                        for (band in 0 until getNumberOfBands().toInt()) setBandLevel(band.toShort(), saved[band.toShort()] ?: 0)
+                    }
+                    setVirtualizerEnabled(internalVirtualizerEnabled)
+                    setVirtualizerStrength(internalVirtualizerStrength)
+                    setBassBoostEnabled(internalBassBoostEnabled)
+                    setBassBoostStrength(internalBassBoostStrength)
+                    setLoudnessEnabled(internalLoudnessEnabled)
+                    setLoudnessGain(internalLoudnessGain)
+                }.onFailure { Log.w(TAG, "Applying saved audio effects failed", it) }
+            }
+            DspPreferences.addListener(app, preferencesListener!!)
+        }
         if (isInitializedFromPrefs) return
         eqEnabled = DspPreferences.getExoEqEnabled(context)
         currentPreset = DspPreferences.getExoPreset(context)
