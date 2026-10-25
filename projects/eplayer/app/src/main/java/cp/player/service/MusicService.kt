@@ -100,6 +100,9 @@ class MusicService : MediaSessionService() {
                         val index = player.currentMediaItemIndex.coerceAtLeast(0)
                         val position = player.currentPosition
                         val playing = player.playWhenReady
+                        val repeat = player.repeatMode
+                        val shuffle = player.shuffleModeEnabled
+                        val volume = player.volume
                         val previous = player
                         rustFocus?.close(); rustFocus = null
                         previous.removeListener(listener)
@@ -108,6 +111,9 @@ class MusicService : MediaSessionService() {
                         UserPreferences.saveAudioEngine(this@MusicService, engine)
                         player = CPPlayerManager.createPlayer(this@MusicService, engine)
                         rustFocus = if (engine == 1) RustAudioFocus(audio, player, handler) else null
+                        player.repeatMode = repeat
+                        player.shuffleModeEnabled = shuffle
+                        player.volume = volume
                         player.addListener(listener)
                         session.setPlayer(player)
                         previous.release()

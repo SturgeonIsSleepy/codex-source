@@ -8,6 +8,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.ListenableFuture
 import cp.player.core.playback.PlaybackSleepTimer
+import cp.player.core.playback.togglePlayback
 import androidx.core.content.FileProvider
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -234,7 +235,7 @@ class EPlayerIntegrationTest {
             capture("player-paused")
             // Exercise the packaged Rust backend and real session replacement, not only JNI init.
             assertEquals(SessionResult.RESULT_SUCCESS, timer(180000))
-            main { player.seekTo(12000) }
+            main { player.seekTo(12000); player.shuffleModeEnabled = true; player.volume = .65f }
             await { var sought = false; main { sought = player.currentPosition in 11900..13000 }; sought }
             engine(1)
             await { var retained = false; main { retained = !player.playWhenReady && player.currentPosition in 11900..13000 }; retained }
@@ -249,18 +250,35 @@ class EPlayerIntegrationTest {
                 // A from-zero restart cannot reach 12 seconds inside this window.
                 cp.player.engine.RustEngine.getProgress()?.positionSecs?.let { it in 11.8..20.0 } == true
             }
+            await { cp.player.engine.MusicPulse.sample().let { it.isFinite() && it > .1f } }
+            capture("player-rust-playing")
             main {
+                assertEquals(Player.REPEAT_MODE_ONE, player.repeatMode)
+                assertTrue(player.shuffleModeEnabled)
+                assertEquals(.65f, player.volume, .001f)
                 assertEquals(2, player.mediaItemCount)
                 assertTrue("Engine switch must retain the service sleep timer", player.sessionExtras.getLong(PlaybackSleepTimer.DEADLINE) > SystemClock.elapsedRealtime())
                 player.pause(); player.seekTo(2000)
             }
             await { var sought = false; main { sought = !player.playWhenReady && player.currentPosition in 1900..3000 }; sought }
             await { cp.player.engine.RustEngine.getState().equals("paused", ignoreCase = true) }
+            SystemClock.sleep(1000)
+            capture("player-rust-paused")
             main { player.seekTo(1, 6000) }
             await { var parked = false; main { parked = !player.playWhenReady && player.currentMediaItem?.mediaId == "witch_1" && player.currentPosition in 5900..7000 }; parked }
             main { player.removeMediaItem(1) }
             await { var parked = false; main { parked = !player.playWhenReady && player.currentMediaItem?.mediaId == "witch_0" && player.currentPosition == 0L }; parked }
+            main { player.repeatMode = Player.REPEAT_MODE_OFF; player.shuffleModeEnabled = false; player.seekTo(42000); player.play() }
+            await(15000) { var ended = false; main { ended = player.playbackState == Player.STATE_ENDED }; ended }
+            SystemClock.sleep(3500) // Include the native reconcile interval and any trailing stopped event.
+            main { assertEquals(Player.STATE_ENDED, player.playbackState); player.togglePlayback() }
+            await(7000) {
+                var replaying = false
+                main { replaying = player.isPlaying && player.currentPosition < 5000 }
+                replaying && cp.player.engine.RustEngine.getProgress()?.positionSecs?.let { it in 0.0..5.0 } == true
+            }
             main {
+                player.pause(); player.repeatMode = Player.REPEAT_MODE_ONE; player.shuffleModeEnabled = true
                 player.setMediaItem(WitchPlaylist.songs[0].toMediaItem(FileProvider.getUriForFile(context,
                     "${context.packageName}.fileprovider", File(context.cacheDir, "invalid-audio.txt"))))
                 player.prepare(); player.play()
@@ -274,6 +292,11 @@ class EPlayerIntegrationTest {
             engine(0)
             main { player.play() }
             await { var playing = false; main { assertNull(player.playerError); playing = player.isPlaying }; playing }
+            main {
+                assertEquals(Player.REPEAT_MODE_ONE, player.repeatMode)
+                assertTrue(player.shuffleModeEnabled)
+                assertEquals(.65f, player.volume, .001f)
+            }
             assertEquals(SessionResult.RESULT_SUCCESS, timer(0))
             android.util.Log.i("EPlayerTest", "Rust playback/seek/pause and return to ExoPlayer passed")
             backgroundApp()

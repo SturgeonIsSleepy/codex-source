@@ -39,8 +39,24 @@
 
 第七阶段源码 `ed716144c091b022b1d3d6bff7bde0f8f363a8f3` 已推送，[CI 40125811298](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40125811298) 运行中。第八阶段补充原生/会话状态、仅限 Rust 初始化和传输的日志摘要、失败截图，以及 RustAudioEngine/FlickPlayer 等日志标签；不导出整个账号/模块日志缓冲。非缓冲原生错误与 JNI 拒绝通过 Media3 playerError 回传，重试/换曲清除旧错误。未取得新设备结果，不能把这些改动记作 Rust 阻塞已修复。
 
+## 第七阶段：通知点击通过，Rust 仍失败
+
+[CI 40125811298](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40125811298)，源码 `ed716144c091b022b1d3d6bff7bde0f8f363a8f3`：24 通过、1 失败、1 条件跳过，125.699 秒。系统通知面板实际点击歌曲卡片，随后展开播放器检查通过；切引擎后暂停状态保持 12 秒的位置检查也通过。后续第 218 行等待 Rust 有效播放仍失败，未执行原生真实断点读数、Rust 拖动和切回，未执行 R8 smoke。
+
+[设备证据](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40125811298/artifacts/12572803104)，ZIP SHA256 `27774e4ca48cca27b3a640cadffff70e79c51282427ee35305fe7adbfa4a5ead`。已实际查看 `visual-check/notification-controls.png`，确认 Android 系统媒体卡片显示《灰色のサーガ》与播放器控制，非应用内伪造通知。
+
+第八阶段源码 `ffad7b3b6c00259635c5c798ba4e16cef18ab6f2` 的原生错误/诊断在 CI 40126620638 运行中，尚无结果。
+
+## 第八阶段：时长缺失已定位，修复待验收
+
+[CI 40126620638](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40126620638)，源码 `ffad7b3b6c00259635c5c798ba4e16cef18ab6f2`：24 通过、1 失败、1 条件跳过。`visual-check/playback-diagnostics.txt` 记录 controller 已到 witch_1、position=44640、duration=TIME_UNSET；日志显示原生解码并完成两首测试音频。原生端没有 Progress 事件产生点，适配层时长只在事件处理器更新，原轮询只更新位置，导致有效时长检查始终不能通过。后续断点/错误恢复/通知步骤及 R8 启动没有通过证据。
+
+[设备证据](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40126620638/artifacts/12572734586)，ZIP SHA256 `ca1a890e818cac7b712deed5f156e0d4fd8689ff0b79576ae104d6521124c744`。这是实际读取的诊断，不代表手机音质验收。
+
+第九阶段统一事件和轮询的进度处理，更新时长/幅度/状态流，保留循环、随机、音量并修复曲终/重播；13 项 JVM、本地构建和 15 项根脚本检查通过，三 ABI 幅度符号存在，新增真实回归待 CI。开发分支 R8 标为未请求，main/release/*/手动触发仍要求构建与冷启动检查；未通过检查不会被改成跳过或通过。
+
 ## 尚未完成
 
 第七/八阶段的 Rust 断点、错误回传和真实通知卡片点击待对应设备检查；本地 JVM 13 项及主程序/测试包构建通过。实机焦点、耳机路由、真实源账号、长时间播放、完整 R8 音乐功能和全页视觉均未验收。DSP 编辑和淡入淡出入口仍需迁移。
 
-早先 CI 40120164035 因 R8 目标剔除测试共享 Kotlin 类，未执行用例；CI 40121564864 为 23 通过、1 初始化失败，不能把这些失败覆盖为全通过。历史 0.1.1 具体公开交付仍保持原审批断点，本轮未重新发布该包。
+早先 CI 40120164035 因 R8 目标剔除测试共享 Kotlin 类，未执行用例；CI 40121564864 为 23 通过、1 初始化失败，不能把这些失败覆盖为全通过。实际核对旧 0.1.1 Release 已于 2026-10-24 发布，APK 摘要一致，本轮未重传。

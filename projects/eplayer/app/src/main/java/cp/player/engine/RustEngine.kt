@@ -162,11 +162,14 @@ object RustEngine {
         if (jsonStr == "null" || jsonStr == "" || jsonStr == "{}") return null
         try {
             val json = JSONObject(jsonStr)
-            return AudioEvent.Progress(
+            val progress = AudioEvent.Progress(
                 positionSecs = json.optDouble("position_secs", 0.0),
                 durationSecs = json.optDouble("duration_secs", 0.0),
                 bufferLevel = json.optDouble("buffer_level", 0.0)
             )
+            _engineProgress.value = progress
+            MusicPulse.publish(nativeGetAmplitude())
+            return progress
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse progress JSON: $jsonStr", e)
         }
