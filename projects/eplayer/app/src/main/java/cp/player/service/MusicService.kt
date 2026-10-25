@@ -14,8 +14,6 @@ import android.os.Looper
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.media3.common.Player
-import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
-import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
@@ -29,7 +27,6 @@ import cp.player.core.playback.PlaybackSleepTimer
 import cp.player.engine.CPPlayerManager
 import cp.player.util.UserPreferences
 import cp.player.widget.MusicWidgetProvider
-import java.io.File
 
 /** One audio player, event-driven notifications and no background UI/lyric polling. */
 class MusicService : MediaSessionService() {
@@ -152,15 +149,5 @@ class MusicService : MediaSessionService() {
         val metadata = player.mediaMetadata
         ids.forEach { MusicWidgetProvider.updateAppWidget(this, manager, it, metadata.title?.toString(),
             metadata.artist?.toString(), metadata.artworkUri?.toString(), player.isPlaying) }
-    }
-    companion object {
-        private var cache: SimpleCache? = null
-        @Synchronized fun getCache(context: Context): SimpleCache = cache ?: SimpleCache(
-            File(context.cacheDir, "media"), LeastRecentlyUsedCacheEvictor(256L * 1024 * 1024),
-            androidx.media3.database.StandaloneDatabaseProvider(context)).also { cache = it }
-        @Synchronized fun clearAudioCache(context: Context) {
-            cache?.release(); cache = null
-            File(context.cacheDir, "media").deleteRecursively()
-        }
     }
 }

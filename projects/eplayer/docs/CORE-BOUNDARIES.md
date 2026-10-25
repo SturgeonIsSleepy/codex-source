@@ -71,3 +71,5 @@ Exo 使用服务持有的 SimpleCache（cache/media），本地/导入文件直�
 ## 第十五阶段（独立分支进行中）
 
 系统音效能力值移入 core/audio/AudioEffectCapabilities；应用状态与呈现仅传纯数据，不引用 Exo 管理器的嵌套类型。返回设置时取消未完成的 AutoEQ 读取/预览，防止离开声音页后弹出迟到的结果。既有 19 项 JVM、debug 主程序/设备测试包构建通过；尚未取得本阶段设备结果，b34e679 的通过记录仅对应第十四阶段。后续缓存操作必须以服务和存储职责明确为前提，不调用旧 release/delete 清理。
+
+第十六阶段缓存边界已改为 core/playback/PlaybackCache → SimpleCache，DataSourceFactoryProvider → PlaybackCache，MusicService → Player。不再 engine → MusicService → engine 循环引用；只持有 Application 上下文。存储路径与 256MiB LRU 保持已有行为，原无调用方的释放/删目录方法移除，不声称已有缓存清理能力。真实断网后命中缓存的新增回归已编译，设备待执行。用户导入、下载及历史不由该对象清理。

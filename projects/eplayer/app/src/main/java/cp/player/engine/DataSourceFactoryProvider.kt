@@ -8,7 +8,7 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import cp.player.service.BackendDataSource
-import cp.player.service.MusicService
+import cp.player.core.playback.PlaybackCache
 
 @OptIn(UnstableApi::class)
 object DataSourceFactoryProvider {
@@ -28,7 +28,7 @@ object DataSourceFactoryProvider {
 
     fun createCacheDataSourceFactory(context: Context): DataSource.Factory {
         val cachedStreams = CacheDataSource.Factory()
-            .setCache(MusicService.getCache(context))
+            .setCache(PlaybackCache.get(context))
             .setUpstreamDataSourceFactory(createCpDataSourceFactory(context))
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
         // DefaultDataSource reads file/content URIs directly; remote and cp:// streams
