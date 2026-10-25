@@ -52,5 +52,5 @@ class DeliveryChecks(unittest.TestCase):
 
     def test_existing_draft_target_is_never_replaced(self):
         wrong = dict(tag_name=delivery.TAG, target_commitish='0' * 40)
-        with patch.object(delivery, 'gh', return_value=json.dumps(wrong)), self.assertRaises(RuntimeError):
+        with patch.dict(delivery.CONFIG, release_id=123), patch.object(delivery, 'gh', return_value=json.dumps(wrong)), self.assertRaises(RuntimeError):
             delivery.existing_release()
