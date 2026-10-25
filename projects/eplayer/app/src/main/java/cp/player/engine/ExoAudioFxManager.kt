@@ -9,6 +9,8 @@ import android.util.Log
 import android.content.Context
 import android.content.SharedPreferences
 import cp.player.util.DspPreferences
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 object ExoAudioFxManager {
     private const val TAG = "ExoAudioFxManager"
@@ -19,6 +21,20 @@ object ExoAudioFxManager {
         val bassBoost: BassBoost?,
         val loudnessEnhancer: LoudnessEnhancer?
     )
+
+    data class Capabilities(val frequencies: List<Int> = emptyList(), val minGain: Float = 0f,
+        val maxGain: Float = 0f, val virtualizer: Boolean = false, val bass: Boolean = false, val loudness: Boolean = false)
+    private val _capabilities = MutableStateFlow(Capabilities())
+    val capabilities = _capabilities.asStateFlow()
+    private fun publishCapabilities() {
+        _capabilities.value = runCatching {
+            val range = getBandLevelRange()
+            Capabilities((0 until getNumberOfBands().toInt()).map { getCenterFreq(it.toShort()) / 1000 },
+                range[0] / 100f, range[1] / 100f, activeSessions.values.any { it.virtualizer != null },
+                activeSessions.values.any { it.bassBoost?.strengthSupported == true },
+                activeSessions.values.any { it.loudnessEnhancer != null })
+        }.getOrDefault(Capabilities())
+    }
 
     private val activeSessions = mutableMapOf<Int, SessionFx>()
 
@@ -147,6 +163,7 @@ object ExoAudioFxManager {
             fx.bassBoost?.release()
             fx.loudnessEnhancer?.release()
         }
+        publishCapabilities()
     }
 
     fun releaseAll() {
@@ -157,6 +174,7 @@ object ExoAudioFxManager {
             fx.loudnessEnhancer?.release()
         }
         activeSessions.clear()
+        publishCapabilities()
     }
 
     fun setEqualizerEnabled(enabled: Boolean) {

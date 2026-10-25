@@ -116,7 +116,7 @@ class MusicService : MediaSessionService() {
                         player.volume = volume
                         player.addListener(listener)
                         session.setPlayer(player)
-                        previous.release()
+                        CPPlayerManager.releasePlayer(previous)
                         if (items.isNotEmpty()) { player.setMediaItems(items, index, position); player.prepare(); player.playWhenReady = playing }
                     }
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -141,7 +141,7 @@ class MusicService : MediaSessionService() {
         unregisterReceiver(noisy)
         player.removeListener(listener)
         session?.release()
-        player.release()
+        CPPlayerManager.releasePlayer(player)
         super.onDestroy()
     }
     private fun pausePlayer() { rustFocus?.pause() ?: player.pause() }

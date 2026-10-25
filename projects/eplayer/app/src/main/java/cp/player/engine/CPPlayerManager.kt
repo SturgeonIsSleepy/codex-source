@@ -11,6 +11,12 @@ import cp.player.util.UserPreferences
 
 object CPPlayerManager {
 
+    fun releasePlayer(player: Player) {
+        // ExoPlayer.release() need not dispatch an IDLE event to listeners.
+        if (player is ExoPlayer) ExoAudioFxManager.release(player.audioSessionId)
+        player.release()
+    }
+
     fun createPlayer(context: Context, engineType: Int): Player {
         return if (engineType == 1) {
             FlickPlayer(context)
