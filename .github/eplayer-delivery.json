@@ -1,0 +1,11 @@
+{
+  "version": "0.3.0",
+  "version_code": 40,
+  "source": "a62e0fb60a1aa3215cbb924f5204698153cc738f",
+  "run_id": 40222561908,
+  "apk_sha256": "9106fbbee4154a4c2a4c4b877a4976d364d9e65ba514ff110b6272d69bb49d40",
+  "certificate_sha256": "8f89883030d7d64aecb6358b43eddeb8e9cd5ac323f8ab9916af4070186f08dc",
+  "release_id": 423603768,
+  "evidence": [12571144547, 12571508933, 12572094416, 12572746847, 12572803104, 12572734586, 12608478206, 12608754845, 12610258290],
+  "validation_summary": "Ordinary fastRelease Android 16 instrumentation: 25 passed, 1 credential-dependent login test skipped. Ordinary/internal R8 builds and ordinary R8 cold-start passed. Dual-engine playback/seek/replay/error recovery, actual PCM mute/unmute, background playback and actual notification return were exercised. Live EQ work is not part of this baseline."
+}

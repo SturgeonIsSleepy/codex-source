@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Deliver the immutable, already tested 0.3.0 CI APK; never transport keys/blobs."""
+"""Publish an immutable verified CI APK from a reviewed delivery manifest; no keys/blobs."""
 import hashlib
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -12,16 +13,31 @@ import tempfile
 import zipfile
 
 REPO = 'SturgeonIsSleepy/codex-source'
-SOURCE = 'a62e0fb60a1aa3215cbb924f5204698153cc738f'
-RUN = 40222561908
-TAG = 'eplayer-v0.3.0'
-APK = 'ePlayer-v0.3.0-preview.apk'
-SHA = '9106fbbee4154a4c2a4c4b877a4976d364d9e65ba514ff110b6272d69bb49d40'
-CERT = '8f89883030d7d64aecb6358b43eddeb8e9cd5ac323f8ab9916af4070186f08dc'
+def load_manifest(path):
+    value = json.loads(Path(path).read_text())
+    for name, pattern in [('version', r'\d+\.\d+\.\d+'), ('source', r'[0-9a-f]{40}'),
+                          ('apk_sha256', r'[0-9a-f]{64}'), ('certificate_sha256', r'[0-9a-f]{64}')]:
+        if not isinstance(value.get(name), str) or not re.fullmatch(pattern, value[name]):
+            raise ValueError('Invalid delivery field: ' + name)
+    for name in ['run_id', 'version_code']:
+        if type(value.get(name)) is not int or value[name] <= 0:
+            raise ValueError('Invalid delivery field: ' + name)
+    if value.get('release_id') is not None and (type(value['release_id']) is not int or value['release_id'] <= 0):
+        raise ValueError('Invalid release ID')
+    if not isinstance(value.get('evidence'), list) or not value['evidence'] or any(type(n) is not int or n <= 0 for n in value['evidence']):
+        raise ValueError('Evidence artifact IDs are required')
+    if not isinstance(value.get('validation_summary'), str) or not value['validation_summary'].strip():
+        raise ValueError('Validation scope is required')
+    return value
+
+
+CONFIG = load_manifest(Path(__file__).resolve().parents[1] / 'eplayer-delivery.json')
+SOURCE, RUN = CONFIG['source'], CONFIG['run_id']
+TAG = 'eplayer-v' + CONFIG['version']
+APK = 'ePlayer-v' + CONFIG['version'] + '-preview.apk'
+SHA, CERT = CONFIG['apk_sha256'], CONFIG['certificate_sha256']
 OUT = Path('delivery')
-# Keep failed runs, rather than replacing their evidence with the passing run.
-EVIDENCE = [12571144547, 12571508933, 12572094416, 12572746847,
-            12572803104, 12572734586, 12608478206, 12608754845, 12610258290]
+EVIDENCE = CONFIG['evidence']
 
 
 def gh(*args):
@@ -38,11 +54,67 @@ def verify_apk():
         raise RuntimeError('Exact CI delivery APK checksum mismatch')
 
 
+def verified_source():
+    run = json.loads(gh('api', f'repos/{REPO}/actions/runs/{RUN}'))
+    if run['head_sha'] != SOURCE or run['conclusion'] != 'success' or run['head_branch'] != 'main' or run['path'] != '.github/workflows/eplayer-preview.yml':
+        raise RuntimeError('Source must be a successful main preview workflow')
+
+
+def existing_release():
+    if CONFIG.get('release_id'):
+        release = json.loads(gh('api', f'repos/{REPO}/releases/{CONFIG["release_id"]}'))
+    else:
+        release = next((item for item in json.loads(gh('api', f'repos/{REPO}/releases?per_page=100')) if item['tag_name'] == TAG), None)
+    if release is not None and (release['tag_name'] != TAG or release['target_commitish'] != SOURCE):
+        raise RuntimeError('Existing release targets different source; preserve it')
+    return release
+
+
+def inspect():
+    if os.environ.get('GITHUB_REPOSITORY') != REPO:
+        raise RuntimeError('Unexpected repository')
+    verified_source()
+    release = existing_release()
+    published = release is not None and not release['draft']
+    if published:
+        expected = {APK, f'{TAG}-native-libs.tar.gz', f'{TAG}-validation.zip', f'{TAG}-notes.md', 'SHA256SUMS'}
+        assets = {item['name']: item for item in release['assets']}
+        if set(assets) != expected or assets[APK].get('digest') != 'sha256:' + SHA:
+            raise RuntimeError('Published delivery differs; never overwrite')
+        print('Published delivery matches; no downloads, emulator or writes requested')
+    with Path(os.environ['GITHUB_OUTPUT']).open('a') as output:
+        output.write(f'published={str(published).lower()}\nartifact=eplayer-preview-{SOURCE}\nrun_id={RUN}\ntag={TAG}\n')
+
+
 def prepare():
     OUT.mkdir(exist_ok=True)
     candidate = Path('delivery-input/standard/release/app-standard-universal-release.apk')
     (OUT / APK).write_bytes(candidate.read_bytes())
     verify_apk()
+    sdk = Path(os.environ.get('ANDROID_HOME') or os.environ['ANDROID_SDK_ROOT'])
+    def sdk_tool(name):
+        tools = sorted(sdk.glob('build-tools/*/' + name))
+        if not tools:
+            raise RuntimeError('Missing SDK verifier: ' + name)
+        return tools[-1]
+    signature = subprocess.check_output([sdk_tool('apksigner'), 'verify', '--print-certs', OUT / APK], text=True)
+    if f'Signer #1 certificate SHA-256 digest: {CERT}' not in signature:
+        raise RuntimeError('Delivery certificate mismatch')
+    badging = subprocess.check_output([sdk_tool('aapt'), 'dump', 'badging', OUT / APK], text=True)
+    def field(name):
+        match = re.search(r"\b" + name + r"='([^']*)'", badging)
+        if not match:
+            raise RuntimeError('Missing APK metadata: ' + name)
+        return match.group(1)
+    if field('name') != 'app.eplayer.music' or field('versionName') != CONFIG['version'] or int(field('versionCode')) != CONFIG['version_code']:
+        raise RuntimeError('APK identity/version mismatch')
+    metadata = {'version': field('versionName'), 'version_code': int(field('versionCode')),
+                'certificate_sha256': CERT, 'sha256': SHA}
+    for key in ['sdkVersion', 'targetSdkVersion']:
+        match = re.search(key + r":'([^']*)'", badging)
+        metadata[key] = match.group(1) if match else 'unknown'
+    Path('device-evidence').mkdir(exist_ok=True)
+    Path('device-evidence/apk.json').write_text(json.dumps(metadata, indent=2) + '\n')
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         with zipfile.ZipFile(OUT / APK) as archive:
@@ -83,9 +155,8 @@ def publish():
     report = json.loads(Path('device-evidence/delivery.json').read_text())
     if report['status'] != 'passed' or report['sha256'] != SHA:
         raise RuntimeError('Exact delivery check has not passed')
-    run = json.loads(gh('api', f'repos/{REPO}/actions/runs/{RUN}'))
-    if run['head_sha'] != SOURCE or run['conclusion'] != 'success':
-        raise RuntimeError('Source workflow is not the verified passing run')
+    verified_source()
+    apk_metadata = json.loads(Path('device-evidence/apk.json').read_text())
     index = []
     with zipfile.ZipFile(OUT / f'{TAG}-validation.zip', 'w', zipfile.ZIP_STORED) as archive:
         with tempfile.TemporaryDirectory() as directory:
@@ -106,25 +177,28 @@ def publish():
             if path.is_file():
                 archive.write(path, path.as_posix())
         archive.writestr('index.json', json.dumps(index, indent=2) + '\n')
-    notes = f'''ePlayer 0.3.0 preview · versionCode 40 · Android 9+ / target 36
+    notes = f'''ePlayer {CONFIG['version']} preview · versionCode {CONFIG['version_code']} · minSdk {apk_metadata['sdkVersion']} / target {apk_metadata['targetSdkVersion']}
 
 Source: https://github.com/{REPO}/commit/{SOURCE}
 Verified workflow: https://github.com/{REPO}/actions/runs/{RUN}
 
-Dual-engine playback, native duration/seek/end/replay/error recovery, real mute/unmute PCM, background pause/resume and actual notification return passed in ordinary fastRelease instrumentation: 25 passed, 1 credential-dependent login test skipped. Ordinary/internal R8 builds and ordinary R8 cold-start passed. This delivery additionally passed exact universal R8 APK installation/cold-start on API 36 x86_64. Full R8 music acceptance, physical-device audio routing and live authenticated sources remain unverified.
+{CONFIG['validation_summary']} This delivery additionally passed exact universal R8 APK installation/cold-start on API 36 x86_64. Full R8 music acceptance, physical-device audio routing and live authenticated sources remain unverified.
 
-APK is unchanged from the verified CI artifact (three ABIs); no recordings or signing keys are bundled. Certificate SHA256: {CERT}. This temporary CI signing identity differs from 0.1.1 and future CI builds may use another identity. Back up local imports/settings before a required uninstall; seamless upgrades are not promised. Do not overwrite an existing installation with a different certificate.
+APK is unchanged from the verified CI artifact (three ABIs); no recordings or signing keys are bundled. Certificate SHA256: {CERT}. This temporary CI signing identity may differ from installed previews and future CI builds may use another identity. Back up local imports/settings before a required uninstall; seamless upgrades are not promised. Do not overwrite an existing installation with a different certificate.
 
-Native libraries, raw validation logs/screenshots including failed runs, and SHA256SUMS accompany this preview. USB exclusive output is removed; normal Android audio routing remains. Live EQ work on the sound-controls branch is not part of this release.
+Native libraries, raw validation logs/screenshots including failed runs, and SHA256SUMS accompany this preview. USB exclusive output is removed; normal Android audio routing remains.
 '''
     notes_path = OUT / f'{TAG}-notes.md'
     notes_path.write_text(notes)
     files = sorted(path for path in OUT.iterdir() if path.is_file() and path.name != 'SHA256SUMS')
     (OUT / 'SHA256SUMS').write_text(''.join(f'{digest(path)}  {path.name}\n' for path in files))
     files.append(OUT / 'SHA256SUMS')
-    release = json.loads(gh('api', f'repos/{REPO}/releases/423603768'))
-    if release['tag_name'] != TAG or release['target_commitish'] != SOURCE:
-        raise RuntimeError('Existing release targets different source')
+    release = existing_release()
+    if release is None:
+        gh('release', 'create', TAG, '--repo', REPO, '--target', SOURCE, '--draft', '--prerelease', '--title', 'ePlayer ' + CONFIG['version'] + ' preview', '--notes-file', notes_path)
+        release = existing_release()
+    if release is None:
+        raise RuntimeError('Draft release was not created')
     existing = {asset['name']: asset for asset in release['assets']}
     if set(existing) - {path.name for path in files}:
         raise RuntimeError('Unexpected assets; preserve existing release')
@@ -141,4 +215,4 @@ Native libraries, raw validation logs/screenshots including failed runs, and SHA
 
 
 if __name__ == '__main__':
-    {'prepare': prepare, 'smoke': smoke, 'publish': publish}[sys.argv[1]]()
+    {'inspect': inspect, 'prepare': prepare, 'smoke': smoke, 'publish': publish}[sys.argv[1]]()
