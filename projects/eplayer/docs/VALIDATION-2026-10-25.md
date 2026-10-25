@@ -78,3 +78,33 @@
 第七/八阶段的 Rust 断点、错误回传和真实通知卡片点击待对应设备检查；本地 JVM 13 项及主程序/测试包构建通过。实机焦点、耳机路由、真实源账号、长时间播放、完整 R8 音乐功能和全页视觉均未验收。DSP 编辑和淡入淡出入口仍需迁移。
 
 早先 CI 40120164035 因 R8 目标剔除测试共享 Kotlin 类，未执行用例；CI 40121564864 为 23 通过、1 初始化失败，不能把这些失败覆盖为全通过。实际核对旧 0.1.1 Release 已于 2026-10-24 发布，APK 摘要一致，本轮未重传。
+
+## 声音阶段：真实 EQ（CI 40226093507）
+
+源码 54ba908a218238812ee8d31598a2cae91accd7c5；[运行](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40226093507)。Android 16 普通 fastRelease 共 27 项：26 通过、1 真实登录条件跳过，54.383 秒。release_start 为 not_requested；不能把本阶段写成完整 R8 或实机验收。
+
+新增 LiveEqualizerTest：真实原生合成 440Hz 播放，保存 EQ 设置后实时提升，关闭恢复，不暂停。原生幅度经 MusicPulse 可视归一化的读数为 baseline 0.13161638、boosted 0.18562597、disabled 0.13057631；这些是归一化幅度，并非声卡测得的声压或原始 RMS 数值。
+
+设备证据 artifact 12610979058，ZIP SHA256 b7e39fd0f28eb009e8cb729a130de0719bfac410835f905eb15e65ee3b56d83d；instrumentation.txt、instrumentation-runtime.txt、build.json 与截图在同包。其后声音页 ed74b9b 正在 CI 40226536372，不以此轮 EQ 结果代替新页面验收。
+
+## 0.3.0 精确交付
+
+[Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0)，源码 a62e0fb；原始 universal R8 APK SHA256 9106fbbee4154a4c2a4c4b877a4976d364d9e65ba514ff110b6272d69bb49d40，证书 8f89883030d7d64aecb6358b43eddeb8e9cd5ac323f8ab9916af4070186f08dc。CI 40226257524 精确安装/冷启动通过，TotalTime 1562ms。证据 artifact 12610789084 ZIP SHA256 06c1af550082f2d502613bab7a0553dead37030834b89894cb93bd9296b897a7；device-evidence/release-home.png 已实际查看，纸白/蓝天/双曲导入首页可见。对应交付截图也在 Release validation ZIP。
+
+前一发布工作流 40225961951 的交付 smoke 通过，但发布阶段按未创建 tag 查询空草稿返回 404，整轮失败，未上传附件；修复为按草稿 ID 核对，第二轮成功。旧 CLI 401 未通过读取或上传凭据解决；改用仓库授权的 Actions GITHUB_TOKEN 正常发布 CI 产物，无 Git 二进制运输、无私钥上传。签名与旧 0.1.1 不兼容，后续稳定升级签名仍是已知缺口。
+
+## 声音页（CI 40226536372）
+
+源码 ed74b9bc8f4926fa481aa4f81121e68b329d37f6；[运行](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40226536372)。29 项共 28 通过/1 登录条件跳过，65.879 秒。新增大字体滑块可达、无障碍提交与复位、未提供系统音效禁用通过；真实 EQ 幅度回归仍通过。R8 not_requested。
+
+artifact 12611378871，ZIP SHA256 c81d6c734989a4a6fb65e02f105e47b126c0ae4fe6f75c66a3b26fa252f0fa0b。已实际查看 layout-check/sound-large-text.png 与 sound-system-unavailable.png：前者是滚动到混响后的组件截图，标题可在视口外；并非完整固定顶栏设置页截图。整体设置导航与 AutoEQ 文件路径新增检查仍待下一轮，不混为已验收。
+
+## 0.3.1 整页与 URI 应用链路（CI 40227528360）
+
+源码 b34e679d5bfb33552b2d59fe3c77a03f967bfd7f，[运行](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40227528360)。30 项共 29 通过/1 登录条件跳过，73.918 秒。真实私有文本 URI 经导入预览（不写偏好，OFF 不加入）及应用层确认后改变原生实际渲染幅度，关闭后恢复：归一化幅度 0.13074373→0.1840731→0.1309964。此链路没有操作系统文件选择器或点击导入确认弹窗，这两处交互仍需单独验收。
+
+实际首页→整页设置→声音页→设置→首页通过；已查看 layout-check/settings-full-page.png、sound-full-page.png，固定标题/返回操作、纸白字重及会话未就绪时禁用能力可见。既有播放、暂停/拖动、后台、真实系统通知返回、角色像素和布局回归通过。
+
+设备 artifact 12612675467，ZIP SHA256 f8ed23c537602a5d1682e8cf956c2f50ff75b652a2518d7d89eeb1fa627a3358。预览 artifact 12611932023，ZIP SHA256 d68556075992fd1a8e9bdd8253c4139c1fbc319eb2d5db89c067fab08bcf2c04。R8 not_requested，实机/账号未执行。中间 8c69e39 的 CI 40227292073 被后续等待提交替换，cancelled，未执行设备回归；本轮已包含其测试。
+
+补记 AutoEQ 首版 361dd59：CI 40226942307 为 28 通过/1 登录条件跳过，69.294 秒；artifact 12612065536 SHA256 6f664f894e4f7f9517d9445c6e302132ee7489e1e23f3c585828a88032297b27，仍无完整 URI 确认链路，已由本轮补齐应用层部分。

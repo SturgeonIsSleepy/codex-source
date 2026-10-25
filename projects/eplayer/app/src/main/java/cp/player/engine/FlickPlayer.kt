@@ -136,7 +136,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     private val durationCache = ConcurrentHashMap<String, Long>()
 
     /** DSP 设置是否已同步到引擎（首次播放后自动应用） */
-    private var dspApplied = false
+    @Volatile private var dspApplied = false
 
     /** SharedPreferences 监听器，实时同步 DSD / DAP 设置到 Rust 引擎 */
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -158,15 +158,22 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         }
     }
 
+    private val dspListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        dspApplied = false
+        if (!released && currentPlayingPath != null && pendingStartPositionMs == null) {
+            scope.launch(RustEngine.engineDispatcher) { applyDspOnce() }
+        }
+    }
+
     init {
+        DspPreferences.addListener(context, dspListener)
         RustEngine.initEngine(context)
         // 同步 DSD / DAP 设置到 Rust 引擎
         scope.launch(RustEngine.engineDispatcher) {
             RustEngine.setDsdOutputMode(UserPreferences.getDsdOutputMode(context))
             RustEngine.setDapBitPerfectEnabled(UserPreferences.getDapBitPerfect(context))
         }
-        // setVolume 移到引擎线程
-        scope.launch(RustEngine.engineDispatcher) { RustEngine.setVolume(1.0f) }
+        // Volume is applied after Play lazily creates the native output.
         // 监听设置变化
         UserPreferences.getPrefs(context).registerOnSharedPreferenceChangeListener(prefsListener)
         observeRustEvents()
@@ -189,7 +196,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
 
     /** 首次 play 后同步 DSP 设置（仅执行一次） */
     private fun applyDspOnce() {
-        if (!dspApplied) {
+        if (!released && !dspApplied) {
             dspApplied = true
             initDspFromPrefs(context)
         }
@@ -198,34 +205,13 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     /** 从 SharedPreferences 加载 DSP 设置并同步到 Rust 引擎 */
     private fun initDspFromPrefs(ctx: Context) {
         try {
-            val eqEnabled = DspPreferences.getEqEnabled(ctx)
             val bands = DspPreferences.getPeqBands(ctx)
-            Log.i(TAG, "initDspFromPrefs: eqEnabled=$eqEnabled, bands=${bands.size}")
-            if (eqEnabled) {
-                val result = if (bands.isEmpty()) {
-                    RustEngine.setEqualizer(true, floatArrayOf(), floatArrayOf(), floatArrayOf())
-                } else {
-                    val freqs = FloatArray(bands.size)
-                    val gains = FloatArray(bands.size)
-                    val qs = FloatArray(bands.size)
-                    for (i in bands.indices) {
-                        val band = bands[i]
-                        freqs[i] = band.freq
-                        gains[i] = band.gain
-                        qs[i] = band.q
-                    }
-                    RustEngine.setEqualizer(true, freqs, gains, qs)
-                }
-                Log.i(TAG, "initDspFromPrefs: setEqualizer result=$result")
-            }
-            val fxEnabled = DspPreferences.getFxEnabled(ctx)
-            if (fxEnabled) {
-                val result = RustEngine.setFx(true, 0f, 1f, 0.35f, 6800f, 240f, DspPreferences.getFxSize(ctx), DspPreferences.getFxMix(ctx), 0.35f, DspPreferences.getFxWidth(ctx))
-                Log.i(TAG, "initDspFromPrefs: setFx result=$result")
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "initDspFromPrefs failed", e)
-        }
+            RustEngine.setEqualizer(DspPreferences.getEqEnabled(ctx),
+                bands.map { it.freq }.toFloatArray(), bands.map { it.gain }.toFloatArray(), bands.map { it.q }.toFloatArray())
+            // Explicitly send disabled states too; the native output can outlive this adapter.
+            RustEngine.setFx(DspPreferences.getFxEnabled(ctx), 0f, 1f, .35f, 6800f, 240f,
+                DspPreferences.getFxSize(ctx), DspPreferences.getFxMix(ctx), .35f, DspPreferences.getFxWidth(ctx))
+        } catch (error: Exception) { Log.w(TAG, "Applying DSP preferences failed", error) }
     }
 
     private fun calculatePreBufferBytes(item: MediaItem): Long {
@@ -1007,6 +993,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
 
     override fun handleRelease(): ListenableFuture<*> {
         released = true
+        DspPreferences.removeListener(context, dspListener)
         // 取消所有协程，然后在引擎线程停止引擎
         engineEventJob?.cancel()
         streamProxyJob?.cancel()
@@ -1027,7 +1014,9 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     override fun handleSetVolume(volume: Float): ListenableFuture<*> {
         playerVolume = volume.coerceIn(0f, 1f)
         val applied = playerVolume
-        scope.launch(RustEngine.engineDispatcher) { RustEngine.setVolume(applied) }
+        if (!released && currentPlayingPath != null && pendingStartPositionMs == null) {
+            scope.launch(RustEngine.engineDispatcher) { RustEngine.setVolume(applied) }
+        }
         invalidateState()
         return Futures.immediateVoidFuture()
     }

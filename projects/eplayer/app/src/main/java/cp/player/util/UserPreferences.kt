@@ -16,12 +16,6 @@ object UserPreferences {
     private const val KEY_DOWNLOAD_QUALITY = "download_quality"
     private const val KEY_FIRST_DOWNLOAD = "first_download"
     private const val KEY_ALLOW_CELLULAR_DOWNLOAD = "allow_cellular_download"
-    private const val KEY_PURE_BLACK_MODE = "pure_black_mode"
-    private const val KEY_THEME_MODE = "theme_mode" // 0: System, 1: Follow Cover, 2: Fixed
-    private const val KEY_FOLLOW_COVER_APP = "follow_cover_app"
-    private const val KEY_FOLLOW_COVER_MINI = "follow_cover_mini"
-    private const val KEY_FOLLOW_COVER_PLAYER = "follow_cover_player"
-    private const val KEY_USE_FLUID_BACKGROUND = "use_fluid_background"
     private const val KEY_AUDIO_FOCUS_MODE = "audio_focus_mode"
     private const val KEY_ALLOW_DUCKING = "allow_ducking"
     private const val KEY_PAUSE_ON_NOISY = "pause_on_noisy"
@@ -32,12 +26,9 @@ object UserPreferences {
     private const val KEY_AUDIO_ENGINE = "audio_engine"
     private const val KEY_DSD_OUTPUT_MODE = "dsd_output_mode"
     private const val KEY_DAP_BIT_PERFECT = "dap_bit_perfect"
-    private const val KEY_FONT_ROUNDNESS = "font_roundness" // 0: Standard, 1: Expressive
     private const val KEY_PLAY_IMMEDIATELY = "play_immediately"
     private const val KEY_LYRICS_SOURCE = "lyrics_source" // 0: Provider API 优先, 1: AMLL 优先, 2: 仅 AMLL
     private const val KEY_AMLL_PLATFORM = "amll_platform" // "auto", "ncm", "qq", "am", "spotify"
-    private const val KEY_HIDE_NAVBAR_ON_SCROLL = "hide_navbar_on_scroll"
-    private const val KEY_WAVY_PROGRESS = "wavy_progress"
     private const val KEY_RESTORE_LAST_QUEUE = "restore_last_queue"
     private const val KEY_LAST_QUEUE = "last_queue"
     private const val KEY_LAST_QUEUE_INDEX = "last_queue_index"
@@ -252,54 +243,6 @@ object UserPreferences {
         return getPrefs(context).getBoolean(KEY_ALLOW_CELLULAR_DOWNLOAD, false)
     }
 
-    fun savePureBlackMode(context: Context, enabled: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_PURE_BLACK_MODE, enabled).apply()
-    }
-
-    fun getPureBlackMode(context: Context): Boolean {
-        return getPrefs(context).getBoolean(KEY_PURE_BLACK_MODE, false)
-    }
-
-    fun saveThemeMode(context: Context, mode: Int) {
-        getPrefs(context).edit().putInt(KEY_THEME_MODE, mode).apply()
-    }
-
-    fun getThemeMode(context: Context): Int {
-        return getPrefs(context).getInt(KEY_THEME_MODE, 1) // 默认跟随封面
-    }
-
-    fun saveFollowCoverApp(context: Context, enabled: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_FOLLOW_COVER_APP, enabled).apply()
-    }
-
-    fun getFollowCoverApp(context: Context): Boolean {
-        return getPrefs(context).getBoolean(KEY_FOLLOW_COVER_APP, false)
-    }
-
-    fun saveFollowCoverMini(context: Context, enabled: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_FOLLOW_COVER_MINI, enabled).apply()
-    }
-
-    fun getFollowCoverMini(context: Context): Boolean {
-        return getPrefs(context).getBoolean(KEY_FOLLOW_COVER_MINI, true)
-    }
-
-    fun saveFollowCoverPlayer(context: Context, enabled: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_FOLLOW_COVER_PLAYER, enabled).apply()
-    }
-
-    fun getFollowCoverPlayer(context: Context): Boolean {
-        return getPrefs(context).getBoolean(KEY_FOLLOW_COVER_PLAYER, true)
-    }
-
-    fun saveUseFluidBackground(context: Context, enabled: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_USE_FLUID_BACKGROUND, enabled).apply()
-    }
-
-    fun getUseFluidBackground(context: Context): Boolean {
-        return getPrefs(context).getBoolean(KEY_USE_FLUID_BACKGROUND, false)
-    }
-
     fun saveAudioFeatures(context: Context, json: String) {
         CacheManager.save(context, CacheManager.CacheType.AUDIO_FEATURES, "", json)
     }
@@ -386,14 +329,6 @@ object UserPreferences {
 
 
 
-    fun saveFontRoundness(context: Context, mode: Int) {
-        getPrefs(context).edit().putInt(KEY_FONT_ROUNDNESS, mode).apply()
-    }
-
-    fun getFontRoundness(context: Context): Int {
-        return getPrefs(context).getInt(KEY_FONT_ROUNDNESS, 1) // 默认 Expressive
-    }
-
     fun savePlayImmediately(context: Context, enabled: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_PLAY_IMMEDIATELY, enabled).apply()
     }
@@ -416,22 +351,6 @@ object UserPreferences {
 
     fun getAmllPlatform(context: Context): String {
         return getPrefs(context).getString(KEY_AMLL_PLATFORM, "auto") ?: "auto"
-    }
-
-    fun saveHideNavbarOnScroll(context: Context, enabled: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_HIDE_NAVBAR_ON_SCROLL, enabled).apply()
-    }
-
-    fun getHideNavbarOnScroll(context: Context): Boolean {
-        return getPrefs(context).getBoolean(KEY_HIDE_NAVBAR_ON_SCROLL, true) // 默认开启
-    }
-
-    fun saveWavyProgress(context: Context, enabled: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_WAVY_PROGRESS, enabled).apply()
-    }
-
-    fun getWavyProgress(context: Context): Boolean {
-        return getPrefs(context).getBoolean(KEY_WAVY_PROGRESS, false) // 默认平直
     }
 
     fun saveRestoreLastQueue(context: Context, enabled: Boolean) {

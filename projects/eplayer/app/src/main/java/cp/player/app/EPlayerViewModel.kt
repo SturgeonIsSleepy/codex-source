@@ -37,6 +37,7 @@ data class Playback(val song: Song? = null, val playing: Boolean = false, val bu
     val shuffle: Boolean = false, val repeat: Int = Player.REPEAT_MODE_OFF, val error: String? = null, val source: String? = null, val remoteId: String? = null, val playRequested: Boolean = playing)
 
 class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
+    internal val soundSettings = SoundSettingsStore(app, viewModelScope)
     private val catalog by lazy { LibraryStore(app) }
     private val _library = MutableStateFlow<List<Track>>(emptyList())
     val library = _library.asStateFlow()
@@ -272,6 +273,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
     override fun onCleared() {
+        soundSettings.close()
         ticker?.cancel(); downloadObserver?.cancel()
         controller?.removeListener(listener)
         MediaController.releaseFuture(future)

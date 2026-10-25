@@ -32,6 +32,9 @@ object DspPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
+    fun addListener(context: Context, listener: SharedPreferences.OnSharedPreferenceChangeListener) = getPrefs(context).registerOnSharedPreferenceChangeListener(listener)
+    fun removeListener(context: Context, listener: SharedPreferences.OnSharedPreferenceChangeListener) = getPrefs(context).unregisterOnSharedPreferenceChangeListener(listener)
+
     fun getEqEnabled(context: Context): Boolean = getPrefs(context).getBoolean(KEY_EQ_ENABLED, false)
     fun setEqEnabled(context: Context, enabled: Boolean) = getPrefs(context).edit().putBoolean(KEY_EQ_ENABLED, enabled).apply()
 

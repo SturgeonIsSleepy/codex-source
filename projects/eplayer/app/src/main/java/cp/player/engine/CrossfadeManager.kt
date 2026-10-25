@@ -49,7 +49,7 @@ class CrossfadeManager(
         val currentPosition = oldActivePlayer?.currentPosition ?: 0L
         val isPlaying = oldActivePlayer?.isPlaying == true
 
-        players.forEach { it?.release() }
+        players.forEach { it?.let(CPPlayerManager::releasePlayer) }
 
         for (i in 0..1) {
             val player = CPPlayerManager.createPlayer(context, engineType)
@@ -71,7 +71,7 @@ class CrossfadeManager(
 
     fun release() {
         abortCrossfade()
-        players.forEach { it?.release() }
+        players.forEach { it?.let(CPPlayerManager::releasePlayer) }
         players.fill(null)
     }
 
