@@ -235,7 +235,7 @@ class EPlayerIntegrationTest {
             capture("player-paused")
             // Exercise the packaged Rust backend and real session replacement, not only JNI init.
             assertEquals(SessionResult.RESULT_SUCCESS, timer(180000))
-            main { player.seekTo(12000); player.shuffleModeEnabled = true; player.volume = .65f }
+            main { player.seekTo(12000); player.shuffleModeEnabled = true; player.volume = 0f }
             await { var sought = false; main { sought = player.currentPosition in 11900..13000 }; sought }
             engine(1)
             await { var retained = false; main { retained = !player.playWhenReady && player.currentPosition in 11900..13000 }; retained }
@@ -250,6 +250,14 @@ class EPlayerIntegrationTest {
                 // A from-zero restart cannot reach 12 seconds inside this window.
                 cp.player.engine.RustEngine.getProgress()?.positionSecs?.let { it in 11.8..20.0 } == true
             }
+            var silentSamples = 0
+            await(10000) {
+                cp.player.engine.RustEngine.getProgress()
+                val level = cp.player.engine.MusicPulse.sample()
+                silentSamples = if (level.isFinite() && level <= .00001f) silentSamples + 1 else 0
+                silentSamples >= 5
+            }
+            main { assertEquals(0f, player.volume, .001f); assertTrue(player.isPlaying); player.volume = .65f }
             await { cp.player.engine.MusicPulse.sample().let { it.isFinite() && it > .1f } }
             capture("player-rust-playing")
             main {
@@ -287,6 +295,7 @@ class EPlayerIntegrationTest {
             main {
                 assertFalse("Native decoder errors must clear the playback request", player.playWhenReady)
                 player.setMediaItems(WitchPlaylist.songs.map { it.toMediaItem(WitchPlaylist.uri(context, it.id)) })
+                player.prepare() // The same retry sequence used by EPlayerViewModel.play.
             }
             await { var cleared = false; main { cleared = player.playerError == null }; cleared }
             engine(0)

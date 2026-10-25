@@ -55,6 +55,16 @@
 
 第九阶段统一事件和轮询的进度处理，更新时长/幅度/状态流，保留循环、随机、音量并修复曲终/重播；13 项 JVM、本地构建和 15 项根脚本检查通过，三 ABI 幅度符号存在，新增真实回归待 CI。开发分支 R8 标为未请求，main/release/*/手动触发仍要求构建与冷启动检查；未通过检查不会被改成跳过或通过。
 
+## 第九阶段：Rust 主流程通过，恢复检查需 prepare
+
+[CI 40219333532](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40219333532)，源码 `0e87c8d26af6e13d8afe9b311e32f9fcfde0b2d9`：26 项中 24 通过、1 失败、1 条件跳过，84.686 秒。同一集成流程中，真实 Rust 播放与有效时长、原生 12 秒断点、非零幅度、暂停/拖动、配置状态保持、暂停跨曲/移除、曲终稳定和重播的断言已通过。已实际查看 `player-rust-playing.png` 与 `player-rust-paused.png`，分别显示播放闭眼/暂停睁眼，时长 0:45、进度正常。
+
+唯一失败落在第 291 行：故意触发无效原生输入后，仅换曲就等待 controller.playerError 清除，未执行实际界面重试使用的 prepare。错误传播和取消播放请求检查已通过；切回系统引擎与末尾通知检查因此未执行。第十阶段按 `EPlayerViewModel.play` 的真实调用顺序补 prepare，继续验证恢复。整体仍失败，不能称全部通过。R8 在开发分支为 not_requested，没有被当作通过。
+
+[设备证据](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40219333532/artifacts/12608478206)，ZIP SHA256 `19b976b6d5ba1e9dec167e46bbdcf8487c17f264fe14a8c18c73ec58d83456de`。fastRelease x86_64 APK SHA256 `75700d040a13625a94e071c3d6590769009f816b6f128a267fe70fdf298e7495`；测试 APK `fb72462d08381ff145f45c81b3aebb3d270e361409bdc6cd4edbab28344fd988`。
+
+第十阶段还处理懒加载原生输出：构造阶段的音量设置可能因引擎尚未创建被拒绝，启动后必须重新应用。新增“带零音量切入 Rust，连续读取真实渲染 RMS 为零，再恢复到 .65 并取得非零 RMS”的检查；验证真正输出而非仅检查界面值。编译与 JVM 检查通过，设备待新 CI。
+
 ## 尚未完成
 
 第七/八阶段的 Rust 断点、错误回传和真实通知卡片点击待对应设备检查；本地 JVM 13 项及主程序/测试包构建通过。实机焦点、耳机路由、真实源账号、长时间播放、完整 R8 音乐功能和全页视觉均未验收。DSP 编辑和淡入淡出入口仍需迁移。

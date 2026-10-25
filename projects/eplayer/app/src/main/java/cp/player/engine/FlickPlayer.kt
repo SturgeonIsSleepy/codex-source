@@ -54,7 +54,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     private var isPlaying = false
     @Volatile private var released = false
     private var playbackError: PlaybackException? = null
-    private var playerVolume = 1f
+    @Volatile private var playerVolume = 1f
     private var playbackState = Player.STATE_IDLE
     // Null once native playback has started; retain restored/paused seeks until then.
     private var pendingStartPositionMs: Long? = 0L
@@ -1166,10 +1166,12 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         if (released) return
         if (startPositionMs > 0) lastSeekTimeMs.set(System.currentTimeMillis())
         val started = RustEngine.play(path)
-        val positioned = started && (startPositionMs == 0L || RustEngine.seek(startPositionMs / 1000.0))
+        // The native output is created lazily by Play; setters before that can be rejected.
+        val configured = started && RustEngine.setVolume(playerVolume)
+        val positioned = configured && (startPositionMs == 0L || RustEngine.seek(startPositionMs / 1000.0))
         if (!positioned) {
             scope.launch {
-                if (!released && currentPlayingPath == path) handleError("Native Play/Seek command was rejected")
+                if (!released && currentPlayingPath == path) handleError("Native startup command was rejected")
             }
             return
         }
