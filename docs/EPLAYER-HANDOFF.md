@@ -135,3 +135,5 @@ Android 16 软件 TCG 模拟器非常慢；测试与大构建不要并行，不�
 本地 Release 上传先在 uploads.github.com 返回 401，随后 CLI API 也凭据失效；连接器仍可操作源码。eplayer-v0.3.0 目前是无附件空草稿（ID 423603768），不能称为已发布。新增专用发布工作流从上述成功 CI 获取原始 universal R8 APK，校验 SHA256，API36 安装/启动通过后才归档历史失败/通过证据、原生库并发布；不向 Git 传二进制或私钥。APK SHA256 9106fbbee4154a4c2a4c4b877a4976d364d9e65ba514ff110b6272d69bb49d40；CI 临时证书 8f89883030d7d64aecb6358b43eddeb8e9cd5ac323f8ab9916af4070186f08dc，与 0.1.1 不兼容，未来稳定签名交付仍待解决。
 
 不要发布本地重新签名的中间候选，也不要将其 c5b1… 证书或 aa781… 哈希误记为最终 CI 原始 APK。新增发布工作流尚未运行，最终附件、交付 smoke 和发布状态需回查。
+
+发布更新：上述空草稿已在 [CI 40226257524](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40226257524) 完成原始 universal APK 的精确安装/冷启动检查后发布：[eplayer-v0.3.0](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0)。五个附件（APK、native-libs、validation、notes、SHA256SUMS）已通过 GitHub API 核对名称、大小与 digest。APK SHA256 与上述 CI 原始值一致。此前发布工作流 40225961951 的精确安装/启动已通过，但按未创建 tag 查询草稿返回 404，发布失败；随后改按 Release ID 核对目标，未覆盖附件。
