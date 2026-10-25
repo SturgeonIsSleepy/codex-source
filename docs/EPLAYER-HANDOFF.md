@@ -1,8 +1,10 @@
 # ePlayer 转移交接
 
-当前主线已合入 [PR #2](https://github.com/SturgeonIsSleepy/codex-source/pull/2)：`a25a90b7a58977c974bc8d3652a0ffc5de542973`，开发版本 0.3.1。Android 16 软件功能基线 29 通过/1 登录条件跳过，真实原生 EQ、URI 应用及整页导航通过；[主线 CI 40228396656](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40228396656) 正在完成普通/自用 R8 构建及启动验证，尚无 0.3.1 Release。已发布 [0.3.0](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0) 固定旧基线，不覆盖附件。实机、音质、耳机/焦点、真实账号仍未验收。
+主线 0.3.1 已合入 [PR #2](https://github.com/SturgeonIsSleepy/codex-source/pull/2)，源码 `a25a90b7a58977c974bc8d3652a0ffc5de542973`；其 [CI 40228396656](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40228396656) 普通/自用 R8 构建通过，但设备为 28 通过/1 EQ 幅度等待失败/1 登录条件跳过，后续 R8 cold-start 未执行。0.3.1 发布暂停；分支 b34e679 的 29 通过/1 跳过不能覆盖主线失败。[0.3.0 Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0) 继续固定旧基线，发布清单仍指向它。
 
-后续接续 `agent/eplayer-20261026-core-boundaries`（49c9eec）：[计划](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-20261026-core-boundaries/projects/eplayer/docs/DEVELOPMENT-PLAN.md)、[证据索引](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-20261026-core-boundaries/projects/eplayer/docs/VALIDATION-2026-10-25.md)。仅新增纯能力模型和退出声音页取消导入，本地 19 项 JVM/构建通过，设备待执行。旧 sound-controls / playback-layout 分支的功能已合入，不重复迁移。缓存旧 API 的职责风险已审计，尚未向 UI 暴露。发布使用 `.github/eplayer-delivery.json`，仅登记已成功主线 CI 的确切 APK；清单当前仍为已发布 0.3.0，等主线结果后更新。
+**下一步先接续 [PR #3](https://github.com/SturgeonIsSleepy/codex-source/pull/3)**，`agent/eplayer-031-native-order` / `185870c2ee115a70ccb7d6def7a54aa1736e40cc`：[计划](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-031-native-order/projects/eplayer/docs/DEVELOPMENT-PLAN.md)、[验证索引](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-031-native-order/projects/eplayer/docs/VALIDATION-2026-10-25.md)。统一 JNI 初始化/释放/播放顺序、取消旧任务，并补三次快速引擎重建、稳定基线及失败状态诊断；19 项 JVM/本地构建、21 项仓库检查通过，设备待执行。已确认代码顺序风险，尚未证明它就是本次 EQ 失败根因。
+
+独立 `agent/eplayer-20261026-core-boundaries` / `a48027065f016b863f358877c738a2122a7a4e47` 已实现纯能力模型、退出声音页取消导入、独立缓存所有权、实际导入弹窗取消/确认/错误回归和断网缓存读取；CI 40229369907 为 31 通过/1 登录条件跳过，72.218 秒，未合入。暂停更多功能合入，先修主线。系统文件选择器、实机、真实账号、全 R8 音乐流程与稳定升级签名仍未验收；0.3.1 本地候选虽签名/哈希/版本正确，失败源码包不得发布。
 
 历史迁移记录（2026-10-24）：主线为 [projects/eplayer](../projects/eplayer/)，原独立参考版为 [projects/witch-player](../projects/witch-player/)。原 ePlayer 工作树最后提交 `d196c0d`；迁移后的后续工作以本仓库提交为准。
 
