@@ -59,3 +59,11 @@ CI 40126620638 的原生解码日志显示两首合成音频推进到曲终，�
 SoundSettingsStore 是偏好到界面状态的应用层适配；声音编辑组件不调用 JNI 或音频效果器。服务/引擎负责应用，Rust 串行处理，Exo 按实际 audioSession 能力公开状态。显式 releasePlayer 清理系统效果器；跨淡入淡出双播放器时按会话释放，不执行全局 releaseAll。新编辑页有 EQ、Rust 空间、系统环绕/低音/响度；前置放大旧方法目前只是字段赋值，不对外显示为已生效能力。AutoEQ/频率/Q 编辑及淡入淡出仍需后续恢复。
 
 新增真实合成音频 EQ 增强/关闭测试和大字 UI 回归已经编译，设备结果待 CI 回写。不要以“界面出现开关”或源码存在代替渲染音频验证。
+
+## 第十四阶段：旧外观配置剥离
+
+全项目 Kotlin/Java/Rust/XML 及测试检索确认，PureBlackMode、ThemeMode、FollowCoverApp/Mini/Player、UseFluidBackground、FontRoundness、HideNavbarOnScroll、WavyProgress 的 get/save 共 18 个访问器均无调用方；移除相应 9 个常量及未使用的 createCustomColorScheme 适配。没有清除已存偏好，不触碰音乐源协议/JNI/音频焦点/普通系统 USB 路由、字体资产和许可。19 项 JVM 与主程序/设备测试包本地构建通过；删除后的设备回归仍待最新 CI，不等同于已整体验收。
+
+## 缓存入口审计（尚未接 UI）
+
+Exo 使用服务持有的 SimpleCache（cache/media），本地/导入文件直接走 DefaultDataSource，不重复缓存；现有 clearAudioCache 会 release 后递归删目录，而既有 CacheDataSource 仍持有旧对象，不能直接接按钮。CacheManager.clearAll 将 SEARCH_HISTORY 和 LOCAL_SONGS 等持久数据也列入缓存类型，亦不能直接接“清缓存”。恢复入口前应按数据职责拆分：保留历史、账号、曲库与下载，使用会话命令序列化播放缓存清理并验证后续可继续播放。当前没有暴露或执行清理，不删除用户数据。

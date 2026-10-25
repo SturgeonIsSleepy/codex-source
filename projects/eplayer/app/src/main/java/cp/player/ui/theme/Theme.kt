@@ -31,9 +31,6 @@ val PaperColors = lightColorScheme(
 )
 
 @Composable
-fun createCustomColorScheme(seedColor: Int, isDark: Boolean, pureBlack: Boolean = false): ColorScheme = PaperColors
-
-@Composable
 fun EPlayerTheme(content: @Composable () -> Unit) {
     val base = Typography()
     val type = remember {
