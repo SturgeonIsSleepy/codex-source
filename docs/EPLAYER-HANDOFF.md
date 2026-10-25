@@ -1,14 +1,14 @@
 # ePlayer 转移交接
 
-每日云端开发正在 [PR #1](https://github.com/SturgeonIsSleepy/codex-source/pull/1) 的 `agent/eplayer-20261025-playback-layout` 分支进行。继续前先读[该分支最新交接](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-20261025-playback-layout/docs/EPLAYER-HANDOFF.md)、[计划](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-20261025-playback-layout/projects/eplayer/docs/DEVELOPMENT-PLAN.md)和[证据索引](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-20261025-playback-layout/projects/eplayer/docs/VALIDATION-2026-10-25.md)，接续既有提交，不从旧迁移基线重做。本段仅登记入口，功能代码仍在草稿 PR，未合入主线。
+[PR #1](https://github.com/SturgeonIsSleepy/codex-source/pull/1) 已合入主线 `a62e0fb60a1aa3215cbb924f5204698153cc738f`。完整双引擎软件流程在 Android 16 为 25 通过/1 真实登录条件跳过，主线正在完成 R8 候选构建与启动检查。实机、音质、耳机/焦点、真实账号仍未验收。
 
-截至 2026-10-25 北京时间，已推送自适应播放页、统一播放请求、共用静态/动态修复插画、系统下载回归、服务定时停止、固定 Player 焦点、纯插画画布。CI 40123797367 为 25 通过/1 条件跳过及 R8 启动 smoke 通过；后续 CI 40124903082 为 24 通过/1 失败/1 条件跳过，阻塞在真实 Rust 播放，不能当最终验收通过。最新源码 `ffad7b3b6c00259635c5c798ba4e16cef18ab6f2` 增加断点修复、真实通知点击、原生错误回传与诊断，设备结果待分支回写。实机、真实账号、网络远端断点、DSP/淡入淡出等缺口仍在；不覆盖本地 agent 的实机职责。
+后续声音/DSP 入口接续分支为 `agent/eplayer-20261026-sound-controls`；保留 main 的已验证基线，不重复迁移或修改 Android Cloud 下载入口。旧 `agent/eplayer-20261025-playback-layout` 的结果已合入本页及项目验证索引。旧 0.1.1 Release 已实际核对为已发布，不重复上传。
 
 更新：2026-10-24。主线为 [projects/eplayer](../projects/eplayer/)，原独立参考版为 [projects/witch-player](../projects/witch-player/)。原 ePlayer 工作树最后提交 `d196c0d`；迁移后的后续工作以本仓库提交为准。
 
 ## 每日云端开发当前状态（2026-10-25 北京时间）
 
-[草稿 PR #1](https://github.com/SturgeonIsSleepy/codex-source/pull/1)，分支 `agent/eplayer-20261025-playback-layout`；功能基线 `888f1a4`，最新功能提交 `ffad7b3b6c00259635c5c798ba4e16cef18ab6f2`。主线已登记入口并合回本分支，未把待验证功能合入 main，也未操作实机。下一轮先同步此分支和 main，保护本地 agent 的新增更改。
+[已合入 PR #1](https://github.com/SturgeonIsSleepy/codex-source/pull/1)，分支 `agent/eplayer-20261025-playback-layout`；功能基线 `888f1a4`，最新功能提交 `ffad7b3b6c00259635c5c798ba4e16cef18ab6f2`。上述已验证软件基线已合入 main；后续新功能使用单独分支，未操作实机。下一轮先同步此分支和 main，保护本地 agent 的新增更改。
 
 ### 已实施
 
