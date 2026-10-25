@@ -65,6 +65,14 @@
 
 第十阶段还处理懒加载原生输出：构造阶段的音量设置可能因引擎尚未创建被拒绝，启动后必须重新应用。新增“带零音量切入 Rust，连续读取真实渲染 RMS 为零，再恢复到 .65 并取得非零 RMS”的检查；验证真正输出而非仅检查界面值。编译与 JVM 检查通过，设备待新 CI。
 
+## 第十阶段：完整软件流程通过
+
+[CI 40220536019](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40220536019)，源码 `9e091f4aa559fc3ab831d7d87fb77038b564b034`：**25 通过、1 项真实模块登录条件跳过**，52.265 秒。真实 Rust 播放/有效时长/12 秒断点、渲染 PCM 静音与恢复、暂停/拖动、循环/随机/音量状态、暂停跨曲/移除、曲终稳定/重播、无效输入错误与 prepare 恢复、切回 Exo、后台及真实通知卡片返回均通过。已查看 `notification-return.png`；Native 播放/暂停图沿用同一人物与眼睑区域。
+
+[设备证据](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40220536019/artifacts/12608754845)，ZIP SHA256 `a3f5fa0d8b989fb350c618efd76a785ffffa92726d7dd47047f88f8a762f5e59`。fastRelease x86_64 APK SHA256 `bcc0e73aee0b193d93e1a5c66a3d869207f1b87a2869c4ad73848de3a1b69453`；测试 APK `8dffca0066cedfe8d6d1b87cdb66b508a4672bc908d40dacf31302129580b773`。
+
+本轮 R8 明确 not_requested。后续主线完整构建和独立精确交付 APK 安装/启动检查另记；实机、音质、耳机、电话/焦点打断、真实账号和网络远端断点没有通过证据。
+
 ## 尚未完成
 
 第七/八阶段的 Rust 断点、错误回传和真实通知卡片点击待对应设备检查；本地 JVM 13 项及主程序/测试包构建通过。实机焦点、耳机路由、真实源账号、长时间播放、完整 R8 音乐功能和全页视觉均未验收。DSP 编辑和淡入淡出入口仍需迁移。
