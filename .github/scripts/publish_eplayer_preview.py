@@ -96,6 +96,14 @@ def verify_blackbox_report(report):
         raise RuntimeError('R8 playback proof does not match this exact candidate')
 
 
+def verify_certificate(signature):
+    # SDK versions label the same verified signer as "Signer #1" or "V2 Signer".
+    # Compare every reported certificate, never the presentation prefix.
+    certificates = re.findall(r'^.*certificate SHA-256 digest: ([0-9a-fA-F]{64})\s*$', signature, re.MULTILINE)
+    if not certificates or {value.lower() for value in certificates} != {CERT}:
+        raise RuntimeError('Delivery certificate mismatch; public verifier output: ' + signature)
+
+
 def prepare():
     OUT.mkdir(exist_ok=True)
     candidate = Path('delivery-input/standard/release/app-standard-universal-release.apk')
@@ -110,8 +118,7 @@ def prepare():
     signature = subprocess.check_output([sdk_tool('apksigner'), 'verify', '--print-certs', OUT / APK], text=True)
     Path('device-evidence').mkdir(exist_ok=True)
     Path('device-evidence/apksigner.txt').write_text(signature)
-    if f'Signer #1 certificate SHA-256 digest: {CERT}' not in signature:
-        raise RuntimeError('Delivery certificate mismatch; public verifier output: ' + signature)
+    verify_certificate(signature)
     badging = subprocess.check_output([sdk_tool('aapt'), 'dump', 'badging', OUT / APK], text=True)
     def field(name):
         match = re.search(r"\b" + name + r"='([^']*)'", badging)
