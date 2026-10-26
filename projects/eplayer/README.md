@@ -2,7 +2,7 @@
 
 基于 [Aurora-Nasa-1/CPPlayer](https://github.com/Aurora-Nasa-1/CPPlayer) 的 Android 音乐播放器，统一为白纸、天空和手绘墨线风格。应用独立安装标识为 `app.eplayer.music`；保留原项目 Kotlin 包名与 JNI 名称，以免破坏原生引擎接口。
 
-## 当前开发版本 0.3.1
+## 当前开发版本 0.3.2
 
 普通版与自用版分离，账号、云端发现、搜索、收藏、歌单和下载流程正在迁移。功能边界与已知缺口见 [CORE-BOUNDARIES.md](docs/CORE-BOUNDARIES.md)；历史模拟器检查不能代替最新代码或实机验收。播放页采用独立组件，按宽度与方向适配，并为大字体保留滚动及可达操作区。
 
