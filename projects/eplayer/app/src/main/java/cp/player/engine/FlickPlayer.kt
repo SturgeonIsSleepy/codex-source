@@ -555,7 +555,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
                 seekDuringStreaming = false
                 val path = currentPlayingPath ?: return@launch
                 withContext(RustEngine.engineDispatcher) {
-                    RustEngine.stop()
+                    RustEngine.stop("seek-recovery")
                     RustEngine.play(path)
                     if (targetPositionMs > 0) {
                         delay(100)
@@ -824,7 +824,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         currentMediaItemIndex = if (startIndex in mediaItems.indices) startIndex else 0
         cancelPreCache()
         parkCurrentItem(startPositionMs.takeUnless { it == C.TIME_UNSET }?.coerceAtLeast(0) ?: 0L)
-        if (playlist.isEmpty()) scope.launch(RustEngine.engineDispatcher) { RustEngine.stop() }
+        if (playlist.isEmpty()) scope.launch(RustEngine.engineDispatcher) { RustEngine.stop("empty-replacement-queue") }
         else if (playWhenReady) playCurrentItem(pendingStartPositionMs!!)
         invalidateState()
         return Futures.immediateVoidFuture()
@@ -888,7 +888,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
             } else if (currentMediaItemIndex >= validFrom) {
                 currentMediaItemIndex = validFrom.coerceAtMost(playlist.size - 1).coerceAtLeast(0)
                 if (playlist.isEmpty()) {
-                    scope.launch(RustEngine.engineDispatcher) { RustEngine.stop() }
+                    scope.launch(RustEngine.engineDispatcher) { RustEngine.stop("empty-after-removal") }
                     isPlaying = false
                     playbackState = Player.STATE_IDLE
                 } else if (playWhenReady) {
@@ -983,7 +983,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     }
 
     override fun handleStop(): ListenableFuture<*> {
-        scope.launch(RustEngine.engineDispatcher) { RustEngine.stop() }
+        scope.launch(RustEngine.engineDispatcher) { RustEngine.stop("player-stop") }
         pauseRequested = false
         bufferingActive = false
         seekDuringStreaming = false
@@ -1141,7 +1141,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         currentPlayingPath = actualPath
         // JNI 调用移到引擎线程：先 stop 再 play
         scope.launch(RustEngine.engineDispatcher) {
-            RustEngine.stop()
+            RustEngine.stop("replace-current-track")
             startNativeItem(actualPath, startPositionMs)
         }
         startPreCacheNextTrack()

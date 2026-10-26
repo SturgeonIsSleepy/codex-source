@@ -115,8 +115,9 @@ object RustEngine {
         return nativeResume()
     }
 
-    fun stop(): Boolean {
+    fun stop(reason: String = "unspecified"): Boolean {
         if (!isInitialized) return false
+        Log.i(TAG, "Native Stop requested; reason=$reason")
         return nativeStop()
     }
 
@@ -132,6 +133,7 @@ object RustEngine {
 
     fun setEqualizer(enabled: Boolean, freqs: FloatArray, gains: FloatArray, qs: FloatArray): Boolean {
         if (!isInitialized) return false
+        Log.i(TAG, "Native EQ update; enabled=$enabled bands=${freqs.size}")
         return nativeSetEqualizer(enabled, freqs, gains, qs)
     }
 
@@ -148,6 +150,7 @@ object RustEngine {
         width: Float
     ): Boolean {
         if (!isInitialized) return false
+        Log.i(TAG, "Native FX update; enabled=$enabled")
         return nativeSetFx(
             enabled, balance, tempo, damp, filterHz, delayMs, size, mix, feedback, width
         )
@@ -236,6 +239,7 @@ object RustEngine {
             when (type) {
                 "StateChanged" -> {
                     val state = json.optString("state", "Idle")
+                    Log.i(TAG, "Native state event: $state")
                     val path = json.optString("path", "").ifEmpty { null }
                     _engineState.value = state
                     _audioEvents.tryEmit(AudioEvent.StateChanged(state, path))
@@ -288,7 +292,7 @@ object RustEngine {
         Log.i(TAG, "stopEngine: Stopping Rust polling and engine")
         pollJob?.cancel()
         pollJob = null
-        val success = stop()
+        val success = stop("adapter-release")
         Log.i(TAG, "stopEngine: nativeStop returned: $success")
     }
 

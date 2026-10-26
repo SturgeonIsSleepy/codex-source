@@ -107,7 +107,8 @@ class LiveEqualizerTest {
             val diagnostic = {
                 var state = ""
                 main { state = "playing=${current.isPlaying} state=${current.playbackState} position=${current.currentPosition} duration=${current.duration} error=${current.playerError}" }
-                "$state level=$latest samples=$samples eq=${DspPreferences.getEqEnabled(context)} bands=${DspPreferences.getPeqBands(context)}"
+                val native = runBlocking { withContext(RustEngine.engineDispatcher) { RustEngine.getState() } }
+                "$state native=$native level=$latest samples=$samples eq=${DspPreferences.getEqEnabled(context)} bands=${DspPreferences.getPeqBands(context)}"
             }
             await(describe = diagnostic) {
                 var active = false
