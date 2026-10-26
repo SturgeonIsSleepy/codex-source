@@ -116,3 +116,9 @@ artifact 12611378871，ZIP SHA256 c81d6c734989a4a6fb65e02f105e47b126c0ae4fe6f75c
 设备 artifact 12612042754 ZIP SHA256 5671b0778c9676d526841de70023c51d4b158900ef291310d805951f45f5b8da。已下载查看 instrumentation.txt/runtime.txt；旧测试缺少失败时幅度和播放状态数值，不能武断判为采样抖动或已证实的停止竞态。原生写命令顺序存在独立已确认风险，正在 agent/eplayer-031-native-order 修复并补诊断。
 
 R8 候选 artifact 12612652207 ZIP SHA256 c3a462eeec8b5941318fba30662db8762f664d05ae24287191fd497d80be237b。原始 universal APK 0.3.1/code46，SHA256 5f60192c2ba51a4c46727ef3eda094a488a897fbd4a8b0d4055ebc6462ab1c0d，证书 9ad8248ac5d246d9da74b38858a40ba510b35b53c5370d66f055043687a8bdf4；签名/版本/三 ABI 已实际校验，但不发布该失败源码候选。发布清单必须继续固定已发布的 0.3.0。
+
+## 原生顺序修复验证
+
+第一轮源码 185870c2ee115a70ccb7d6def7a54aa1736e40cc，CI 40230148361，30 项共 29 通过/1 登录跳过，72.04 秒。第二轮含取消后事件过滤源码 2f6db3953057e0841503099f9660f66cecfae442，CI 40230802502，30 项共 29 通过/1 登录跳过，74.86 秒。三次快速系统/Rust 重建后，12 秒原生合成音频持续推进，稳定基线、原阈值提升与禁用恢复均通过；R8 not_requested，尚需主线 R8 构建/启动，不能覆盖 a25a90b 历史失败。
+
+第一轮设备 artifact 12613520218 SHA256 2feb746687ea89002e90d72dd141230ed72c603f63dbbe4cd2205948995a391d；第二轮设备 artifact 12612982122 SHA256 13d8592bb3819e91d93762e19d07b3260c9a24994e91a5883267aa86b259bbc9。第二轮已下载核对 runtime/instrumentation 与 build.json。初始化、Play/Stop/释放共用队列，旧任务被取消；JNI 返回后取消检查阻止旧 poller 发送事件。原失败没有足够数值证据来唯一归因，修复同时解决已确认生命周期风险和未稳定采样的问题；不宣称已反向证实唯一根因。

@@ -26,6 +26,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import cp.player.util.toMediaItem
 import java.io.File
 import java.util.UUID
@@ -45,17 +47,19 @@ class LiveEqualizerTest {
         instrumentation.runOnMainSync { try { action() } catch (failure: Throwable) { error = failure } }
         error?.let { throw it }
     }
-    private fun await(action: () -> Boolean) {
+    private fun await(describe: () -> String = { "Audio state did not settle" }, action: () -> Boolean) {
         val limit = SystemClock.elapsedRealtime() + 15000
         while (SystemClock.elapsedRealtime() < limit) {
             if (action()) return
             SystemClock.sleep(100)
         }
-        assertTrue("Audio effect did not reach the expected rendered level", action())
+        assertTrue(describe(), action())
     }
     private fun level(): Float {
-        RustEngine.getProgress()
-        return MusicPulse.sample()
+        return runBlocking { withContext(RustEngine.engineDispatcher) {
+            RustEngine.getProgress()
+            MusicPulse.sample()
+        } }
     }
     @Test fun savedEqualizerChangesApplyWhilePlayingAndDisableCleanly() {
         val dsp = context.getSharedPreferences("cp_player_dsp_prefs", 0)
@@ -91,10 +95,30 @@ class LiveEqualizerTest {
                     FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)))
                 current.prepare(); current.play()
             }
-            await { var active = false; main { assertNull(current.playerError); active = current.isPlaying }; active && level().isFinite() && level() > .01f }
-            var baseline = 0f
-            repeat(5) { baseline += level(); SystemClock.sleep(100) }
-            baseline /= 5
+            repeat(3) {
+                for (engine in listOf(0, 1)) {
+                    lateinit var transition: ListenableFuture<SessionResult>
+                    main { transition = current.sendCustomCommand(SessionCommand("SET_ENGINE", Bundle.EMPTY), Bundle().apply { putInt("engine", engine) }) }
+                    assertEquals(SessionResult.RESULT_SUCCESS, transition.get(10, TimeUnit.SECONDS).resultCode)
+                }
+            }
+            val samples = ArrayDeque<Float>()
+            var latest = Float.NaN
+            val diagnostic = {
+                var state = ""
+                main { state = "playing=${current.isPlaying} state=${current.playbackState} position=${current.currentPosition} duration=${current.duration} error=${current.playerError}" }
+                "$state level=$latest samples=$samples eq=${DspPreferences.getEqEnabled(context)} bands=${DspPreferences.getPeqBands(context)}"
+            }
+            await(describe = diagnostic) {
+                var active = false
+                main { assertNull(current.playerError); active = current.isPlaying && current.currentPosition >= 1000 && current.duration in 11900..12100 }
+                latest = level()
+                if (!active || !latest.isFinite() || latest <= .01f) samples.clear()
+                else { samples.addLast(latest); if (samples.size > 5) samples.removeFirst() }
+                samples.size == 5 && samples.max() - samples.min() < .005f
+            }
+            val baseline = samples.average().toFloat()
+            android.util.Log.i("EPlayerTest", "Stable native EQ baseline=$baseline after three fast engine recreations")
             settings.previewProfile(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", profileFile))
             await { settings.profile.value != null }
             assertFalse("Preview must not enable EQ", DspPreferences.getEqEnabled(context))
@@ -102,9 +126,14 @@ class LiveEqualizerTest {
             assertEquals("OFF filters must stay off", 1, settings.profile.value!!.bands.size)
             main { settings.applyProfileBands() }
             var boosted = baseline
-            await { boosted = level(); boosted.isFinite() && boosted > baseline + .025f }
+            await(describe = { "EQ boost baseline=$baseline boosted=$boosted ${diagnostic()}" }) {
+                boosted = level(); latest = boosted
+                boosted.isFinite() && boosted > baseline + .025f
+            }
             DspPreferences.setEqEnabled(context, false)
-            await { level().let { it.isFinite() && it < boosted - .02f && it > .01f } }
+            await(describe = { "EQ disable baseline=$baseline boosted=$boosted ${diagnostic()}" }) {
+                latest = level(); latest.isFinite() && latest < boosted - .02f && latest > .01f
+            }
             main { assertTrue("Changing EQ must not restart or pause playback", current.isPlaying) }
             android.util.Log.i("EPlayerTest", "Live native EQ: baseline=$baseline boosted=$boosted disabled=${level()}")
         } finally {
