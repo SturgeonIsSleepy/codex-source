@@ -134,3 +134,9 @@ Media3 1.10.0 实际 AAR 的 SimpleBasePlayer.release 字节码：shouldHandleCo
 源码 99655c2249e62e16bfd8e9a6eab5c4171e717054；31 项共 30 通过/1 登录条件跳过，54.033 秒。公开 Player.release 在播放 30 秒合成 WAV 后两秒内使原生 Stopped；快速系统/Rust 重建与 EQ 原阈值验证通过。归一化幅度 0.13143149→0.18598484→0.13141343。已实际检查日志：每次旧适配器释放出现同一 JNI 线程的 stopEngine，而之前失败主线只有测试末尾的全局停止，证明清理现在真正执行。
 
 设备 artifact 12678440853 ZIP SHA256 f57044199ecc9921ca127fa242ff866288648ca060383698ac9f1ca2485b1a0f；预览 artifact 12678530309 SHA256 d5220bf91a8a580d02fd6c458e2e0e664c5fb1a861e33d9dc18f7fe55334fc21。R8 not_requested；需要合入后完成新主线 R8/启动及对应确切包的软件检查，不发布之前失败候选。
+
+## 独立 R8 工具初始验收（旧 0.3.0 包）
+
+CI 40376509058 在 SDK setup 请求下架 tools 包失败，未运行设备；改为 platform-tools 后，CI 40377644125 两项跨应用检查通过，33.35 秒。候选固定 a62e0fb /CI 40222561908，原始 universal R8 SHA256 9106fbbee4154a4c2a4c4b877a4976d364d9e65ba514ff110b6272d69bb49d40，未重签目标 APK。系统文件选择器导入运行时生成 30 秒 WAV，系统/Rust 在 UI 选择，框架 MediaSession 有效时长/音频输出活跃、暂停位置保持、12 秒 seek、后台推进、实际通知卡片点击返回均通过。框架位置按更新时间外推，不是原始 PCM 或物理音质测量；该报告不批准 0.3.1。
+
+证据 artifact 12676401042 SHA256 2b9b1395be74860dc6494686d484df88c3b9dd8011da5486a1ac7a94de9ec87e。已查看 native-playing.png（取图时仍有插画加载圈，不能作为完整人物视觉通过）、native-returned-paused.png、system-notification.png。后续工具等待插画加载/眼睑过渡、实际核对单选状态，改用 480x800/160dpi 并保存暂停图；这些增强尚待新候选设备运行。

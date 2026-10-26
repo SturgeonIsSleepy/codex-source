@@ -31,7 +31,7 @@ class DeliveryChecks(unittest.TestCase):
                 self.load(dict(delivery.CONFIG, **changes))
 
     def test_new_versions_do_not_require_an_existing_draft_id(self):
-        manifest = dict(delivery.CONFIG, version='0.3.1', release_id=None)
+        manifest = dict(delivery.CONFIG, version='0.3.1', release_id=None, blackbox_artifact=123, evidence=[123])
         self.assertEqual('0.3.1', self.load(manifest)['version'])
 
     def test_success_from_the_wrong_source_or_branch_cannot_publish(self):
@@ -49,6 +49,20 @@ class DeliveryChecks(unittest.TestCase):
             release['assets'][0]['digest'] = 'sha256:' + '0' * 64
             with self.assertRaises(RuntimeError):
                 delivery.inspect()
+
+    def test_new_delivery_requires_indexed_exact_r8_proof(self):
+        base = dict(delivery.CONFIG, version='0.3.0')
+        base.pop('blackbox_artifact', None)
+        for changes in [{'version': '0.3.1'}, {'blackbox_artifact': -1}, {'blackbox_artifact': True}]:
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                self.load(dict(base, **changes))
+
+    def test_old_or_failed_r8_reports_cannot_approve_the_candidate(self):
+        report = dict(status='passed', source=delivery.SOURCE, source_run=delivery.RUN, apk_sha256=delivery.SHA)
+        delivery.verify_blackbox_report(report)
+        for changes in [{'status': 'failed'}, {'source': '0' * 40}, {'source_run': 1}, {'apk_sha256': '0' * 64}]:
+            with self.subTest(changes=changes), self.assertRaises(RuntimeError):
+                delivery.verify_blackbox_report(dict(report, **changes))
 
     def test_existing_draft_target_is_never_replaced(self):
         wrong = dict(tag_name=delivery.TAG, target_commitish='0' * 40)
