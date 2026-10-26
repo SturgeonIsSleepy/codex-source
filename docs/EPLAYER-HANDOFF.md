@@ -1,10 +1,12 @@
 # ePlayer 转移交接
 
-主线 0.3.1 已合入 [PR #2](https://github.com/SturgeonIsSleepy/codex-source/pull/2)，源码 `a25a90b7a58977c974bc8d3652a0ffc5de542973`；其 [CI 40228396656](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40228396656) 普通/自用 R8 构建通过，但设备为 28 通过/1 EQ 幅度等待失败/1 登录条件跳过，后续 R8 cold-start 未执行。0.3.1 发布暂停；分支 b34e679 的 29 通过/1 跳过不能覆盖主线失败。[0.3.0 Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0) 继续固定旧基线，发布清单仍指向它。
+当前主线 `fb48458947a1ec4a0248e406b3d38369b0b79bda` 已合入 [PR #3](https://github.com/SturgeonIsSleepy/codex-source/pull/3) 的原生顺序修复；但 [CI 40374694929](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40374694929) 仍为 28 通过/1 失败/1 登录跳过（90.308 秒）。R8 两变体构建通过，冷启动未执行。新诊断显示 EQ 前已 IDLE/position0/duration12000/error=null/levelNaN；0.3.1 继续暂停发布。[0.3.0](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0) 与发布清单保持不变。
 
-**下一步先接续 [PR #3](https://github.com/SturgeonIsSleepy/codex-source/pull/3)**，`agent/eplayer-031-native-order` / `185870c2ee115a70ccb7d6def7a54aa1736e40cc`：[计划](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-031-native-order/projects/eplayer/docs/DEVELOPMENT-PLAN.md)、[验证索引](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-031-native-order/projects/eplayer/docs/VALIDATION-2026-10-25.md)。统一 JNI 初始化/释放/播放顺序、取消旧任务，并补三次快速引擎重建、稳定基线及失败状态诊断；19 项 JVM/本地构建、21 项仓库检查通过，设备待执行。已确认代码顺序风险，尚未证明它就是本次 EQ 失败根因。
+**优先接续 [PR #5](https://github.com/SturgeonIsSleepy/codex-source/pull/5)**：`agent/eplayer-031-release-contract` / `99655c2249e62e16bfd8e9a6eab5c4171e717054`。实际核对 Media3 1.10.0 字节码发现 SimpleBasePlayer.release 缺少 COMMAND_RELEASE 时直接返回；FlickPlayer 正好漏了该能力，先前 handleRelease 清理从未执行。修复补该能力及真实公开 release 停止 30 秒合成播放的契约检查。本地 19 JVM/构建、21 仓库检查通过，设备待执行。不要以旧顺序分支两轮通过代替本缺陷验收，也不发布失败候选。
 
-独立 `agent/eplayer-20261026-core-boundaries` / `a48027065f016b863f358877c738a2122a7a4e47` 已实现纯能力模型、退出声音页取消导入、独立缓存所有权、实际导入弹窗取消/确认/错误回归和断网缓存读取；CI 40229369907 为 31 通过/1 登录条件跳过，72.218 秒，未合入。暂停更多功能合入，先修主线。系统文件选择器、实机、真实账号、全 R8 音乐流程与稳定升级签名仍未验收；0.3.1 本地候选虽签名/哈希/版本正确，失败源码包不得发布。
+独立缓存/弹窗 [PR #4](https://github.com/SturgeonIsSleepy/codex-source/pull/4) 保留 a480270 的 31 通过/1 登录跳过，暂不合入。独立 R8 工具分支 `agent/eplayer-20261026-r8-blackbox` 已编译约 29KB 自身目标 QA APK，不更改播放器签名或权限；CI 40377644125 在固定的 a62e0fb/0.3.0 R8 包完成两项跨应用检查（33.35 秒），含系统文件选择器、框架会话、输出活跃、暂停/seek、后台及真实通知返回，截图已查看。只证明该旧包/工具流程；不能当 0.3.1 通过。首次 QA CI 40376509058 在 SDK setup 请求过时 tools 包失败，设备未执行；改 platform-tools 后通过。
+
+云端仍未操作实机；实机音质/路由、真实账号、0.3.1 精确交付和稳定升级签名待完成。下一轮先读取上述优先分支最新计划与验证索引，保护其他项目和 Android Cloud 固定入口。
 
 历史迁移记录（2026-10-24）：主线为 [projects/eplayer](../projects/eplayer/)，原独立参考版为 [projects/witch-player](../projects/witch-player/)。原 ePlayer 工作树最后提交 `d196c0d`；迁移后的后续工作以本仓库提交为准。
 
