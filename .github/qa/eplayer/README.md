@@ -15,3 +15,5 @@ python3 .github/scripts/build_eplayer_blackbox.py --sdk "$ANDROID_HOME" --output
 完整设备验收由 `eplayer-r8-blackbox.yml` 执行。平台 JUnit3 runner 作为 SDK shared library 使用，因此不依赖播放器中被 R8 删除或改名的 Kotlin/Compose 类。当前仅针对 API36；升级 SDK 时应实际验证该平台测试库是否仍可用。
 
 初始清单固定已发布 0.3.0 的 a62e0fb，只用于验证新验收工具。不能把它当作正在修复的 0.3.1 已通过；新主线完成构建后需要更新清单并重新检查对应确切 APK。
+
+后续验收使用 480×800/160dpi 视口，保存前等待插画加载，实际核对引擎单选状态，并在暂停眼睑过渡结束后取图。交付清单的新版本必须引用匹配源码/构建/APK SHA256 的成功 R8 跨应用报告；旧版通过不能批准新版。

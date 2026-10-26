@@ -63,8 +63,10 @@ def device(app, qa, output):
     report = dict(source=config['source'], source_run=config['run_id'], apk_sha256=actual,
         qa_sha256=qa_digest, status='incomplete',
         scope='Untouched universal R8 APK; cross-app UI import and framework MediaSession. System/native selected in UI. Framework position uses its reported update time; no raw PCM or physical audio-quality measurement.',
-        device={'model': shell('getprop', 'ro.product.model'), 'sdk': shell('getprop', 'ro.build.version.sdk')})
+        device={'model': shell('getprop', 'ro.product.model'), 'sdk': shell('getprop', 'ro.build.version.sdk'), 'viewport': '480x800 at 160dpi'})
     try:
+        adb('shell', 'wm', 'size', '480x800')
+        adb('shell', 'wm', 'density', '160')
         adb('install', '-r', app)
         # Only a freshly identified SDK emulator reaches this operation. Preserve fast-test evidence separately.
         if shell('pm', 'clear', TARGET) != 'Success':
@@ -96,6 +98,7 @@ def device(app, qa, output):
         runtime = subprocess.run(['adb', 'logcat', '-d', '-s', 'AndroidRuntime'], capture_output=True, text=True, timeout=30)
         (output / 'runtime.txt').write_text(runtime.stdout)
         for package in [QA, TARGET]: subprocess.run(['adb', 'shell', 'am', 'force-stop', package], timeout=30, check=False)
+        for setting in ['size', 'density']: subprocess.run(['adb', 'shell', 'wm', setting, 'reset'], timeout=30, check=False)
 
 
 if __name__ == '__main__':

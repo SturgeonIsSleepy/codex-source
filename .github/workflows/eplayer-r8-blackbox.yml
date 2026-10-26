@@ -2,7 +2,7 @@ name: ePlayer R8 cross-app playback
 on:
   workflow_dispatch:
   push:
-    branches: [main, agent/eplayer-20261026-r8-blackbox]
+    branches: [main, agent/eplayer-r8-validation]
     paths:
       - '.github/eplayer-blackbox.json'
       - '.github/qa/eplayer/**'

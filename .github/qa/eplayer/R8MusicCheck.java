@@ -56,7 +56,7 @@ public class R8MusicCheck extends InstrumentationTestCase {
             click(find("设置", true));
             waitFor("settings engine", () -> find(engine, false) != null);
             click(find(engine, false));
-            SystemClock.sleep(300);
+            waitFor("selected engine", () -> selected(engine));
             click(find("完成", false));
             waitFor("home after settings", () -> find("设置", true) != null);
             if (count("导入") > 1) {
@@ -89,11 +89,15 @@ public class R8MusicCheck extends InstrumentationTestCase {
             });
             AudioManager audio = getInstrumentation().getTargetContext().getSystemService(AudioManager.class);
             waitFor("real output and 30-second duration", () -> playing() && duration() >= 29000 && duration() <= 31000 && audio.isMusicActive());
+            waitFor("artwork loaded", () -> !hasProgress(ui.getRootInActiveWindow()));
+            ui.waitForIdle(100, 3000);
+            SystemClock.sleep(450);
             capture(name + "-playing");
             controller.getTransportControls().pause();
             waitFor("pause", () -> state() == PlaybackState.STATE_PAUSED);
             long paused = position(); SystemClock.sleep(1000);
             assertTrue("Paused position changed: " + paused + " -> " + position(), Math.abs(position() - paused) < 500);
+            capture(name + "-paused");
             controller.getTransportControls().seekTo(12000);
             waitFor("paused seek to twelve seconds", () -> state() == PlaybackState.STATE_PAUSED && Math.abs(position() - 12000) < 600);
             controller.getTransportControls().play();
@@ -110,6 +114,7 @@ public class R8MusicCheck extends InstrumentationTestCase {
             waitFor("notification returned expanded player", () -> TARGET.equals(rootPackage()) && find("收起播放器", true) != null);
             controller.getTransportControls().pause();
             waitFor("pause after notification return", () -> state() == PlaybackState.STATE_PAUSED);
+            SystemClock.sleep(450); // Let the continuous eyelid transition settle before visual evidence.
             capture(name + "-returned-paused");
             try (FileWriter log = new FileWriter(new File(evidence, name + ".txt"))) {
                 log.write("engine selected in UI=" + engine + "\nduration=" + duration() + "\npaused seek=12000\nreturned position=" + position() + "\n");
@@ -172,6 +177,31 @@ public class R8MusicCheck extends InstrumentationTestCase {
         int count = n.isVisibleToUser() && text.contentEquals(n.getText() == null ? "" : n.getText()) ? 1 : 0;
         for (int i = 0; i < n.getChildCount(); i++) { AccessibilityNodeInfo child = n.getChild(i); if (child != null) count += countNode(child, text); }
         return count;
+    }
+    private boolean selected(String label) {
+        AccessibilityNodeInfo text = find(label, false);
+        if (text == null) return false;
+        Rect bounds = new Rect(); text.getBoundsInScreen(bounds);
+        AccessibilityNodeInfo[] nearest = new AccessibilityNodeInfo[1];
+        int[] distance = new int[]{Integer.MAX_VALUE};
+        nearestCheckable(ui.getRootInActiveWindow(), bounds.centerY(), nearest, distance);
+        float limit = 24 * getInstrumentation().getTargetContext().getResources().getDisplayMetrics().density;
+        return nearest[0] != null && distance[0] < limit && nearest[0].isChecked();
+    }
+    private void nearestCheckable(AccessibilityNodeInfo n, int y, AccessibilityNodeInfo[] nearest, int[] distance) {
+        if (n == null) return;
+        if (n.isVisibleToUser() && n.isCheckable()) {
+            Rect bounds = new Rect(); n.getBoundsInScreen(bounds);
+            int delta = Math.abs(bounds.centerY() - y);
+            if (delta < distance[0]) { nearest[0] = n; distance[0] = delta; }
+        }
+        for (int i = 0; i < n.getChildCount(); i++) nearestCheckable(n.getChild(i), y, nearest, distance);
+    }
+    private boolean hasProgress(AccessibilityNodeInfo n) {
+        if (n == null) return false;
+        if (n.isVisibleToUser() && "android.widget.ProgressBar".equals(String.valueOf(n.getClassName()))) return true;
+        for (int i = 0; i < n.getChildCount(); i++) if (hasProgress(n.getChild(i))) return true;
+        return false;
     }
     private void click(AccessibilityNodeInfo n) {
         assertNotNull("Missing UI action", n);
