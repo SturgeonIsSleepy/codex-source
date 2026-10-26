@@ -5,7 +5,7 @@
   "run_id": 40379791181,
   "apk_sha256": "92b6b3d1f28940db408b033646b9a77233a0d1cd749c7e6c8b1ab6d0623973b3",
   "certificate_sha256": "c92db3ca59c4ec286cea2f2b54f085b38d676b8e956a34b17c103fc61e04680a",
-  "release_id": null,
+  "release_id": 424674767,
   "evidence": [
     12610979058,
     12611378871,
@@ -18,7 +18,8 @@
     12678440853,
     12678359715,
     12680016792,
-    12680541471
+    12680541471,
+    12681403110
   ],
   "validation_summary": "Ordinary fastRelease Android 16 instrumentation: 30 passed, 1 credential-dependent login test skipped (76.436 seconds). Ordinary/internal R8 builds and ordinary R8 cold-start passed (1720ms). The unchanged universal R8 APK additionally passed both system/native cross-app UI import, pause, seek, background playback and actual notification-return tests in runs 40383667514 and 40385418880. Loaded 480x800 playback/pause frames and sampled silent 2.77/2.90-second motion previews were inspected. Native lifecycle public-release regression and live EQ amplitude checks passed. Historical failed main runs are retained; these results do not cover physical devices, authenticated music sources, every animation frame or subjective audio quality.",
   "blackbox_artifact": 12680541471

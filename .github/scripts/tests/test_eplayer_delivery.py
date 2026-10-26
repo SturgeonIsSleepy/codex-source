@@ -68,3 +68,11 @@ class DeliveryChecks(unittest.TestCase):
         wrong = dict(tag_name=delivery.TAG, target_commitish='0' * 40)
         with patch.dict(delivery.CONFIG, release_id=123), patch.object(delivery, 'gh', return_value=json.dumps(wrong)), self.assertRaises(RuntimeError):
             delivery.existing_release()
+
+    def test_verified_signer_labels_vary_but_every_certificate_must_match(self):
+        for prefix in ['Signer #1', 'V2 Signer']:
+            delivery.verify_certificate(f'{prefix}: certificate SHA-256 digest: {delivery.CERT}\n')
+        for output in ['', f'V2 Signer: certificate SHA-256 digest: {"0" * 64}\n',
+                       f'Signer #1 certificate SHA-256 digest: {delivery.CERT}\nSigner #2 certificate SHA-256 digest: {"0" * 64}\n']:
+            with self.subTest(output=output), self.assertRaises(RuntimeError):
+                delivery.verify_certificate(output)
