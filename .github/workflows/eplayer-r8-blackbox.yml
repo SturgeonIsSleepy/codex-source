@@ -1,0 +1,65 @@
+name: ePlayer R8 cross-app playback
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, agent/eplayer-r8-validation]
+    paths:
+      - '.github/eplayer-blackbox.json'
+      - '.github/qa/eplayer/**'
+      - '.github/scripts/build_eplayer_blackbox.py'
+      - '.github/scripts/run_eplayer_blackbox.py'
+      - '.github/workflows/eplayer-r8-blackbox.yml'
+permissions:
+  actions: read
+  contents: read
+concurrency:
+  group: eplayer-r8-blackbox
+  cancel-in-progress: false
+jobs:
+  playback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify the immutable candidate source
+        id: candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/run_eplayer_blackbox.py candidate
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Install the lightweight QA compile platform
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.candidate.outputs.artifact }}
+          run-id: ${{ steps.candidate.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: r8-input
+      - name: Build the independent QA app
+        run: python3 .github/scripts/build_eplayer_blackbox.py --output "$RUNNER_TEMP/eplayer-qa.apk"
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Check exact R8 music through the system UI and media session
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: python3 .github/scripts/run_eplayer_blackbox.py device --app r8-input/standard/release/app-standard-universal-release.apk --qa "$RUNNER_TEMP/eplayer-qa.apk"
+      - name: Preserve R8 evidence including incomplete and failed runs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eplayer-r8-blackbox-${{ github.run_id }}
+          path: r8-evidence/
+          if-no-files-found: warn

@@ -4,6 +4,8 @@ import android.util.Log
 import cp.player.util.DebugLog
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -208,12 +210,17 @@ object RustEngine {
             while (isActive) {
                 try {
                     val eventStr = nativePollEvent()
+                    // A cancelled poller may return from JNI after a replacement
+                    // starts. Do not publish its stale state into the new adapter.
+                    coroutineContext.ensureActive()
                     if (eventStr != null && eventStr != "null") {
                         handleEventJson(eventStr)
                     } else {
                         // No event, delay a bit
                         delay(50)
                     }
+                } catch (cancel: CancellationException) {
+                    throw cancel
                 } catch (e: Exception) {
                     Log.e(TAG, "Error in poll loop", e)
                     delay(1000)

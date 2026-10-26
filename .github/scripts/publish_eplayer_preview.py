@@ -28,6 +28,11 @@ def load_manifest(path):
         raise ValueError('Evidence artifact IDs are required')
     if not isinstance(value.get('validation_summary'), str) or not value['validation_summary'].strip():
         raise ValueError('Validation scope is required')
+    proof = value.get('blackbox_artifact')
+    if proof is not None and (type(proof) is not int or proof <= 0 or proof not in value['evidence']):
+        raise ValueError('R8 playback proof must be an indexed artifact')
+    if value['version'] != '0.3.0' and proof is None:
+        raise ValueError('New deliveries require exact-APK R8 playback proof')
     return value
 
 
@@ -84,6 +89,11 @@ def inspect():
         print('Published delivery matches; no downloads, emulator or writes requested')
     with Path(os.environ['GITHUB_OUTPUT']).open('a') as output:
         output.write(f'published={str(published).lower()}\nartifact=eplayer-preview-{SOURCE}\nrun_id={RUN}\ntag={TAG}\n')
+
+
+def verify_blackbox_report(report):
+    if report.get('status') != 'passed' or report.get('source') != SOURCE or report.get('source_run') != RUN or report.get('apk_sha256') != SHA:
+        raise RuntimeError('R8 playback proof does not match this exact candidate')
 
 
 def prepare():
@@ -171,6 +181,15 @@ def publish():
                 expected = metadata.get('digest')
                 if expected and expected != 'sha256:' + actual:
                     raise RuntimeError('Evidence archive checksum mismatch')
+                if artifact_id == CONFIG.get('blackbox_artifact'):
+                    qa_run_id = metadata.get('workflow_run', {}).get('id')
+                    if not qa_run_id:
+                        raise RuntimeError('Missing R8 playback provenance')
+                    qa_run = json.loads(gh('api', f'repos/{REPO}/actions/runs/{qa_run_id}'))
+                    if qa_run['conclusion'] != 'success' or qa_run['path'] != '.github/workflows/eplayer-r8-blackbox.yml':
+                        raise RuntimeError('R8 playback workflow did not pass')
+                    with zipfile.ZipFile(path) as proof:
+                        verify_blackbox_report(json.loads(proof.read('build.json')))
                 archive.write(path, f'history/{path.name}')
                 index.append({'artifact_id': artifact_id, 'name': metadata['name'], 'sha256': actual})
         for path in sorted(Path('device-evidence').rglob('*')):
@@ -182,7 +201,7 @@ def publish():
 Source: https://github.com/{REPO}/commit/{SOURCE}
 Verified workflow: https://github.com/{REPO}/actions/runs/{RUN}
 
-{CONFIG['validation_summary']} This delivery additionally passed exact universal R8 APK installation/cold-start on API 36 x86_64. Full R8 music acceptance, physical-device audio routing and live authenticated sources remain unverified.
+{CONFIG['validation_summary']} This delivery additionally passed exact universal R8 APK installation/cold-start on API 36 x86_64. R8 music coverage is limited to the explicitly indexed checks; physical-device audio routing and live authenticated sources remain unverified.
 
 APK is unchanged from the verified CI artifact (three ABIs); no recordings or signing keys are bundled. Certificate SHA256: {CERT}. This temporary CI signing identity may differ from installed previews and future CI builds may use another identity. Back up local imports/settings before a required uninstall; seamless upgrades are not promised. Do not overwrite an existing installation with a different certificate.
 

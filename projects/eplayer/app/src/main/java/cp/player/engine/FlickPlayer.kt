@@ -22,6 +22,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelChildren
 import android.content.SharedPreferences
 import cp.player.util.DspPreferences
 import cp.player.util.UserPreferences
@@ -167,9 +169,13 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
 
     init {
         DspPreferences.addListener(context, dspListener)
-        RustEngine.initEngine(context)
-        // 同步 DSD / DAP 设置到 Rust 引擎
+        // Initialization shares the command queue with release and Play. A previous
+        // adapter must finish stopping the global engine before this one initializes.
         scope.launch(RustEngine.engineDispatcher) {
+            if (!RustEngine.initEngine(context.applicationContext)) {
+                scope.launch { if (!released) handleError("Rust 音频初始化失败") }
+                return@launch
+            }
             RustEngine.setDsdOutputMode(UserPreferences.getDsdOutputMode(context))
             RustEngine.setDapBitPerfectEnabled(UserPreferences.getDapBitPerfect(context))
         }
@@ -717,6 +723,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
                         Player.COMMAND_SET_VOLUME,
                         Player.COMMAND_PREPARE,
                         Player.COMMAND_STOP,
+                        Player.COMMAND_RELEASE,
                         Player.COMMAND_SET_REPEAT_MODE,
                         Player.COMMAND_SET_SHUFFLE_MODE,
                         Player.COMMAND_GET_METADATA,
@@ -994,20 +1001,14 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     override fun handleRelease(): ListenableFuture<*> {
         released = true
         DspPreferences.removeListener(context, dspListener)
-        // 取消所有协程，然后在引擎线程停止引擎
-        engineEventJob?.cancel()
-        streamProxyJob?.cancel()
-        underrunWatchJob?.cancel()
-        seekWatchdogJob?.cancel()
-        seekRecoveryJob?.cancel()
-        stateReconcileJob?.cancel()
-        preCacheJob?.cancel()
         stopPositionPolling()
-        // 注销 SharedPreferences 监听器
-        try {
-            UserPreferences.getPrefs(context).unregisterOnSharedPreferenceChangeListener(prefsListener)
-        } catch (_: Exception) {}
-        scope.launch(Dispatchers.IO) { RustEngine.stopEngine() }
+        UserPreferences.getPrefs(context).unregisterOnSharedPreferenceChangeListener(prefsListener)
+        // Cancel old delayed work, then queue cleanup before any new adapter's init/Play.
+        // Keeping cleanup on generic IO allows an old Stop to kill a replacement player.
+        scope.coroutineContext.cancelChildren()
+        scope.launch(RustEngine.engineDispatcher) {
+            try { RustEngine.stopEngine() } finally { scope.cancel() }
+        }
         return Futures.immediateVoidFuture()
     }
 

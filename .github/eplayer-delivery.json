@@ -1,11 +1,25 @@
 {
-  "version": "0.3.0",
-  "version_code": 40,
-  "source": "a62e0fb60a1aa3215cbb924f5204698153cc738f",
-  "run_id": 40222561908,
-  "apk_sha256": "9106fbbee4154a4c2a4c4b877a4976d364d9e65ba514ff110b6272d69bb49d40",
-  "certificate_sha256": "8f89883030d7d64aecb6358b43eddeb8e9cd5ac323f8ab9916af4070186f08dc",
-  "release_id": 423603768,
-  "evidence": [12571144547, 12571508933, 12572094416, 12572746847, 12572803104, 12572734586, 12608478206, 12608754845, 12610258290],
-  "validation_summary": "Ordinary fastRelease Android 16 instrumentation: 25 passed, 1 credential-dependent login test skipped. Ordinary/internal R8 builds and ordinary R8 cold-start passed. Dual-engine playback/seek/replay/error recovery, actual PCM mute/unmute, background playback and actual notification return were exercised. Live EQ work is not part of this baseline."
+  "version": "0.3.1",
+  "version_code": 52,
+  "source": "331d31241159737aec196fe922431898764f6909",
+  "run_id": 40379791181,
+  "apk_sha256": "92b6b3d1f28940db408b033646b9a77233a0d1cd749c7e6c8b1ab6d0623973b3",
+  "certificate_sha256": "c92db3ca59c4ec286cea2f2b54f085b38d676b8e956a34b17c103fc61e04680a",
+  "release_id": null,
+  "evidence": [
+    12610979058,
+    12611378871,
+    12612065536,
+    12612675467,
+    12612042754,
+    12613520218,
+    12612982122,
+    12674574276,
+    12678440853,
+    12678359715,
+    12680016792,
+    12680541471
+  ],
+  "validation_summary": "Ordinary fastRelease Android 16 instrumentation: 30 passed, 1 credential-dependent login test skipped (76.436 seconds). Ordinary/internal R8 builds and ordinary R8 cold-start passed (1720ms). The unchanged universal R8 APK additionally passed both system/native cross-app UI import, pause, seek, background playback and actual notification-return tests in runs 40383667514 and 40385418880. Loaded 480x800 playback/pause frames and sampled silent 2.77/2.90-second motion previews were inspected. Native lifecycle public-release regression and live EQ amplitude checks passed. Historical failed main runs are retained; these results do not cover physical devices, authenticated music sources, every animation frame or subjective audio quality.",
+  "blackbox_artifact": 12680541471
 }

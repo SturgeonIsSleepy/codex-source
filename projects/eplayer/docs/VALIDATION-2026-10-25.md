@@ -126,3 +126,38 @@ R8 候选 artifact 12612652207 ZIP SHA256 c3a462eeec8b5941318fba30662db8762f664d
 源码 a48027065f016b863f358877c738a2122a7a4e47，32 项共 31 通过/1 登录条件跳过，72.218 秒。PlaybackCacheTest 实际由应用完整 DataSourceFactory 首读 loopback 合成 WAV、确认缓存长度，再关闭服务端，新建 DataSource 读回同一字节；只删除测试 UUID cache key。SoundSettingsScreenTest 实际点击取消、仅应用频段与错误提示，确认预览/取消不写偏好、有效参数落盘、OFF/前置增益不应用、无效文件不覆盖已有配置。没有操作系统文件选择器。
 
 设备 artifact 12611714141 ZIP SHA256 cbe573b3714efa3c810eb89b895915a88271bcdab0edef2cdb2f8f9f4849a9e4，已下载并实际查看 layout-check/autoeq-preview-dialog.png；标题、替换数量、前置增益说明、取消/确认按钮均可读。预览 artifact 12612099296 SHA256 490dbf51f3f969787ba78ad246ea44051c8c2c39635cd0baa5617a6d7360635b。R8 not_requested；该分支尚未合入，主线 EQ 失败与 0.3.1 发布暂停状态保持。
+## 原生顺序修复验证
+
+第一轮源码 185870c2ee115a70ccb7d6def7a54aa1736e40cc，CI 40230148361，30 项共 29 通过/1 登录跳过，72.04 秒。第二轮含取消后事件过滤源码 2f6db3953057e0841503099f9660f66cecfae442，CI 40230802502，30 项共 29 通过/1 登录跳过，74.86 秒。三次快速系统/Rust 重建后，12 秒原生合成音频持续推进，稳定基线、原阈值提升与禁用恢复均通过；R8 not_requested，尚需主线 R8 构建/启动，不能覆盖 a25a90b 历史失败。
+
+第一轮设备 artifact 12613520218 SHA256 2feb746687ea89002e90d72dd141230ed72c603f63dbbe4cd2205948995a391d；第二轮设备 artifact 12612982122 SHA256 13d8592bb3819e91d93762e19d07b3260c9a24994e91a5883267aa86b259bbc9。第二轮已下载核对 runtime/instrumentation 与 build.json。初始化、Play/Stop/释放共用队列，旧任务被取消；JNI 返回后取消检查阻止旧 poller 发送事件。原失败没有足够数值证据来唯一归因，修复同时解决已确认生命周期风险和未稳定采样的问题；不宣称已反向证实唯一根因。
+
+## fb48458 主线仍失败（CI 40374694929）
+
+普通/自用 R8 构建通过；设备 30 项为 28 通过/1 失败/1 登录条件跳过，90.308 秒；R8 启动未执行。LiveEqualizerTest 在真实 EQ 操作前的基线阶段失败，诊断为 playing=false/state1/position0/duration12000/error=null/levelNaN。设备 artifact 12674574276，ZIP SHA256 e6f22fe08bcb2fb9940475c99ba2ced0e45cd0ab2ea914c728fa43a5eff2cd4a。已下载检查 runtime/instrumentation；三次快速切换未出现期望的 stopEngine 清理记录。
+
+Media3 1.10.0 实际 AAR 的 SimpleBasePlayer.release 字节码：shouldHandleCommand(32) 不满足则 return；Player.COMMAND_RELEASE 常量为 32。现有 FlickPlayer.getState 能力列表缺失该项。对应清理逻辑未执行是已证实的契约缺陷，正在 agent/eplayer-031-release-contract 修复，新增公开 release 停止实际输出回归；尚不记为设备通过。
+
+## COMMAND_RELEASE 契约修复（CI 40378425200）
+
+源码 99655c2249e62e16bfd8e9a6eab5c4171e717054；31 项共 30 通过/1 登录条件跳过，54.033 秒。公开 Player.release 在播放 30 秒合成 WAV 后两秒内使原生 Stopped；快速系统/Rust 重建与 EQ 原阈值验证通过。归一化幅度 0.13143149→0.18598484→0.13141343。已实际检查日志：每次旧适配器释放出现同一 JNI 线程的 stopEngine，而之前失败主线只有测试末尾的全局停止，证明清理现在真正执行。
+
+设备 artifact 12678440853 ZIP SHA256 f57044199ecc9921ca127fa242ff866288648ca060383698ac9f1ca2485b1a0f；预览 artifact 12678530309 SHA256 d5220bf91a8a580d02fd6c458e2e0e664c5fb1a861e33d9dc18f7fe55334fc21。R8 not_requested；需要合入后完成新主线 R8/启动及对应确切包的软件检查，不发布之前失败候选。
+
+## 独立 R8 工具初始验收（旧 0.3.0 包）
+
+CI 40376509058 在 SDK setup 请求下架 tools 包失败，未运行设备；改为 platform-tools 后，CI 40377644125 两项跨应用检查通过，33.35 秒。候选固定 a62e0fb /CI 40222561908，原始 universal R8 SHA256 9106fbbee4154a4c2a4c4b877a4976d364d9e65ba514ff110b6272d69bb49d40，未重签目标 APK。系统文件选择器导入运行时生成 30 秒 WAV，系统/Rust 在 UI 选择，框架 MediaSession 有效时长/音频输出活跃、暂停位置保持、12 秒 seek、后台推进、实际通知卡片点击返回均通过。框架位置按更新时间外推，不是原始 PCM 或物理音质测量；该报告不批准 0.3.1。
+
+证据 artifact 12676401042 SHA256 2b9b1395be74860dc6494686d484df88c3b9dd8011da5486a1ac7a94de9ec87e。已查看 native-playing.png（取图时仍有插画加载圈，不能作为完整人物视觉通过）、native-returned-paused.png、system-notification.png。后续工具等待插画加载/眼睑过渡、实际核对单选状态，改用 480x800/160dpi 并保存暂停图；这些增强尚待新候选设备运行。
+
+## 2026-10-27：0.3.1 确切交付候选
+
+主线 331d312 /[CI 40379791181](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40379791181) 为 30 通过/1 登录跳过（76.436 秒），普通/自用 R8 构建通过，普通 R8 冷启动 1720ms。设备 artifact 12678359715 的 ZIP SHA256 为 164c2accbb8f518735a7e513bdc8efb4e60a38adaa01872901ca31b6778b35cd。
+
+确切原始 universal 0.3.1/code52：APK SHA256 92b6b3d1f28940db408b033646b9a77233a0d1cd749c7e6c8b1ab6d0623973b3；证书 c92db3ca59c4ec286cea2f2b54f085b38d676b8e956a34b17c103fc61e04680a，与 0.3.0 不同，备份后可能需要卸载，不能保证无缝升级。API28 起/target36/三 ABI，未重签、未附录音。
+
+独立 R8 两次验收均通过系统/原生两项：CI 40383667514（35.902 秒，artifact 12680016792，ZIP c6df3277cb34cdf12e3caa6f24a3b9dd34acaa0d453f95d37bfa4c172384b68e），[CI 40385418880](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40385418880)（artifact 12680541471，ZIP 9dcc2e40288d911a956c43b7d11c1cb7000fb98620e46e46ee8a7299d1950634）。报告源码/构建/APK 均匹配上述候选。实际系统选择器导入合成 WAV、暂停/12 秒定位/后台推进/真实系统通知点击通过。日志使用框架位置，不是 PCM 音质测量。
+
+截图证据索引：12680541471 根目录 native/system 的 imported、playing、paused、notification、returned-paused PNG；播放闭眼/暂停睁眼已查看。native-motion.mp4（2.899 秒）、system-motion.mp4（2.769 秒）为有效无声录像，ffprobe 已核对；已抽查 native 6 帧，头帽/手/发线随共同姿态保持，未见白色接缝。不等于每帧/实机/长时动画验收。主线证据的 release-home.png 为默认双曲导入首页。
+
+PR #6 已合入发布防错配门禁；27 项根脚本通过，原始候选 prepare 实际验签/版本/ABI 通过。发布清单已更新，但 Release 发布/精确交付 smoke 尚待自动工作流结果。a25a90b 与 fb48458 两次主线失败保留在新证据归档，不将后续通过改写为旧提交通过。下一步完成交付，再合并主线到 PR #4 的能力/缓存边界分支，保留实机验收由本地 agent 执行。
