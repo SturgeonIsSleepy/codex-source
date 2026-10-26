@@ -75,3 +75,7 @@ Exo 使用服务持有的 SimpleCache（cache/media），本地/导入文件直�
 第十六阶段缓存边界已改为 core/playback/PlaybackCache → SimpleCache，DataSourceFactoryProvider → PlaybackCache，MusicService → Player。不再 engine → MusicService → engine 循环引用；只持有 Application 上下文。存储路径与 256MiB LRU 保持已有行为，原无调用方的释放/删目录方法移除，不声称已有缓存清理能力。真实断网后命中缓存的新增回归已编译，设备待执行。用户导入、下载及历史不由该对象清理。
 
 当前进展修正（0.3.2）：声音编辑/AutoEQ 已在 0.3.1 实现，旧段落的“待接通”仅是阶段历史；主线 331d312 的真实 EQ 与释放契约已通过。PlaybackCache 现在独立于 MediaSession 服务，实例跨服务重建保持，256MiB 流媒体缓存不涵盖用户导入/下载。PR #4 组合主线设备结果仍待执行。
+
+## 流媒体缓存延迟初始化（独立性能阶段）
+
+创建播放器/数据源不再立即扫描 SimpleCache 目录和数据库；只有打开远端流时才建立缓存数据源。DefaultDataSource 的 file/content 直接路径不会初始化流媒体缓存，既有进程缓存路径/LRU/离线命中保持。延期数据源保留传输监听、URI/响应头及关闭语义，持有 Application 上下文。新增实际文件/ContentProvider 字节读取且缓存提供器不得被调用的检查，远端测试增加 factory/createDataSource 不触碰缓存、两次 open 各请求同一缓存的断言。19 JVM 和主程序/设备包编译通过；新增设备结果未执行，不声称已有启动耗时/实机性能测量。仍不提供危险的缓存 release/delete 清理按钮。

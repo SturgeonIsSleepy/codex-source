@@ -2,6 +2,7 @@ package cp.player
 
 import androidx.media3.common.C
 import androidx.media3.datasource.DataSpec
+import androidx.core.content.FileProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import cp.player.core.playback.PlaybackCache
@@ -12,6 +13,7 @@ import java.net.ServerSocket
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.io.File
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,6 +21,32 @@ import org.junit.runner.RunWith
 /** Uses the app's complete factory path; only this test's unique cache key is removed. */
 @RunWith(AndroidJUnit4::class)
 class PlaybackCacheTest {
+    @Test fun localFilesAndImportedContentNeverInitializeTheStreamingCache() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val body = SyntheticAudio.wav(1)
+        val file = File.createTempFile("local-cache-bypass-", ".wav", context.cacheDir).apply { writeBytes(body) }
+        val factory = DataSourceFactoryProvider.createCacheDataSourceFactory(context) {
+            throw AssertionError("Local audio must not open or scan the streaming cache")
+        }
+        try {
+            for (uri in listOf(android.net.Uri.fromFile(file), FileProvider.getUriForFile(context,
+                "${context.packageName}.fileprovider", file))) {
+                val source = factory.createDataSource()
+                try {
+                    source.open(DataSpec.Builder().setUri(uri).build())
+                    val output = ByteArrayOutputStream()
+                    val buffer = ByteArray(4096)
+                    while (true) {
+                        val count = source.read(buffer, 0, buffer.size)
+                        if (count == C.RESULT_END_OF_INPUT) break
+                        output.write(buffer, 0, count)
+                    }
+                    assertArrayEquals(body, output.toByteArray())
+                } finally { source.close() }
+            }
+        } finally { file.delete() }
+    }
+
     @Test fun remoteAudioRemainsReadableFromTheSameCacheAfterUpstreamCloses() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val cache = PlaybackCache.get(context)
@@ -38,8 +66,13 @@ class PlaybackCacheTest {
             }
         }
         val uri = "http://127.0.0.1:${server.localPort}/fixture.wav"
+        var cacheRequests = 0
+        val factory = DataSourceFactoryProvider.createCacheDataSourceFactory(context) { cacheRequests++; cache }
+        assertEquals("Creating a factory must not touch disk cache", 0, cacheRequests)
         fun read(): ByteArray {
-            val source = DataSourceFactoryProvider.createCacheDataSourceFactory(context).createDataSource()
+            val before = cacheRequests
+            val source = factory.createDataSource()
+            assertEquals("Creating an unopened source must not scan cache", before, cacheRequests)
             try {
                 source.open(DataSpec.Builder().setUri(uri).setKey(key).build())
                 val output = ByteArrayOutputStream()
@@ -59,6 +92,7 @@ class PlaybackCacheTest {
             assertEquals(body.size.toLong(), cache.getCachedLength(key, 0, body.size.toLong()))
             assertSame(cache, PlaybackCache.get(context))
             assertArrayEquals("A new data source must reuse cached bytes without a live upstream", body, read())
+            assertEquals(2, cacheRequests)
         } finally {
             server.close(); worker.shutdownNow()
             cache.removeResource(key)
