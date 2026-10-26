@@ -75,3 +75,7 @@ Exo 使用服务持有的 SimpleCache（cache/media），本地/导入文件直�
 第十六阶段缓存边界已改为 core/playback/PlaybackCache → SimpleCache，DataSourceFactoryProvider → PlaybackCache，MusicService → Player。不再 engine → MusicService → engine 循环引用；只持有 Application 上下文。存储路径与 256MiB LRU 保持已有行为，原无调用方的释放/删目录方法移除，不声称已有缓存清理能力。真实断网后命中缓存的新增回归已编译，设备待执行。用户导入、下载及历史不由该对象清理。
 
 当前进展修正（0.3.2）：声音编辑/AutoEQ 已在 0.3.1 实现，旧段落的“待接通”仅是阶段历史；主线 331d312 的真实 EQ 与释放契约已通过。PlaybackCache 现在独立于 MediaSession 服务，实例跨服务重建保持，256MiB 流媒体缓存不涵盖用户导入/下载。PR #4 组合主线设备结果仍待执行。
+
+## USB 独占 Android 桥接残留剥离
+
+全项目 Kotlin/Java/设备测试检索确认无生产调用后，删除 RustEngine 内 8 个独占注册/格式/硬件音量/静音/清理/等待包装器和 12 个未使用 JNI 声明，净减 82 行。不再提供设备 fd 注册、独占锁或硬件控制的 Android 入口；仅保留 NativeEngineTest 使用的只读“无独占会话”探针与普通诊断。未改 DSD 解码/普通输出、AudioManager、音频焦点、系统 USB/耳机路由和默认无 uac2 的构建。既有原生 .so 的可选上游导出尚未删除；本阶段不宣称已重编原生库。19 JVM/主程序/设备包构建通过；新组合设备结果未执行，与 EQ 停止诊断分支分开，不因删无调用方法宣称该问题已修复。
