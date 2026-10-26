@@ -6,7 +6,9 @@
 
 [0.3.1 Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.1) 已由 [CI 40387722240](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40387722240) 发布（ID424674767），五个附件 uploaded/digest 已逐项核对。之前两次 prepare 因 SDK 验签文字前缀失败；第三次精确安装/冷启动 2511ms 及证据校验通过，但创建后列表延迟导致发布失败，均如实记入计划。已按实际公开验签摘要修复并保留草稿 ID。0.3.0 旧附件不改；临时 CI 证书不同，不能保证无缝升级，先备份导入/设置。
 
-**接续开发 0.3.2**：[PR #4](https://github.com/SturgeonIsSleepy/codex-source/pull/4) /`agent/eplayer-20261026-core-boundaries`。纯音效能力、离页取消 AutoEQ、独立进程缓存和危险释放/递归删除 API 移除；19 JVM/本地构建通过，组合源码 CI40387147893 待结果，旧分支 31 通过/1 跳过不替代本轮。再接 `agent/eplayer-parametric-editor`（功能 7c68eb8）：Rust 频率/增益/Q 原子草稿编辑，共用数值校验，20 JVM/本地构建通过，新 UI 设备结果待执行。先完成组合设备回归，再分别合入；不能把尚未合入的功能写进 0.3.1 Release。
+**当前优先阻塞：0.3.2 组合回归**：[PR #4](https://github.com/SturgeonIsSleepy/codex-source/pull/4) /`agent/eplayer-20261026-core-boundaries`。CI40387147893（源码 5a956b5）33 项为 31 通过/1 失败/1 登录跳过（92.071 秒）：缓存断网重读、AutoEQ 弹窗、公开 release 和插画通过，但实时 EQ 在稳定 baseline0.13126217 后进入 IDLE、position4560、无 error、幅度 NaN。暂停 PR #4/#7 合入与 0.3.2 发布；不将后续失败改写为已通过，也不武断归因缓存。诊断提交 8e410f0 补停止原因、状态事件/DSP 更新与失败时原生状态，19 JVM/本地构建通过，设备待执行。证据 artifact12681038285 /ZIP f28f985aaab6e765bc4b81876f08196291c7156de17f6e1a5a3e18afdecdd5fe，见项目验证索引。
+
+0.3.1 的固定主线与确切 R8 检查确实通过，但新组合暴露的快速引擎切换/实时 EQ 稳定性需继续调查，不能保证旧版本不受同类间歇问题影响。`agent/eplayer-parametric-editor` /[PR #7](https://github.com/SturgeonIsSleepy/codex-source/pull/7)（功能 7c68eb8）保留频率/增益/Q 草稿编辑，20 JVM/本地构建通过，独立设备结果仍待执行；先修上述停止问题，不因新 UI 编译成功合入。
 
 云端未操作实机；本地 agent 继续独占实机安装、音质/路由、焦点打断和真实账号验收。缓存清理界面、淡入淡出、新页面流程及长期动画检查仍有缺口，不能声称完整迁移已完成。Android Cloud 固定下载入口及无关项目保持不变。
 
