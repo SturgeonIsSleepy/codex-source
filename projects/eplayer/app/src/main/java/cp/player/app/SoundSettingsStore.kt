@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
 import cp.player.core.audio.EqualizerProfile
+import cp.player.core.audio.EqualizerBand
+import cp.player.core.audio.isValid
 import cp.player.core.audio.AudioEffectCapabilities
 import cp.player.util.AutoEqParser
 import kotlinx.coroutines.Dispatchers
@@ -98,6 +100,13 @@ internal class SoundSettingsStore(context: Context, private val scope: Coroutine
         saveBands(current.bands.mapIndexed { i, band -> if (i == index) band.copy(gain = gain.coerceIn(current.minGain, current.maxGain)) else band })
     }
     fun flat() = saveBands(state.value.bands.map { it.copy(gain = 0f) })
+    fun editBand(index: Int, band: EqualizerBand) {
+        val current = state.value
+        if (current.engine != 1 || index !in current.bands.indices || !band.isValid()) return
+        saveBands(current.bands.mapIndexed { i, old ->
+            if (i == index) SoundBand(band.frequency, band.gain, band.q) else old
+        })
+    }
     fun toggle(effect: String, enabled: Boolean) {
         when (effect) {
             "space" -> Prefs.setFxEnabled(app, enabled)

@@ -76,6 +76,25 @@ class SoundSettingsScreenTest {
             compose.onNodeWithText("导入未完成").assertIsDisplayed()
             compose.onNodeWithText("知道了").performClick()
             assertEquals("Invalid files must not partially overwrite the applied profile", applied, dsp.all)
+            compose.onNodeWithTag("edit-eq-band-0").performScrollTo().performClick()
+            compose.onNodeWithTag("eq-edit-frequency").performTextReplacement("NaN")
+            compose.onNodeWithText("保存频段").assertIsNotEnabled()
+            compose.onNodeWithText("取消").performClick()
+            assertEquals("A cancelled draft must not change the imported profile", applied, dsp.all)
+            compose.onNodeWithTag("edit-eq-band-0").performScrollTo().performClick()
+            compose.onNodeWithTag("eq-edit-frequency").performTextReplacement("660")
+            compose.onNodeWithTag("eq-edit-gain").performTextReplacement("-2.5")
+            compose.onNodeWithTag("eq-edit-q").performTextReplacement("1.2")
+            save("eq-band-editor", "eq-band-editor")
+            compose.onNodeWithText("保存频段").performClick()
+            compose.runOnIdle {
+                val bands = DspPreferences.getPeqBands(context)
+                assertEquals(1, bands.size)
+                assertEquals(660f, bands[0].freq, .01f)
+                assertEquals(-2.5f, bands[0].gain, .01f)
+                assertEquals(1.2f, bands[0].q, .01f)
+                assertTrue(DspPreferences.getEqEnabled(context))
+            }
         } finally {
             dsp.edit().clear().commit() // Original store must be empty (guard above).
             model?.let { current ->

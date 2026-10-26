@@ -42,7 +42,8 @@ internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
                 }
                 HorizontalDivider()
                 if (showSound) {
-                    SoundSettingsScreen(sound, store::equalizer, store::band, store::flat, store::toggle, store::amount) { importFile.launch(arrayOf("text/*")) }
+                    SoundSettingsScreen(sound, store::equalizer, store::band, store::flat, store::toggle,
+                        store::amount, editBand = store::editBand) { importFile.launch(arrayOf("text/*")) }
                 } else PlaybackSettings(model, sound.engine) { showSound = true }
             }
         }
