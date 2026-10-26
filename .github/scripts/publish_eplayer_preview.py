@@ -201,7 +201,7 @@ def publish():
 Source: https://github.com/{REPO}/commit/{SOURCE}
 Verified workflow: https://github.com/{REPO}/actions/runs/{RUN}
 
-{CONFIG['validation_summary']} This delivery additionally passed exact universal R8 APK installation/cold-start on API 36 x86_64. Full R8 music acceptance, physical-device audio routing and live authenticated sources remain unverified.
+{CONFIG['validation_summary']} This delivery additionally passed exact universal R8 APK installation/cold-start on API 36 x86_64. R8 music coverage is limited to the explicitly indexed checks; physical-device audio routing and live authenticated sources remain unverified.
 
 APK is unchanged from the verified CI artifact (three ABIs); no recordings or signing keys are bundled. Certificate SHA256: {CERT}. This temporary CI signing identity may differ from installed previews and future CI builds may use another identity. Back up local imports/settings before a required uninstall; seamless upgrades are not promised. Do not overwrite an existing installation with a different certificate.
 
