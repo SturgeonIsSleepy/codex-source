@@ -70,6 +70,10 @@ def existing_release():
         release = json.loads(gh('api', f'repos/{REPO}/releases/{CONFIG["release_id"]}'))
     else:
         release = next((item for item in json.loads(gh('api', f'repos/{REPO}/releases?per_page=100')) if item['tag_name'] == TAG), None)
+    return validate_release(release)
+
+
+def validate_release(release):
     if release is not None and (release['tag_name'] != TAG or release['target_commitish'] != SOURCE):
         raise RuntimeError('Existing release targets different source; preserve it')
     return release
@@ -223,8 +227,13 @@ Native libraries, raw validation logs/screenshots including failed runs, and SHA
     files.append(OUT / 'SHA256SUMS')
     release = existing_release()
     if release is None:
-        gh('release', 'create', TAG, '--repo', REPO, '--target', SOURCE, '--draft', '--prerelease', '--title', 'ePlayer ' + CONFIG['version'] + ' preview', '--notes-file', notes_path)
-        release = existing_release()
+        # Retain the exact creation response: immediate release-list reads can be stale.
+        with tempfile.TemporaryDirectory() as directory:
+            request = Path(directory) / 'release.json'
+            request.write_text(json.dumps(dict(tag_name=TAG, target_commitish=SOURCE, draft=True,
+                prerelease=True, name='ePlayer ' + CONFIG['version'] + ' preview', body=notes)))
+            release = validate_release(json.loads(gh('api', '--method', 'POST',
+                f'repos/{REPO}/releases', '--input', request)))
     if release is None:
         raise RuntimeError('Draft release was not created')
     existing = {asset['name']: asset for asset in release['assets']}
