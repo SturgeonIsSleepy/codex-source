@@ -128,3 +128,9 @@ R8 候选 artifact 12612652207 ZIP SHA256 c3a462eeec8b5941318fba30662db8762f664d
 普通/自用 R8 构建通过；设备 30 项为 28 通过/1 失败/1 登录条件跳过，90.308 秒；R8 启动未执行。LiveEqualizerTest 在真实 EQ 操作前的基线阶段失败，诊断为 playing=false/state1/position0/duration12000/error=null/levelNaN。设备 artifact 12674574276，ZIP SHA256 e6f22fe08bcb2fb9940475c99ba2ced0e45cd0ab2ea914c728fa43a5eff2cd4a。已下载检查 runtime/instrumentation；三次快速切换未出现期望的 stopEngine 清理记录。
 
 Media3 1.10.0 实际 AAR 的 SimpleBasePlayer.release 字节码：shouldHandleCommand(32) 不满足则 return；Player.COMMAND_RELEASE 常量为 32。现有 FlickPlayer.getState 能力列表缺失该项。对应清理逻辑未执行是已证实的契约缺陷，正在 agent/eplayer-031-release-contract 修复，新增公开 release 停止实际输出回归；尚不记为设备通过。
+
+## COMMAND_RELEASE 契约修复（CI 40378425200）
+
+源码 99655c2249e62e16bfd8e9a6eab5c4171e717054；31 项共 30 通过/1 登录条件跳过，54.033 秒。公开 Player.release 在播放 30 秒合成 WAV 后两秒内使原生 Stopped；快速系统/Rust 重建与 EQ 原阈值验证通过。归一化幅度 0.13143149→0.18598484→0.13141343。已实际检查日志：每次旧适配器释放出现同一 JNI 线程的 stopEngine，而之前失败主线只有测试末尾的全局停止，证明清理现在真正执行。
+
+设备 artifact 12678440853 ZIP SHA256 f57044199ecc9921ca127fa242ff866288648ca060383698ac9f1ca2485b1a0f；预览 artifact 12678530309 SHA256 d5220bf91a8a580d02fd6c458e2e0e664c5fb1a861e33d9dc18f7fe55334fc21。R8 not_requested；需要合入后完成新主线 R8/启动及对应确切包的软件检查，不发布之前失败候选。
