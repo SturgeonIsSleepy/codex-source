@@ -93,6 +93,8 @@ public class R8MusicCheck extends InstrumentationTestCase {
             ui.waitForIdle(100, 3000);
             SystemClock.sleep(450);
             capture(name + "-playing");
+            // Android screenrecord is silent; the WAV is generated only for this test.
+            shell("timeout 8s screenrecord --time-limit 4 --bit-rate 2000000 /data/local/tmp/eplayer-" + name + "-motion.mp4");
             controller.getTransportControls().pause();
             waitFor("pause", () -> state() == PlaybackState.STATE_PAUSED);
             long paused = position(); SystemClock.sleep(1000);

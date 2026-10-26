@@ -95,6 +95,12 @@ def device(app, qa, output):
     finally:
         (output / 'build.json').write_text(json.dumps(report, indent=2) + '\n')
         subprocess.run(['adb', 'pull', f'/sdcard/Android/data/{QA}/files/r8-check', str(output / 'r8-check')], timeout=30, check=False)
+        report['motion_files'] = {}
+        for mode in ['native', 'system']:
+            clip = output / f'{mode}-motion.mp4'
+            subprocess.run(['adb', 'pull', f'/data/local/tmp/eplayer-{mode}-motion.mp4', str(clip)], timeout=30, check=False)
+            report['motion_files'][mode] = {'status': 'captured' if clip.is_file() else 'not_captured', 'bytes': clip.stat().st_size if clip.is_file() else 0}
+        (output / 'build.json').write_text(json.dumps(report, indent=2) + '\n')
         runtime = subprocess.run(['adb', 'logcat', '-d', '-s', 'AndroidRuntime'], capture_output=True, text=True, timeout=30)
         (output / 'runtime.txt').write_text(runtime.stdout)
         for package in [QA, TARGET]: subprocess.run(['adb', 'shell', 'am', 'force-stop', package], timeout=30, check=False)
