@@ -723,6 +723,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
                         Player.COMMAND_SET_VOLUME,
                         Player.COMMAND_PREPARE,
                         Player.COMMAND_STOP,
+                        Player.COMMAND_RELEASE,
                         Player.COMMAND_SET_REPEAT_MODE,
                         Player.COMMAND_SET_SHUFFLE_MODE,
                         Player.COMMAND_GET_METADATA,
