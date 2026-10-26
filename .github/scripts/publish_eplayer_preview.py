@@ -108,8 +108,10 @@ def prepare():
             raise RuntimeError('Missing SDK verifier: ' + name)
         return tools[-1]
     signature = subprocess.check_output([sdk_tool('apksigner'), 'verify', '--print-certs', OUT / APK], text=True)
+    Path('device-evidence').mkdir(exist_ok=True)
+    Path('device-evidence/apksigner.txt').write_text(signature)
     if f'Signer #1 certificate SHA-256 digest: {CERT}' not in signature:
-        raise RuntimeError('Delivery certificate mismatch')
+        raise RuntimeError('Delivery certificate mismatch; public verifier output: ' + signature)
     badging = subprocess.check_output([sdk_tool('aapt'), 'dump', 'badging', OUT / APK], text=True)
     def field(name):
         match = re.search(r"\b" + name + r"='([^']*)'", badging)

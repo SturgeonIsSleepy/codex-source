@@ -141,3 +141,5 @@ QA 约 29KB，已实际编译和验签；4 项配置/物理设备隔离/不完�
 截图证据索引：12680541471 根目录 native/system 的 imported、playing、paused、notification、returned-paused PNG；播放闭眼/暂停睁眼已查看。native-motion.mp4（2.899 秒）、system-motion.mp4（2.769 秒）为有效无声录像，ffprobe 已核对；已抽查 native 6 帧，头帽/手/发线随共同姿态保持，未见白色接缝。不等于每帧/实机/长时动画验收。主线证据的 release-home.png 为默认双曲导入首页。
 
 PR #6 已合入发布防错配门禁；27 项根脚本通过，原始候选 prepare 实际验签/版本/ABI 通过。发布清单已更新，但 Release 发布/精确交付 smoke 尚待自动工作流结果。a25a90b 与 fb48458 两次主线失败保留在新证据归档，不将后续通过改写为旧提交通过。下一步完成交付，再合并主线到 PR #4 的能力/缓存边界分支，保留实机验收由本地 agent 执行。
+
+交付 CI 40386850318 在 prepare 的证书文本比对失败；APK SHA 已通过，未执行安装/启动，未生成 Release。保留验签工具公开输出以定位差异，不跳过或放宽证书身份检查。
