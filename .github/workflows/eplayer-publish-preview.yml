@@ -2,7 +2,7 @@ name: Publish verified ePlayer preview
 on:
   push:
     branches: [main]
-    paths: ['.github/eplayer-delivery.json']
+    paths: ['.github/eplayer-delivery.json', '.github/scripts/publish_eplayer_preview.py', '.github/workflows/eplayer-publish-preview.yml']
   workflow_dispatch:
 permissions:
   actions: read

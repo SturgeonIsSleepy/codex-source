@@ -70,6 +70,10 @@ def existing_release():
         release = json.loads(gh('api', f'repos/{REPO}/releases/{CONFIG["release_id"]}'))
     else:
         release = next((item for item in json.loads(gh('api', f'repos/{REPO}/releases?per_page=100')) if item['tag_name'] == TAG), None)
+    return validate_release(release)
+
+
+def validate_release(release):
     if release is not None and (release['tag_name'] != TAG or release['target_commitish'] != SOURCE):
         raise RuntimeError('Existing release targets different source; preserve it')
     return release
@@ -96,6 +100,14 @@ def verify_blackbox_report(report):
         raise RuntimeError('R8 playback proof does not match this exact candidate')
 
 
+def verify_certificate(signature):
+    # SDK versions label the same verified signer as "Signer #1" or "V2 Signer".
+    # Compare every reported certificate, never the presentation prefix.
+    certificates = re.findall(r'^.*certificate SHA-256 digest: ([0-9a-fA-F]{64})\s*$', signature, re.MULTILINE)
+    if not certificates or {value.lower() for value in certificates} != {CERT}:
+        raise RuntimeError('Delivery certificate mismatch; public verifier output: ' + signature)
+
+
 def prepare():
     OUT.mkdir(exist_ok=True)
     candidate = Path('delivery-input/standard/release/app-standard-universal-release.apk')
@@ -108,8 +120,9 @@ def prepare():
             raise RuntimeError('Missing SDK verifier: ' + name)
         return tools[-1]
     signature = subprocess.check_output([sdk_tool('apksigner'), 'verify', '--print-certs', OUT / APK], text=True)
-    if f'Signer #1 certificate SHA-256 digest: {CERT}' not in signature:
-        raise RuntimeError('Delivery certificate mismatch')
+    Path('device-evidence').mkdir(exist_ok=True)
+    Path('device-evidence/apksigner.txt').write_text(signature)
+    verify_certificate(signature)
     badging = subprocess.check_output([sdk_tool('aapt'), 'dump', 'badging', OUT / APK], text=True)
     def field(name):
         match = re.search(r"\b" + name + r"='([^']*)'", badging)
@@ -214,8 +227,13 @@ Native libraries, raw validation logs/screenshots including failed runs, and SHA
     files.append(OUT / 'SHA256SUMS')
     release = existing_release()
     if release is None:
-        gh('release', 'create', TAG, '--repo', REPO, '--target', SOURCE, '--draft', '--prerelease', '--title', 'ePlayer ' + CONFIG['version'] + ' preview', '--notes-file', notes_path)
-        release = existing_release()
+        # Retain the exact creation response: immediate release-list reads can be stale.
+        with tempfile.TemporaryDirectory() as directory:
+            request = Path(directory) / 'release.json'
+            request.write_text(json.dumps(dict(tag_name=TAG, target_commitish=SOURCE, draft=True,
+                prerelease=True, name='ePlayer ' + CONFIG['version'] + ' preview', body=notes)))
+            release = validate_release(json.loads(gh('api', '--method', 'POST',
+                f'repos/{REPO}/releases', '--input', request)))
     if release is None:
         raise RuntimeError('Draft release was not created')
     existing = {asset['name']: asset for asset in release['assets']}
