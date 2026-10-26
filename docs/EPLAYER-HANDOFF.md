@@ -1,12 +1,14 @@
 # ePlayer 转移交接
 
-当前主线 `fb48458947a1ec4a0248e406b3d38369b0b79bda` 已合入 [PR #3](https://github.com/SturgeonIsSleepy/codex-source/pull/3) 的原生顺序修复；但 [CI 40374694929](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40374694929) 仍为 28 通过/1 失败/1 登录跳过（90.308 秒）。R8 两变体构建通过，冷启动未执行。新诊断显示 EQ 前已 IDLE/position0/duration12000/error=null/levelNaN；0.3.1 继续暂停发布。[0.3.0](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0) 与发布清单保持不变。
+当前软件基线为 `331d31241159737aec196fe922431898764f6909`：已合入 PR #3/#5 的 JNI 顺序、取消过滤与公开 COMMAND_RELEASE 契约修复。主线 [CI 40379791181](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40379791181) 30 通过/1 登录跳过（76.436 秒），普通/自用 R8 构建与普通 R8 冷启动 1720ms 通过。a25a90b、fb48458 的历史失败保持原结论，不再作为当前待修断点。
 
-**优先接续 [PR #5](https://github.com/SturgeonIsSleepy/codex-source/pull/5)**：`agent/eplayer-031-release-contract` / `99655c2249e62e16bfd8e9a6eab5c4171e717054`。实际核对 Media3 1.10.0 字节码发现 SimpleBasePlayer.release 缺少 COMMAND_RELEASE 时直接返回；FlickPlayer 正好漏了该能力，先前 handleRelease 清理从未执行。修复补该能力及真实公开 release 停止 30 秒合成播放的契约检查。本地 19 JVM/构建、21 仓库检查通过，设备待执行。不要以旧顺序分支两轮通过代替本缺陷验收，也不发布失败候选。
+**交付 0.3.1** 固定上述源码与原始 universal APK，SHA256 `92b6b3d1f28940db408b033646b9a77233a0d1cd749c7e6c8b1ab6d0623973b3`，versionCode52，证书 `c92db3ca59c4ec286cea2f2b54f085b38d676b8e956a34b17c103fc61e04680a`。确切 R8 两种引擎均通过系统文件选择器导入、播放/暂停/12 秒定位、后台与真实通知点击返回（CI 40383667514、40385418880）。加载截图和约 2.8 秒无声动作预览已查看抽帧。PR #6 已合入匹配源码/构建/APK 的交付门禁。
 
-独立缓存/弹窗 [PR #4](https://github.com/SturgeonIsSleepy/codex-source/pull/4) 保留 a480270 的 31 通过/1 登录跳过，暂不合入。独立 R8 工具分支 `agent/eplayer-20261026-r8-blackbox` 已编译约 29KB 自身目标 QA APK，不更改播放器签名或权限；CI 40377644125 在固定的 a62e0fb/0.3.0 R8 包完成两项跨应用检查（33.35 秒），含系统文件选择器、框架会话、输出活跃、暂停/seek、后台及真实通知返回，截图已查看。只证明该旧包/工具流程；不能当 0.3.1 通过。首次 QA CI 40376509058 在 SDK setup 请求过时 tools 包失败，设备未执行；改 platform-tools 后通过。
+发布正在 [CI 40387722240](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40387722240) 恢复；草稿 ID424674767，不提前称已发布。之前两次 prepare 因 SDK 验签文字前缀失败；第三次精确安装/冷启动 2511ms 及证据校验通过，但创建后列表延迟导致发布失败，均如实记入计划。已按实际公开验签摘要修复并保留草稿 ID。0.3.0 旧附件不改；临时 CI 证书不同，不能保证无缝升级，先备份导入/设置。
 
-云端仍未操作实机；实机音质/路由、真实账号、0.3.1 精确交付和稳定升级签名待完成。下一轮先读取上述优先分支最新计划与验证索引，保护其他项目和 Android Cloud 固定入口。
+**接续开发 0.3.2**：[PR #4](https://github.com/SturgeonIsSleepy/codex-source/pull/4) /`agent/eplayer-20261026-core-boundaries`。纯音效能力、离页取消 AutoEQ、独立进程缓存和危险释放/递归删除 API 移除；19 JVM/本地构建通过，组合源码 CI40387147893 待结果，旧分支 31 通过/1 跳过不替代本轮。再接 `agent/eplayer-parametric-editor`（功能 7c68eb8）：Rust 频率/增益/Q 原子草稿编辑，共用数值校验，20 JVM/本地构建通过，新 UI 设备结果待执行。先完成组合设备回归，再分别合入；不能把尚未合入的功能写进 0.3.1 Release。
+
+云端未操作实机；本地 agent 继续独占实机安装、音质/路由、焦点打断和真实账号验收。缓存清理界面、淡入淡出、新页面流程及长期动画检查仍有缺口，不能声称完整迁移已完成。Android Cloud 固定下载入口及无关项目保持不变。
 
 历史迁移记录（2026-10-24）：主线为 [projects/eplayer](../projects/eplayer/)，原独立参考版为 [projects/witch-player](../projects/witch-player/)。原 ePlayer 工作树最后提交 `d196c0d`；迁移后的后续工作以本仓库提交为准。
 
