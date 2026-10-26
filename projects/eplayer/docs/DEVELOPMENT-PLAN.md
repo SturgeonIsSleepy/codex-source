@@ -167,3 +167,5 @@ CI 40387213231 的 prepare 与原始 universal 安装/冷启动已通过；历�
 源码 5a956b5614552f25463bbaafaf96895ba4fca774 /CI40387147893，33 项为 31 通过/1 失败/1 登录跳过，92.071 秒；R8 not_requested。实际缓存断网重读、导入预览取消/应用/非法文件、公开 release、播放与插画检查通过，LiveEqualizerTest 失败：稳定 baseline0.13126217、position≥1s 后，应用 EQ 时进入 IDLE/position4560/duration12000/error=null，boostedNaN。运行日志已见每次公开释放调用 stopEngine，不能重新归为缺 COMMAND_RELEASE；此前 0.3.1 的成功与精确 R8 证据保持其原范围，后续快速切换可靠性仍需调查。
 
 设备 artifact12681038285 ZIP SHA256 f28f985aaab6e765bc4b81876f08196291c7156de17f6e1a5a3e18afdecdd5fe 已下载核对；fastRelease APK fc80328e24a4a6efd8bc157f5c66b095844cb39feda391fbdfb0972b1b88f57f，测试 APK a50e76449ce41917c0efbd82bfbf4fc65b62528a2844561f26282a1f0bb0f55d。暂停 PR #4/#7 合入，不发布 0.3.2。新增停止原因、原生状态事件及 DSP 更新诊断（不记录账号/URL），失败信息读取真实 native state；先确认发出 Stop 的路径或底层状态，再选择修复，不延长等待或放宽幅度阈值。
+
+诊断提交 8e410f0 /CI40389177223 为 32 通过/1 登录跳过，84.873 秒；设备 artifact12682520815 ZIP SHA256 80e4d70300526147acc16f1eb66c61d8cff5dfd0cf8f284124017d4186329fed 已下载，原生 EQ baseline0.13074183→0.1840731→0.13031313。此轮停止来源日志只在测试清理时出现，未复现原失败；不能声称已找到或修复间歇根因。下一检查在同一用例内建立 3 个完整独立生命周期，每轮均保留 3 次快速引擎切换、原幅度阈值与完整 finally 清理；任何一轮失败立即失败，不是断言重试。19 JVM/本地构建通过，强化检查设备待执行。

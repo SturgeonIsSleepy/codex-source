@@ -62,6 +62,15 @@ class LiveEqualizerTest {
         } }
     }
     @Test fun savedEqualizerChangesApplyWhilePlayingAndDisableCleanly() {
+        // The failure is intermittent after replacement, not a steady-state gain error.
+        // Recreate complete owners three times rather than retrying a failed assertion.
+        repeat(3) { round ->
+            android.util.Log.i("EPlayerTest", "Live EQ lifecycle round ${round + 1}/3")
+            verifySavedEqualizerLifecycle()
+        }
+    }
+
+    private fun verifySavedEqualizerLifecycle() {
         val dsp = context.getSharedPreferences("cp_player_dsp_prefs", 0)
         assumeTrue("Use a fresh installation; preserve existing sound settings", dsp.all.isEmpty())
         val queue = context.getSharedPreferences("eplayer_queue", 0).getString("items", null)
