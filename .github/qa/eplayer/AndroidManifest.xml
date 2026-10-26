@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="app.eplayer.qa">
+    <uses-sdk android:minSdkVersion="36" android:targetSdkVersion="36" />
+    <application android:testOnly="true" android:label="ePlayer device checks">
+        <uses-library android:name="android.test.runner" android:required="true" />
+        <uses-library android:name="android.test.base" android:required="true" />
+    </application>
+    <instrumentation android:name="android.test.InstrumentationTestRunner" android:targetPackage="app.eplayer.qa" />
+</manifest>
