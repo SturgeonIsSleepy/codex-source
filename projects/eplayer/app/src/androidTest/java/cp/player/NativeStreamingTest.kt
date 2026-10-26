@@ -106,7 +106,10 @@ class NativeStreamingTest {
             await {
                 var playing = false
                 main { assertNull(current.playerError); playing = current.isPlaying && current.currentPosition > 500 }
-                playing && nativeState().equals("playing", true)
+                val progress = runBlocking { withContext(RustEngine.engineDispatcher) { RustEngine.getProgress() } }
+                playing && nativeState().equals("playing", true) && progress != null &&
+                    progress.positionSecs > .5 && progress.durationSecs in 11.9..12.1 &&
+                    cp.player.engine.MusicPulse.sample().let { it.isFinite() && it > .01f }
             }
             android.util.Log.i("EPlayerTest", "Native stream stayed paused after prebuffer; resumed with upstream closed")
         } finally {
