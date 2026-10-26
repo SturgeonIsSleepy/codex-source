@@ -173,3 +173,5 @@ CI 40387213231 的 prepare 与原始 universal 安装/冷启动已通过；历�
 ## 流媒体缓存延迟初始化（独立性能阶段）
 
 创建播放器/数据源不再立即扫描 SimpleCache 目录和数据库；只有打开远端流时才建立缓存数据源。DefaultDataSource 的 file/content 直接路径不会初始化流媒体缓存，既有进程缓存路径/LRU/离线命中保持。延期数据源保留传输监听、URI/响应头及关闭语义，持有 Application 上下文。新增实际文件/ContentProvider 字节读取且缓存提供器不得被调用的检查，远端测试增加 factory/createDataSource 不触碰缓存、两次 open 各请求同一缓存的断言。19 JVM 和主程序/设备包编译通过；新增设备结果未执行，不声称已有启动耗时/实机性能测量。仍不提供危险的缓存 release/delete 清理按钮。
+
+延迟缓存源码56d9156c0c58b67deec86ed13ddeffcda660f69a /CI40392011912：34项共33通过/1登录跳过（77.564秒），新增实际file/content字节读取未调用缓存提供器、远端factory/createDataSource未初始化缓存、两次open请求同一缓存及断网重读均通过。含三个完整EQ生命周期，R8 not_requested；没有启动耗时/物理设备性能结论。设备artifact12685806249 ZIP SHA256 b8794cc9b30ac894c1653b4d17d063f5716896d108a2a6274332b0d60e126205已实际下载核对；fastRelease APK a915fda743c68312e80075062d9fbea62b661006d5a88654c3cb0ddcbb318079，测试APK4415eaebf0b0de3f21bfc7bd3d543c531d28c99de4da4b47c403c8faa4227529。
