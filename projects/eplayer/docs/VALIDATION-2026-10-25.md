@@ -152,3 +152,7 @@ CI 40376509058 在 SDK setup 请求下架 tools 包失败，未运行设备；�
 截图证据索引：12680541471 根目录 native/system 的 imported、playing、paused、notification、returned-paused PNG；播放闭眼/暂停睁眼已查看。native-motion.mp4（2.899 秒）、system-motion.mp4（2.769 秒）为有效无声录像，ffprobe 已核对；已抽查 native 6 帧，头帽/手/发线随共同姿态保持，未见白色接缝。不等于每帧/实机/长时动画验收。主线证据的 release-home.png 为默认双曲导入首页。
 
 PR #6 已合入发布防错配门禁；27 项根脚本通过，原始候选 prepare 实际验签/版本/ABI 通过。发布清单已更新，但 Release 发布/精确交付 smoke 尚待自动工作流结果。a25a90b 与 fb48458 两次主线失败保留在新证据归档，不将后续通过改写为旧提交通过。下一步完成交付，再合并主线到 PR #4 的能力/缓存边界分支，保留实机验收由本地 agent 执行。
+
+## 0.3.1 发布完成
+
+[Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.1) ID424674767，CI40387722240 成功。五个附件均 uploaded；APK SHA256 与 331d312 的原始 CI universal 一致（92b6…），未重签。native-libs.tar.gz SHA256 945e0975c4aa3c7fea09d080095d4bea89982244cbe3daf018e378647ab1587d，validation.zip 295b0ab83eb94b90db8ad15727825ef620ea4500e5febff1edb53f7a25b2bbc4，notes f957610765f59fabdd280d2a683dbb20d66d99a0aa5fecc12b5ee1777261f226，SHA256SUMS de093abf8e73041811f66e93684b3ac8208614792f6d4edc480d3814ddbd382b。交付工作流证据 artifact12681359098（ZIP b4c39568f965769c1149ef0ed547a269155137ac5ebd817dc7cc6a485391072f）已下载核对，精确安装/冷启动 2471ms 通过。Release validation 包含相同最终交付报告/首页图及历史失败/成功证据，index.json 可按 artifact ID 查找截图和无声动作录像；该包不含后续 0.3.2 功能。

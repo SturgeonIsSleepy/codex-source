@@ -4,7 +4,7 @@
 
 **交付 0.3.1** 固定上述源码与原始 universal APK，SHA256 `92b6b3d1f28940db408b033646b9a77233a0d1cd749c7e6c8b1ab6d0623973b3`，versionCode52，证书 `c92db3ca59c4ec286cea2f2b54f085b38d676b8e956a34b17c103fc61e04680a`。确切 R8 两种引擎均通过系统文件选择器导入、播放/暂停/12 秒定位、后台与真实通知点击返回（CI 40383667514、40385418880）。加载截图和约 2.8 秒无声动作预览已查看抽帧。PR #6 已合入匹配源码/构建/APK 的交付门禁。
 
-发布正在 [CI 40387722240](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40387722240) 恢复；草稿 ID424674767，不提前称已发布。之前两次 prepare 因 SDK 验签文字前缀失败；第三次精确安装/冷启动 2511ms 及证据校验通过，但创建后列表延迟导致发布失败，均如实记入计划。已按实际公开验签摘要修复并保留草稿 ID。0.3.0 旧附件不改；临时 CI 证书不同，不能保证无缝升级，先备份导入/设置。
+[0.3.1 Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.1) 已由 [CI 40387722240](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40387722240) 发布（ID424674767），五个附件 uploaded/digest 已逐项核对。之前两次 prepare 因 SDK 验签文字前缀失败；第三次精确安装/冷启动 2511ms 及证据校验通过，但创建后列表延迟导致发布失败，均如实记入计划。已按实际公开验签摘要修复并保留草稿 ID。0.3.0 旧附件不改；临时 CI 证书不同，不能保证无缝升级，先备份导入/设置。
 
 **接续开发 0.3.2**：[PR #4](https://github.com/SturgeonIsSleepy/codex-source/pull/4) /`agent/eplayer-20261026-core-boundaries`。纯音效能力、离页取消 AutoEQ、独立进程缓存和危险释放/递归删除 API 移除；19 JVM/本地构建通过，组合源码 CI40387147893 待结果，旧分支 31 通过/1 跳过不替代本轮。再接 `agent/eplayer-parametric-editor`（功能 7c68eb8）：Rust 频率/增益/Q 原子草稿编辑，共用数值校验，20 JVM/本地构建通过，新 UI 设备结果待执行。先完成组合设备回归，再分别合入；不能把尚未合入的功能写进 0.3.1 Release。
 

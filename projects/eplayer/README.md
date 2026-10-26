@@ -6,9 +6,11 @@
 
 普通版与自用版分离，账号、云端发现、搜索、收藏、歌单和下载流程正在迁移。功能边界与已知缺口见 [CORE-BOUNDARIES.md](docs/CORE-BOUNDARIES.md)；历史模拟器检查不能代替最新代码或实机验收。播放页采用独立组件，按宽度与方向适配，并为大字体保留滚动及可达操作区。
 
-## 0.3.0 验证预览版
+## 0.3.1 验证预览版
 
-[APK、原生库及验证记录](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0)。普通 fastRelease 的 Android 16 自动检查 25 通过/1 登录条件跳过；普通/自用 R8 构建、普通 R8 冷启动及确切 universal 交付 APK 安装/启动通过。完整 R8 音乐流程、实机音频和真实账号仍未验收。使用 CI 临时签名，与旧版不兼容，升级前备份本地音频及设置；该签名不保证后续预览可覆盖升级。
+[APK、原生库及验证记录](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.1)。普通 fastRelease Android 16 检查 30 通过/1 登录条件跳过；普通/自用 R8 构建、普通 R8 冷启动和原始 universal 安装/启动通过。相同 R8 APK 的系统/原生双引擎已通过实际文件选择器导入、暂停/定位、后台播放与系统通知点击返回；截图和短时无声动作预览随验证归档提供。原生公开释放契约和实时 EQ 渲染检查通过。实机音质/路由、真实账号及长时稳定性未验收。
+
+使用 CI 临时签名，versionCode52；与 0.3.0 证书不同。升级前备份本地音频及设置，必要时卸载旧预览；不保证后续构建可覆盖升级。旧 [0.3.0](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0) 附件保留。参数频率/Q 编辑与缓存边界后续工作不属于此包。
 
 ## 0.1.1 历史预览版
 
