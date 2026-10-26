@@ -161,3 +161,9 @@ CI 40376509058 在 SDK setup 请求下架 tools 包失败，未运行设备；�
 截图证据索引：12680541471 根目录 native/system 的 imported、playing、paused、notification、returned-paused PNG；播放闭眼/暂停睁眼已查看。native-motion.mp4（2.899 秒）、system-motion.mp4（2.769 秒）为有效无声录像，ffprobe 已核对；已抽查 native 6 帧，头帽/手/发线随共同姿态保持，未见白色接缝。不等于每帧/实机/长时动画验收。主线证据的 release-home.png 为默认双曲导入首页。
 
 PR #6 已合入发布防错配门禁；27 项根脚本通过，原始候选 prepare 实际验签/版本/ABI 通过。发布清单已更新，但 Release 发布/精确交付 smoke 尚待自动工作流结果。a25a90b 与 fb48458 两次主线失败保留在新证据归档，不将后续通过改写为旧提交通过。下一步完成交付，再合并主线到 PR #4 的能力/缓存边界分支，保留实机验收由本地 agent 执行。
+
+## 参数均衡编辑设备结果
+
+源码 8db92a93695f0e048c8ace5798e8f9b80c93b4ba /CI40388022692：33 项共 32 通过/1 真实登录条件跳过，87.735 秒，R8 not_requested。编辑链路实际拒绝 NaN、取消保持已导入参数、保存 660Hz/−2.5dB/Q1.2 后偏好全部匹配；均衡器保持启用。layout-check/eq-band-editor.png 已实际查看，三参数和保存/取消可见，使用统一文楷。真实 EQ 此轮为 baseline0.13074374→boost0.18503658→关闭0.13031313；不将本轮通过掩盖 5a956b5 的间歇停止。暂不合入，继续等待诊断来源。
+
+设备 artifact12681888678 ZIP SHA256 b3a3e49f229270e3bd8d08b9175de112efb8f211bb48492bebd761906b2cefc3 已下载核对；fastRelease APK 910a8aa7640965176b7da71d71c869d8225ec3265a959db351b8a5e9a8dc22e4，测试 APK 6731e0bb740e8ef3edc86b0839cbaa76702ed7bbc87688fc30bfa3c00720e15a。频率/Q 的独立声学响应、实机/账号未测，不能声称均已验收。未改人物素材或 0.3.1 已发布包。
