@@ -182,3 +182,15 @@ PR #6 已合入发布防错配门禁；27 项根脚本通过，原始候选 prep
 USB 桥接剥离源码 6821dab1c635e3231b8d57a20861bd622c9956a4 /CI40391321733：33 项共32通过/1登录跳过（91.445秒），含无独占会话、公开释放、三个完整 EQ 生命周期、缓存/导入/布局/插画。R8 not_requested，未声称普通 Android 物理 USB/耳机已验收。设备 artifact12684602201，ZIP SHA256 53d5bdb7603d628bd349162efe496fc4c70a88f20fd5804d5bc7f2210b08b390 已实际下载；fastRelease APK 26d57bec854645621637f2a90a8205126cae21248860bb68e5e5b14db768e63a，测试APK667c82e04127ab8488926330ddba76addc733218ff7d47a468f9835efe2c6da4。独立保存，不以本轮通过抹去其他源码的间歇停止记录。
 
 延迟缓存源码56d9156c0c58b67deec86ed13ddeffcda660f69a /CI40392011912：34项共33通过/1登录跳过（77.564秒），新增实际file/content字节读取未调用缓存提供器、远端factory/createDataSource未初始化缓存、两次open请求同一缓存及断网重读均通过。含三个完整EQ生命周期，R8 not_requested；没有启动耗时/物理设备性能结论。设备artifact12685806249 ZIP SHA256 b8794cc9b30ac894c1653b4d17d063f5716896d108a2a6274332b0d60e126205已实际下载核对；fastRelease APK a915fda743c68312e80075062d9fbea62b661006d5a88654c3cb0ddcbb318079，测试APK4415eaebf0b0de3f21bfc7bd3d543c531d28c99de4da4b47c403c8faa4227529。
+
+## 跨采样率丢失 EQ 已取得修复前证据
+
+9de19abb6dbf0ef0da909c9f3d7d2d3b069b3cc8 /CI40392306433：33项为31通过/1失败/1登录跳过（67.195秒）。明确失败在“Saved EQ lost after 44.1→48 kHz”：native/Media3 都在播放、设置 EQ=true/440Hz+6dB/Q1，但幅度0.13068521回到平直（原baseline0.13072309），不满足原提升阈值。日志确认输出由44100改成48000，后续Play未重新下发EQ，包含单曲循环重播也未恢复；与旧IDLE间歇停止是不同表现。
+
+设备artifact12685521332 ZIP SHA256 b1bfe632d7e88d9d8737cab3f18039d09b4d3f00b748751fb2b75e74ae98865a已实际下载。候选修复ed1034b在每次成功Play后复位DSP标记并重新下发保存EQ/FX，设备尚待结果；不降低阈值、不删失败检查。
+
+## 跨采样率 DSP 红绿回归完成
+
+修复ed1034bf59ab0a1ef89813a411882ab4e82f1dd5 /CI40392967562：33项共32通过/1登录跳过（73.496秒）。三个完整生命周期全部通过44.1→48kHz真实换曲后EQ保留：baseline0.13058645→0.18459812，0.13047104→0.18418264，0.13153297→0.18589857。原幅度阈值不变，日志可见每次Play重新下发EQ/FX。修复前9de19ab的失败继续保留，不是断言重试。
+
+设备artifact12685077511 ZIP SHA25666bb2f0278e312362fe8dbbbd0e9a248ab82fce2fbeebe3e8432d84a029b23d5已实际下载；R8 not_requested，实机/音质未测。此证实采样率重建丢失DSP的修复，不代替早期IDLE间歇问题根因结论。准备整合已验证组件，另待联网预缓冲暂停红绿回归。

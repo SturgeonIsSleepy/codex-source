@@ -137,7 +137,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     /** 时长缓存，避免重复创建 MediaMetadataRetriever */
     private val durationCache = ConcurrentHashMap<String, Long>()
 
-    /** DSP 设置是否已同步到引擎（首次播放后自动应用） */
+    /** DSP 设置是否已同步到当前输出；每次 Play 后重新应用 */
     @Volatile private var dspApplied = false
 
     /** SharedPreferences 监听器，实时同步 DSD / DAP 设置到 Rust 引擎 */
@@ -200,7 +200,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         val codecName: String
     )
 
-    /** 首次 play 后同步 DSP 设置（仅执行一次） */
+    /** 合并偏好通知，并在每次 Play 后同步当前原生输出的 DSP 设置 */
     private fun applyDspOnce() {
         if (!released && !dspApplied) {
             dspApplied = true
@@ -1165,6 +1165,9 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
             }
             return
         }
+        // Play can replace the native output when the next track uses another rate.
+        // The adapter survives that replacement; its old DSP flag does not.
+        dspApplied = false
         applyDspOnce()
     }
 
