@@ -178,3 +178,5 @@ PR #6 已合入发布防错配门禁；27 项根脚本通过，原始候选 prep
 源码 8db92a93695f0e048c8ace5798e8f9b80c93b4ba /CI40388022692：33 项共 32 通过/1 真实登录条件跳过，87.735 秒，R8 not_requested。编辑链路实际拒绝 NaN、取消保持已导入参数、保存 660Hz/−2.5dB/Q1.2 后偏好全部匹配；均衡器保持启用。layout-check/eq-band-editor.png 已实际查看，三参数和保存/取消可见，使用统一文楷。真实 EQ 此轮为 baseline0.13074374→boost0.18503658→关闭0.13031313；不将本轮通过掩盖 5a956b5 的间歇停止。暂不合入，继续等待诊断来源。
 
 设备 artifact12681888678 ZIP SHA256 b3a3e49f229270e3bd8d08b9175de112efb8f211bb48492bebd761906b2cefc3 已下载核对；fastRelease APK 910a8aa7640965176b7da71d71c869d8225ec3265a959db351b8a5e9a8dc22e4，测试 APK 6731e0bb740e8ef3edc86b0839cbaa76702ed7bbc87688fc30bfa3c00720e15a。频率/Q 的独立声学响应、实机/账号未测，不能声称均已验收。未改人物素材或 0.3.1 已发布包。
+
+USB 桥接剥离源码 6821dab1c635e3231b8d57a20861bd622c9956a4 /CI40391321733：33 项共32通过/1登录跳过（91.445秒），含无独占会话、公开释放、三个完整 EQ 生命周期、缓存/导入/布局/插画。R8 not_requested，未声称普通 Android 物理 USB/耳机已验收。设备 artifact12684602201，ZIP SHA256 53d5bdb7603d628bd349162efe496fc4c70a88f20fd5804d5bc7f2210b08b390 已实际下载；fastRelease APK 26d57bec854645621637f2a90a8205126cae21248860bb68e5e5b14db768e63a，测试APK667c82e04127ab8488926330ddba76addc733218ff7d47a468f9835efe2c6da4。独立保存，不以本轮通过抹去其他源码的间歇停止记录。
