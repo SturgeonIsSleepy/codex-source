@@ -26,6 +26,9 @@ def load_manifest(path):
         raise ValueError('Invalid release ID')
     if not isinstance(value.get('evidence'), list) or not value['evidence'] or any(type(n) is not int or n <= 0 for n in value['evidence']):
         raise ValueError('Evidence artifact IDs are required')
+    jobs = value.get('evidence_jobs', [])
+    if not isinstance(jobs, list) or any(type(n) is not int or n <= 0 for n in jobs) or len(jobs) != len(set(jobs)):
+        raise ValueError('Evidence job IDs must be unique positive integers')
     if not isinstance(value.get('validation_summary'), str) or not value['validation_summary'].strip():
         raise ValueError('Validation scope is required')
     proof = value.get('blackbox_artifact')
@@ -52,6 +55,25 @@ def gh(*args):
 def digest(path):
     with path.open('rb') as stream:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def archive_job_logs(archive, job_ids):
+    index = []
+    for job_id in job_ids:
+        job = json.loads(gh('api', f'repos/{REPO}/actions/jobs/{job_id}'))
+        if job.get('id') != job_id or job.get('status') != 'completed' or type(job.get('run_id')) is not int or job['run_id'] <= 0:
+            raise RuntimeError('Requested evidence job is not complete or does not match')
+        run = json.loads(gh('api', f'repos/{REPO}/actions/runs/{job["run_id"]}'))
+        if run.get('id') != job['run_id'] or not isinstance(run.get('head_sha'), str) or not re.fullmatch(r'[0-9a-f]{40}', run['head_sha']):
+            raise RuntimeError('Evidence job source cannot be verified')
+        content = subprocess.check_output(['gh', 'api', f'repos/{REPO}/actions/jobs/{job_id}/logs'])
+        prefix = f'workflow-jobs/{job_id}'
+        archive.writestr(f'{prefix}/log.txt', content)
+        archive.writestr(f'{prefix}/metadata.json', json.dumps({'job': job, 'run': run}, indent=2) + '\n')
+        index.append({'job_id': job_id, 'run_id': job['run_id'], 'run_attempt': job.get('run_attempt'),
+                      'source': run['head_sha'], 'conclusion': job.get('conclusion'),
+                      'sha256': hashlib.sha256(content).hexdigest(), 'path': f'{prefix}/log.txt'})
+    return index
 
 
 def verify_apk():
@@ -208,6 +230,7 @@ def publish():
         for path in sorted(Path('device-evidence').rglob('*')):
             if path.is_file():
                 archive.write(path, path.as_posix())
+        index.extend(archive_job_logs(archive, CONFIG.get('evidence_jobs', [])))
         archive.writestr('index.json', json.dumps(index, indent=2) + '\n')
     notes = f'''ePlayer {CONFIG['version']} preview · versionCode {CONFIG['version_code']} · minSdk {apk_metadata['sdkVersion']} / target {apk_metadata['targetSdkVersion']}
 
