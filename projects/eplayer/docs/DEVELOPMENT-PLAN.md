@@ -254,3 +254,9 @@ USB 桥接剥离源码 6821dab1c635e3231b8d57a20861bd622c9956a4 /CI40391321733�
 4dbb6b1b83044b45c59c2551f3a688c3329bba9e /CI40563989815：36项34通过/1失败/1登录跳过（72.927秒），三轮LiveEqualizerTest通过。唯一失败是新增framework Stop检查在发送Stop之前原生音频未启动，不能称为legacy Stop再次复现，也没有本轮Stop发送者证据。artifact12762133513 ZIP SHA256a7d796318d3251be5c7656a675f8bf0cb15787789c7aa8d1a1633e40b857c33c已下载；普通fastRelease APK09f7fc873311c52b181da50de40d4223d7e3afdd719713c19efdc330fd2ec053，测试APK10a645380442ae13f91906a6b514b3700685659b907044b33e382f12c3c9ef6f。
 
 修正测试准备：启动Activity后等待主线程空闲；临时MEDIA_CONTENT_CONTROL仅包围读取active sessions，不再跨越音频启动和引擎切换。产品代码未变，本地测试包再次构建通过；设备待执行。修复前交接状态观测bce115366c3f064a7972652e244489c041c621cc已通过GitHub连接工具正常快进保存，CI40565618951进行中。Git HTTPS凭据失败后采用现有连接工具，未强推、未读取或写入凭据。
+
+## 引擎交接顺序候选修复
+
+MusicService.SET_ENGINE 先恢复替代播放器的队列、位置、循环/随机、音量、prepare 和播放请求，再 session.setPlayer；仍保持唯一会话，随后释放旧播放器，不过滤任何媒体控制命令。20项 JVM、debug主程序和设备测试包构建通过，28项根脚本通过。修复前36项设备检查仍在运行，候选设备尚未执行；不得把本地通过写成旧Stop根因已修复。
+
+已实际查看4dbb6b1设备artifact中的 visual-check/player-rust-paused.png 和 layout-check/eq-band-editor.png，480×800暂停页和编辑窗口在该尺寸下未见明显头帽/手部错位或字体混用；未修改人物资源，静态截图不代表连续动画或实机验收。CORE-BOUNDARIES更新为当前能力，区分已接手动参数/AutoEQ与未接缓存清理、Crossfade，并记录后续流媒体取消/资源所有权的前置回归。

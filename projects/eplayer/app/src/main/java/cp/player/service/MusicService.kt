@@ -134,9 +134,15 @@ class MusicService : MediaSessionService() {
                         player.shuffleModeEnabled = shuffle
                         player.volume = volume
                         player.addListener(listener)
+                        // Restore the replacement before publishing it to modern and framework controllers.
+                        // Publishing its initial empty/IDLE state makes a live handover look like a stop.
+                        if (items.isNotEmpty()) {
+                            player.setMediaItems(items, index, position)
+                            player.prepare()
+                            player.playWhenReady = playing
+                        }
                         session.setPlayer(player)
                         CPPlayerManager.releasePlayer(previous)
-                        if (items.isNotEmpty()) { player.setMediaItems(items, index, position); player.prepare(); player.playWhenReady = playing }
                     }
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
