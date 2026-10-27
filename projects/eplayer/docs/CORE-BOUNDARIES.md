@@ -97,3 +97,5 @@ SoundSettingsStore 是偏好到界面状态的应用层适配；声音编辑组�
 | FlickPlayer 的 seek/underrun 恢复 | 部分直接 RustEngine.play 绕过共同音量/DSP 初始化 | 实际恢复音频幅度/静音及采样率回归，再统一启动入口，不靠状态标志假装播放 |
 
 这些流媒体问题来自源码审计，尚未在本阶段改产品或标红绿通过。先完成引擎交接的设备结果，再以独立阶段处理下载所有权；缓存清理和 Crossfade 不提前删除，保持能力清单与真实调用路径一致。
+
+依赖精简预审：实际 Gradle standardDebugRuntimeClasspath 与 main/test/XML 调用搜索表明，旧 navigation-compose、media3-ui、palette-ktx、material3-window-size-class 直接声明无现存源码调用，旧 Sentry 用途的 window compileOnly 也无调用。尚未移除，需按阶段编译及设备回归确认传递依赖边界；window 本身仍被当前 Compose 链传递依赖，不能承诺完全去除或节电。Coil、ZXing、Lyricon provider 仍有实际调用，继续保留。

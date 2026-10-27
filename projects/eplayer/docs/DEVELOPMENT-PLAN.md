@@ -266,3 +266,13 @@ MusicService.SET_ENGINE 先恢复替代播放器的队列、位置、循环/随�
 bce115366c3f064a7972652e244489c041c621cc /CI40565618951：36项33通过/2失败/1登录跳过（110.676秒）。LiveEqualizerTest再次被legacy Stop中断，新framework检查仍在音频启动前失败，尚未到达交接状态断言或主动Stop。artifact12762813323 ZIP SHA2567b46e5a4165ba197d8009fef6ca942f1703b38f4aaebc533a003c24469cdb281已下载核对，APK78681cbef2f56f857145ae8048564f904706921c45fc384b60533b6c8cd9a539。准备修正后的2de55f3设备轮次与产品交接候选6120be5分别排队，未用一个改动混称两项问题的根因。
 
 重要诊断限制：本轮Stop批次显示sameUid=true、version=1010000300、package=app.eplayer.music，但实际Media3 1.10.0字节码中 MediaSessionImpl.resolveControllerInfoForCallback 会将系统UI控制器映射为应用通知控制器。因此这些回调字段不能证明原始发送者就是应用自身；legacy调用栈仍是有效路径证据，未出现Service/回调媒体Stop按键日志也不能再凭包名认定具体来源。未添加过滤、反射私有字段或延时忽略Stop。
+
+## 引擎交接状态：真实设备修复前失败已确认
+
+准备修正后的2de55f35a307ac2a3cbb3189889ef2431fa0a062 /CI40565941188：36项34通过/1失败/1登录跳过（82.267秒）。真实原生音频启动和两次引擎往返均已走通；唯一失败正是新增framework状态断言，观测序列[2,2,0,0,0,0,2,6,2,0,0,6,6,6,0,0,6,6,6,6,6,0,0,0,0,6,6,3,3]多次包含STATE_NONE=0。不是音频启动失败，也未到达后续合法Stop断言。LiveEqualizerTest三轮通过，不把本轮未复现旧Stop称为已解决。
+
+artifact12763159386 ZIP SHA256e86aa9c186f745e3c0f08fd3d214d4ee5371aa3838b1703bc949e22dbf417376已下载核对；APK b0c810ee5e54687ee0191252fb10bceea56e12e8f0a3f70bbacab1aced85e6c9，测试包14b137b0735627d3a07b8902979ea7fcbbd028229ecb4bef4297430b13c8a9b5。产品交接修复6120be577274c32088a997e7a328314918ca6349 /CI40567120983正在执行，同一测试不放宽断言，尚未取得绿色结果。
+
+## 独立下一阶段：流媒体取消所有权修复前回归
+
+以PR4交接候选为基础建立agent/eplayer-stream-cancellation，避免替换正在执行的交接检查。本阶段先仅增加StreamProxyCancellationTest：真实本地数据源读到第一块后取消所属协程，后续不得通知ready，且自己的未完成输出应删除。使用独立ContextWrapper.cacheDir和唯一临时目录，全部读写/清理只限本测试；不访问账号、用户曲库或真实网络。编译通过，产品StreamProxy尚未修改，37项设备检查待执行，不提前声称红绿。该检查仅覆盖下载函数取消契约，切曲后旧回调不影响新原生输出仍需后续延迟loopback检查。Core交接的36项结果保持独立，继续优先处理。
