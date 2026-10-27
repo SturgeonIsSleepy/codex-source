@@ -2,6 +2,7 @@
 """Verify non-debuggable playback; explicitly record optional R8 candidate checks."""
 from pathlib import Path
 import hashlib
+import fnmatch
 import json
 import os
 import subprocess
@@ -13,7 +14,7 @@ output.mkdir(exist_ok=True)
 
 
 def unique(pattern):
-    matches = list(root.rglob(pattern))
+    matches = [path for path in root.rglob("*") if path.is_file() and fnmatch.fnmatchcase(path.name, pattern)]
     if len(matches) != 1:
         raise RuntimeError(f'Expected one {pattern}, found {len(matches)}')
     return matches[0]
