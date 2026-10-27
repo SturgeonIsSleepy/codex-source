@@ -69,7 +69,7 @@ android {
         minSdk 28
         targetSdk 36
         versionCode resolvedVersionCode
-        versionName "0.3.0"
+        versionName "0.3.1"
         buildConfigField "String", "GIT_SHA", "\"${resolvedSha}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

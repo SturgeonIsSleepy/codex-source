@@ -1,6 +1,59 @@
 # ePlayer 转移交接
 
-更新：2026-10-24。主线为 [projects/eplayer](../projects/eplayer/)，原独立参考版为 [projects/witch-player](../projects/witch-player/)。原 ePlayer 工作树最后提交 `d196c0d`；迁移后的后续工作以本仓库提交为准。
+当前软件基线为 `331d31241159737aec196fe922431898764f6909`：已合入 PR #3/#5 的 JNI 顺序、取消过滤与公开 COMMAND_RELEASE 契约修复。主线 [CI 40379791181](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40379791181) 30 通过/1 登录跳过（76.436 秒），普通/自用 R8 构建与普通 R8 冷启动 1720ms 通过。a25a90b、fb48458 的历史失败保持原结论，不再作为当前待修断点。
+
+**交付 0.3.1** 固定上述源码与原始 universal APK，SHA256 `92b6b3d1f28940db408b033646b9a77233a0d1cd749c7e6c8b1ab6d0623973b3`，versionCode52，证书 `c92db3ca59c4ec286cea2f2b54f085b38d676b8e956a34b17c103fc61e04680a`。确切 R8 两种引擎均通过系统文件选择器导入、播放/暂停/12 秒定位、后台与真实通知点击返回（CI 40383667514、40385418880）。加载截图和约 2.8 秒无声动作预览已查看抽帧。PR #6 已合入匹配源码/构建/APK 的交付门禁。
+
+[0.3.1 Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.1) 已由 [CI 40387722240](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40387722240) 发布（ID424674767），五个附件 uploaded/digest 已逐项核对。之前两次 prepare 因 SDK 验签文字前缀失败；第三次精确安装/冷启动 2511ms 及证据校验通过，但创建后列表延迟导致发布失败，均如实记入计划。已按实际公开验签摘要修复并保留草稿 ID。0.3.0 旧附件不改；临时 CI 证书不同，不能保证无缝升级，先备份导入/设置。
+
+**当前优先调查：原生 EQ 生命周期与输出重建**。[PR #4](https://github.com/SturgeonIsSleepy/codex-source/pull/4) /`agent/eplayer-20261026-core-boundaries` 的 5a956b5 /CI40387147893 为 31 通过/1 失败/1 登录跳过：稳定 baseline0.13126217 后应用 EQ 进入 IDLE/position4560/error=null/幅度NaN。证据12681038285（ZIP f28f985aaab6e765bc4b81876f08196291c7156de17f6e1a5a3e18afdecdd5fe）。诊断 8e410f0 /CI40389177223 为 32 通过/1 跳过（84.873 秒）；强化 a4f1c3e /CI40390584330 三个完整生命周期均通过（33 项共32通过/1跳过，69.336秒），但没有复现停止、没有根因修复，不以通过覆盖原失败。后一证据12683676039，ZIP83f738e4e3be6aa9c86eb84c1b56309bee646a8755e3548240c5bb72940c4ec3。
+
+下一步优先读取 `agent/eplayer-dsp-rate-switch` /9de19ab 的设备结果：只增加 44.1→48kHz 真音频 EQ 保留重现检查，代码审计显示 native 重建仅恢复音量、FlickPlayer 未按每次 Play 复位 DSP 标记；尚未修产品代码或认定设备重现。与先前 IDLE 间歇问题分开判定。暂不合入 PR #4/#7/#8/#9，不发布 0.3.2。
+
+其他已保存阶段：[PR #7](https://github.com/SturgeonIsSleepy/codex-source/pull/7) 的频率/增益/Q 编辑，20 JVM/本地构建、设备32通过/1跳过（87.735秒），eq-band-editor.png 已查看，证据12681888678（ZIP b3a3e49f229270e3bd8d08b9175de112efb8f211bb48492bebd761906b2cefc3）；[PR #8](https://github.com/SturgeonIsSleepy/codex-source/pull/8) 删除无调用的8个USB独占包装器/12个JNI声明，保留只读无独占探针，19JVM/本地构建通过、设备待结果；[PR #9](https://github.com/SturgeonIsSleepy/codex-source/pull/9) 将流媒体缓存磁盘初始化延后到远端 open，新增真实 file/content 旁路检查，19JVM/本地构建通过、设备待结果。各分支从已保存核心断点派生，后续正常合并保留新测试与双方记录，不强推。
+
+0.3.1 固定主线与确切 R8 检查的成功范围保持事实，但不能排除同类间歇问题影响旧版。后续成果不属于已发布 0.3.1；APK/原生库/日志仍走相应 Release，当前新分支临时 CI 证据在验证通过后归档，不能把未归档写成已完成。
+
+云端未操作实机；本地 agent 继续独占实机安装、音质/路由、焦点打断和真实账号验收。缓存清理界面、淡入淡出、新页面流程及长期动画检查仍有缺口，不能声称完整迁移已完成。Android Cloud 固定下载入口及无关项目保持不变。
+
+历史迁移记录（2026-10-24）：主线为 [projects/eplayer](../projects/eplayer/)，原独立参考版为 [projects/witch-player](../projects/witch-player/)。原 ePlayer 工作树最后提交 `d196c0d`；迁移后的后续工作以本仓库提交为准。
+
+## 首轮云端开发历史（2026-10-25 北京时间）
+
+[已合入 PR #1](https://github.com/SturgeonIsSleepy/codex-source/pull/1)，分支 `agent/eplayer-20261025-playback-layout`；功能基线 `888f1a4`，最新功能提交 `ffad7b3b6c00259635c5c798ba4e16cef18ab6f2`。上述已验证软件基线已合入 main；后续新功能使用单独分支，未操作实机。下一轮先同步此分支和 main，保护本地 agent 的新增更改。
+
+### 已实施
+
+- 播放页与设置从首页拆出；横屏分栏，长曲名与 2 倍字体可滚动，插画和文字分区，操作保持可达。进度使用墨线/圆点，保留 Slider 拖动和无障碍操作。
+- 统一页面/小组件的播放请求，缓冲期可暂停；眼睑按播放请求变化，摇摆按实际播放变化。关闭动画仍用同一修复底图，未重绘人物、皮肤、帽、发或手。
+- WitchPlayerView 变为纯画布，移除六个隐藏控件、媒体音量管理器、旧曲名/控件绘制和回调；不再解码旧参考图或加载旧字体，Compose 保持唯一交互入口。
+- 补回服务持有的定时停止，15–120 分钟、调整/取消；退出页面仍生效，服务销毁后清除。Rust 焦点绑定固定 Player，切换/销毁释放请求，定时/noisy 暂停不被旧 gain 回调恢复；ExoPlayer 使用自身焦点管理。
+- Rust 记住待播放位置，启动 Play→Seek 与主要传输命令串行提交；暂停跨曲定位和删除当前曲不恢复旧解码，清空队列停止原生输出。非缓冲错误/JNI 拒绝回传 Media3；尚不能据此声称 Rust 真播放阻塞已修复。
+- 新增系统 DownloadManager 失败/重试/私有副本/取消检查。破坏性播放检查要求空队列且默认歌单无用户录音；只使用 androidTest 合成 WAV，不上传用户录音或账号。
+- 依赖/能力审计见 [CORE-BOUNDARIES.md](../projects/eplayer/docs/CORE-BOUNDARIES.md)。DSP 编辑、淡入淡出等入口仍有迁移缺口，未以“源码还在”代替功能保留验收；USB 独占移除状态和 Android Cloud 固定下载入口保持原样。
+
+### 实际验证
+
+| 验证 | 对应源码/运行 | 结果 |
+| --- | --- | --- |
+| 本地构建/JVM | 当前功能源码 ffad7b3 | StandardDebug 与测试包构建通过，13 项播放/定时/焦点 JVM 检查通过 |
+| 目录/脚本 | 本地检查 | 目录规则检查与原 9 项通过；Android Cloud 控制器 17 项通过；新 6 项证据分类检查通过，脚本测试合计 15 项，不是 Android 播放验证 |
+| 定时与进度 | 37ad87f / [CI 40123797367](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40123797367) | 25 通过、1 真实登录条件跳过；后台定时、设置交互、无障碍 seek、Session PendingIntent 返回通过；R8 冷启动 smoke 通过 |
+| 纯画布/双引擎 | 74ac16f / [CI 40124903082](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40124903082) | 24 通过、1 失败、1 条件跳过；画布像素/动作与布局通过；等待 Rust 有效播放 90 秒失败，后续 R8 未执行 |
+| 真通知/位置保持 | ed71614 / [CI 40125811298](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40125811298) | 24 通过、1 失败、1 条件跳过；系统通知卡片点击后返回展开播放器、切换后暂停位置保持 12 秒通过；Rust 有效播放仍失败，原生实际断点/拖动/切回未执行 |
+| 原生诊断/错误回传 | ffad7b3 / [CI 40126620638](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40126620638) | 24 通过、1 失败、1 条件跳过；确认原生已解码至曲终，但 Media3 时长一直未知；R8 启动未执行 |
+| Rust 时长/完整流程 | 0e87c8d / [CI 40219333532](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40219333532) | 24 通过、1 失败、1 跳过；Rust 播放、实际断点、幅度、暂停/拖动、曲终/重播等步骤通过；错误后未 prepare 的恢复检查等待失败，整体未通过；R8 未请求 |
+| 双引擎完整软件流程 | 9e091f4 / [CI 40220536019](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40220536019) | 25 通过、1 真实登录条件跳过，52.265 秒；静音启动/恢复、错误恢复、切回系统引擎、真实通知返回均通过；R8 未请求 |
+
+已实际查看首页、播放、新墨线进度条、横屏/2 倍字体、定时控件及系统通知面板图。APK SHA256、截图路径、失败证据、历史失败和各轮范围见 [验证索引](../projects/eplayer/docs/VALIDATION-2026-10-25.md)。Instrumentation 使用非调试 fastRelease；另行记录 R8 启动检查，不能当完整 R8 播放验收。云端模拟器不能替代实机、音质、耳机或真实账号验收。已实际核对 0.1.1 Release 已于 2026-10-24 发布，APK 摘要与历史记录一致；不重复上传。当前 CI 产物是中间证据。
+
+### 具体断点与下一步
+
+第十阶段 CI 40220536019 已完成，25 通过/1 条件跳过。Rust 的真实输出静音/恢复、有效时长、断点、暂停/拖动、曲终/重播、错误恢复、切回系统引擎、后台与真实通知返回均已走通；截图与 SHA256 见验证索引。功能源码为 `9e091f4aa559fc3ab831d7d87fb77038b564b034`。实机、音质、耳机/焦点和真实账号仍未验收，不能把软件模拟器结果扩大为这些通过。
+
+准备由主线执行完整 R8 构建与启动检查，并以独立 delivery-check 验证最终上传 APK 的精确 SHA256、安装和冷启动；不在该检查中冒充完整音乐/实机验收。之后接续 DSP/声音入口迁移与全页流程。
+
+开发分支构建普通/自用 fastRelease 并执行完整普通版功能检查；main、release/* 或手动触发另外构建 R8。build.json 区分通过、失败、超时、中断、未请求与未执行；六项分类回归通过。保留运行中的检查，后续源码排队，文档变更不触发完整 app 构建。先完成这轮，再继续 DSP/淡入淡出、网络未缓存断点、快速切换与全页流程；实机焦点/耳机/长时间稳定性仍由本地 agent 验证。
 
 ## 0.1.1 初步可用预览（2026-10-24）
 
@@ -10,7 +63,7 @@
 
 通用包 `ePlayer-v0.1.1-preview.apk` 为 97,796,111 字节，SHA256 为 `b8b13e24885dce0f7f905151b8eeb96dc120f851332fef5fa751da764d667cc1`，含三个 ABI 的 JNI，不含测试 WAV/MP3，签名验证通过。签名证书 SHA256 为 `ec9641dae05841b8fff31a61b8e5be689adbae66a5b547434ab740398e237a53`。本地签名私钥未上传；新签名不能覆盖旧 0.1.0 签名安装，应先保存需要的数据再处理旧安装。
 
-APK、说明、SHA256SUMS 与仅含测试结果/截图的验证归档已在本地准备好。公开 Release 上传被自动审批拒绝，正在等待用户对具体文件公开发布的明确授权；尚未创建或发布 0.1.1 Release，不要把 CI 原始签名 APK 当作上述重签交付包。
+历史交接曾记录公开上传被拒绝；本轮实际读取 GitHub 后确认 [0.1.1 Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.1.1) 已于 2026-10-24T12:51:39Z 发布，含 APK、说明、SHA256SUMS 和验证归档。远端 APK 摘要仍为 `b8b13e24885dce0f7f905151b8eeb96dc120f851332fef5fa751da764d667cc1`，无需重复上传；本轮没有发布或替换这些旧附件。
 
 本轮没有连接实机，物理耳机路由、音频焦点打断、真实在线源/账号、手机音质、横屏与长时间稳定性仍待验证。此前“最终验收未完成”的记录是迁移时的历史状态；本轮只补齐上述模拟器检查，不代表所有最终验收通过。普通较长曲名仍可能被插画遮挡，下一轮同时处理曲名区域。继续实机基线、CPPlayer 核心边界与其余页面重构。
 
@@ -86,3 +139,35 @@ Android 16 软件 TCG 模拟器非常慢；测试与大构建不要并行，不�
 [发布归档工作流](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40062807892) 与同提交的 Repository checks 均成功。`.github/handoff-assets.json` 记录校验清单；临时传输对象没有进入源码提交树。两个 Release 已发布，无需再次执行转存。
 
 每日自动开发已启用；本次仅完成迁移与任务设置，没有把未完成的播放器功能验收改写为通过。下一轮直接从开发计划和真实验收断点继续。
+
+## 0.3.0 发布断点（2026-10-26 北京时间）
+
+主线验证：[CI 40222561908](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40222561908)，源码 a62e0fb；25 通过/1 登录条件跳过，双引擎播放/暂停/定位/重播/错误恢复、真实 PCM 静音恢复、后台及系统通知返回已通过。
+
+本地 Release 上传先在 uploads.github.com 返回 401，随后 CLI API 也凭据失效；连接器仍可操作源码。eplayer-v0.3.0 目前是无附件空草稿（ID 423603768），不能称为已发布。新增专用发布工作流从上述成功 CI 获取原始 universal R8 APK，校验 SHA256，API36 安装/启动通过后才归档历史失败/通过证据、原生库并发布；不向 Git 传二进制或私钥。APK SHA256 9106fbbee4154a4c2a4c4b877a4976d364d9e65ba514ff110b6272d69bb49d40；CI 临时证书 8f89883030d7d64aecb6358b43eddeb8e9cd5ac323f8ab9916af4070186f08dc，与 0.1.1 不兼容，未来稳定签名交付仍待解决。
+
+不要发布本地重新签名的中间候选，也不要将其 c5b1… 证书或 aa781… 哈希误记为最终 CI 原始 APK。新增发布工作流尚未运行，最终附件、交付 smoke 和发布状态需回查。
+
+发布更新：上述空草稿已在 [CI 40226257524](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40226257524) 完成原始 universal APK 的精确安装/冷启动检查后发布：[eplayer-v0.3.0](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0)。五个附件（APK、native-libs、validation、notes、SHA256SUMS）已通过 GitHub API 核对名称、大小与 digest。APK SHA256 与上述 CI 原始值一致。此前发布工作流 40225961951 的精确安装/启动已通过，但按未创建 tag 查询草稿返回 404，发布失败；随后改按 Release ID 核对目标，未覆盖附件。
+
+## 当前 0.3.1 开发断点
+
+PR #2 已实现实时 DSP、整页声音设置、系统能力感知、AutoEQ 有界读取/预览，移除经检索无引用的旧外观访问器。54ba908 的真实 EQ 回归 26 通过/1 登录跳过；ed74b9b 声音页 28 通过/1 跳过；361dd59 AutoEQ 首版 28 通过/1 跳过。19 项 JVM 与本地构建通过。最新 b34e679d5bfb33552b2d59fe3c77a03f967bfd7f 在 [CI 40227528360](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40227528360)，待执行 URI→预览→确认→实际音频、完整设置返回与旧 UI 剥离回归，暂不合入主线。
+
+中间 8c69e39 的 CI 40227292073 在等待队列被后续提交替换而取消，未执行设备检查，不标通过；后续提交包含其全部检查。缓存入口的旧方法会释放仍被 DataSource 引用的对象，旧 clearAll 还涉及历史/本地曲库，已记录审计，不直接接 UI。所有后续操作以分支最新交接为准，保护本地 agent 实机职责。
+
+项目分支的计划与验证索引保存证据 hash；不要重做或覆盖 0.3.0 已发布附件。此处是截至当前的运行断点，后续结果按源码 SHA 回写。
+
+运行更新：b34e679 的 CI 40227528360 已通过 29 项/1 登录条件跳过，73.918 秒，整页往返导航、真实 URI 到应用层确认/渲染通过，整页截图已查看。证据 SHA 与限制见项目验证索引；系统文件选择器/确认弹窗点击仍未验收。当前 PR #2 准备合入主线，主线再执行 R8 构建与启动检查；暂没有 0.3.1 Release。
+
+## 2026-10-27：0.3.1 确切交付候选
+
+主线 331d312 /[CI 40379791181](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40379791181) 为 30 通过/1 登录跳过（76.436 秒），普通/自用 R8 构建通过，普通 R8 冷启动 1720ms。设备 artifact 12678359715 的 ZIP SHA256 为 164c2accbb8f518735a7e513bdc8efb4e60a38adaa01872901ca31b6778b35cd。
+
+确切原始 universal 0.3.1/code52：APK SHA256 92b6b3d1f28940db408b033646b9a77233a0d1cd749c7e6c8b1ab6d0623973b3；证书 c92db3ca59c4ec286cea2f2b54f085b38d676b8e956a34b17c103fc61e04680a，与 0.3.0 不同，备份后可能需要卸载，不能保证无缝升级。API28 起/target36/三 ABI，未重签、未附录音。
+
+独立 R8 两次验收均通过系统/原生两项：CI 40383667514（35.902 秒，artifact 12680016792，ZIP c6df3277cb34cdf12e3caa6f24a3b9dd34acaa0d453f95d37bfa4c172384b68e），[CI 40385418880](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40385418880)（artifact 12680541471，ZIP 9dcc2e40288d911a956c43b7d11c1cb7000fb98620e46e46ee8a7299d1950634）。报告源码/构建/APK 均匹配上述候选。实际系统选择器导入合成 WAV、暂停/12 秒定位/后台推进/真实系统通知点击通过。日志使用框架位置，不是 PCM 音质测量。
+
+截图证据索引：12680541471 根目录 native/system 的 imported、playing、paused、notification、returned-paused PNG；播放闭眼/暂停睁眼已查看。native-motion.mp4（2.899 秒）、system-motion.mp4（2.769 秒）为有效无声录像，ffprobe 已核对；已抽查 native 6 帧，头帽/手/发线随共同姿态保持，未见白色接缝。不等于每帧/实机/长时动画验收。主线证据的 release-home.png 为默认双曲导入首页。
+
+PR #6 已合入发布防错配门禁；27 项根脚本通过，原始候选 prepare 实际验签/版本/ABI 通过。发布清单已更新，但 Release 发布/精确交付 smoke 尚待自动工作流结果。a25a90b 与 fb48458 两次主线失败保留在新证据归档，不将后续通过改写为旧提交通过。下一步完成交付，再合并主线到 PR #4 的能力/缓存边界分支，保留实机验收由本地 agent 执行。

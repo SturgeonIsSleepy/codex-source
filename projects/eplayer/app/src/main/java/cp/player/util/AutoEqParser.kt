@@ -1,89 +1,27 @@
 package cp.player.util
 
-import android.net.Uri
 import android.content.Context
-import android.util.Log
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import android.net.Uri
+import cp.player.core.audio.EqualizerProfile
+import cp.player.core.audio.EqualizerProfileParser
 
-data class PeqBand(
-    val freq: Float,
-    val gain: Float,
-    val q: Float
-)
+data class PeqBand(val freq: Float, val gain: Float, val q: Float)
 
+/** URI I/O only; text validation is shared with decoder-independent unit tests. */
 object AutoEqParser {
-    private const val TAG = "AutoEqParser"
-    private val SPACE_REGEX = "\\s+".toRegex()
-
-    // 解析标准的 AutoEQ txt 文件。
-    // 支持 GraphicEQ 和 ParametricEQ 格式。
-    fun parse(context: Context, uri: Uri): List<PeqBand>? {
-        try {
-            val bands = mutableListOf<PeqBand>()
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                BufferedReader(InputStreamReader(inputStream)).use { reader ->
-                    var isGraphicEq = false
-                    reader.forEachLine { line ->
-                        val trimmed = line.trim()
-                        if (trimmed.isEmpty()) return@forEachLine
-                        if (trimmed.startsWith("GraphicEQ:")) {
-                            isGraphicEq = true
-                            bands.addAll(parseGraphicEq(trimmed))
-                        } else if (trimmed.startsWith("Filter") && trimmed.contains("PK")) {
-                            parseParametricEqLine(trimmed)?.let { bands.add(it) }
-                        }
-                    }
-                }
+    fun readProfile(context: Context, uri: Uri): EqualizerProfile {
+        val input = context.contentResolver.openInputStream(uri) ?: error("无法读取均衡器文件")
+        val text = input.bufferedReader().use { reader ->
+            val result = StringBuilder()
+            val buffer = CharArray(4096)
+            while (true) {
+                val count = reader.read(buffer)
+                if (count < 0) break
+                require(result.length + count <= EqualizerProfileParser.MAX_CHARACTERS) { "均衡器文件过大" }
+                result.append(buffer, 0, count)
             }
-            return if (bands.isNotEmpty()) bands else null
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to parse AutoEQ file", e)
-            return null
+            result.toString()
         }
-    }
-
-    private fun parseGraphicEq(line: String): List<PeqBand> {
-        val bands = mutableListOf<PeqBand>()
-        val dataStr = line.substringAfter("GraphicEQ:").trim()
-        val pairs = dataStr.split(";")
-        for (pair in pairs) {
-            val parts = pair.trim().split(SPACE_REGEX)
-            if (parts.size >= 2) {
-                try {
-                    val freq = parts[0].toFloat()
-                    val gain = parts[1].toFloat()
-                    // GraphicEQ 的 Q 值实际上取决于频段间距，
-                    // 这里默认使用 1.41 (sqrt(2))，这是一个常见的1倍频程 Q 值。
-                    bands.add(PeqBand(freq, gain, 1.41f))
-                } catch (e: Exception) {
-                    // 忽略单个频段的格式错误
-                }
-            }
-        }
-        return bands
-    }
-
-    private fun parseParametricEqLine(line: String): PeqBand? {
-        // 示例：Filter 1: ON PK Fc 32 Hz Gain 1.5 dB Q 0.8
-        try {
-            val parts = line.split(SPACE_REGEX)
-            val fcIndex = parts.indexOf("Fc")
-            val gainIndex = parts.indexOf("Gain")
-            val qIndex = parts.indexOf("Q")
-
-            if (fcIndex != -1 && gainIndex != -1 && qIndex != -1 &&
-                fcIndex + 1 < parts.size && gainIndex + 1 < parts.size && qIndex + 1 < parts.size) {
-
-                val freq = parts[fcIndex + 1].toFloat()
-                val gain = parts[gainIndex + 1].toFloat()
-                val q = parts[qIndex + 1].toFloat()
-
-                return PeqBand(freq, gain, q)
-            }
-        } catch (e: Exception) {
-            // 忽略格式错误的行
-        }
-        return null
+        return EqualizerProfileParser.parse(text)
     }
 }

@@ -4,6 +4,8 @@ import android.util.Log
 import cp.player.util.DebugLog
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -162,11 +164,14 @@ object RustEngine {
         if (jsonStr == "null" || jsonStr == "" || jsonStr == "{}") return null
         try {
             val json = JSONObject(jsonStr)
-            return AudioEvent.Progress(
+            val progress = AudioEvent.Progress(
                 positionSecs = json.optDouble("position_secs", 0.0),
                 durationSecs = json.optDouble("duration_secs", 0.0),
                 bufferLevel = json.optDouble("buffer_level", 0.0)
             )
+            _engineProgress.value = progress
+            MusicPulse.publish(nativeGetAmplitude())
+            return progress
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse progress JSON: $jsonStr", e)
         }
@@ -205,12 +210,17 @@ object RustEngine {
             while (isActive) {
                 try {
                     val eventStr = nativePollEvent()
+                    // A cancelled poller may return from JNI after a replacement
+                    // starts. Do not publish its stale state into the new adapter.
+                    coroutineContext.ensureActive()
                     if (eventStr != null && eventStr != "null") {
                         handleEventJson(eventStr)
                     } else {
                         // No event, delay a bit
                         delay(50)
                     }
+                } catch (cancel: CancellationException) {
+                    throw cancel
                 } catch (e: Exception) {
                     Log.e(TAG, "Error in poll loop", e)
                     delay(1000)
