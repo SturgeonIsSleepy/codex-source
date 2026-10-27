@@ -6,6 +6,9 @@ import android.media.session.MediaSessionManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
+import android.os.Handler
+import android.os.Looper
+import android.media.session.PlaybackState
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -24,6 +27,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.UUID
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
@@ -102,6 +106,13 @@ class NativeEngineTest {
         instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.MEDIA_CONTENT_CONTROL")
         var controller: MediaController? = null
         var volume = 1f
+        var framework: android.media.session.MediaController? = null
+        val handoverStates = ConcurrentLinkedQueue<Int>()
+        val observer = object : android.media.session.MediaController.Callback() {
+            override fun onPlaybackStateChanged(state: PlaybackState?) {
+                state?.let { handoverStates.add(it.state) }
+            }
+        }
         fun engine(value: Int) {
             lateinit var reply: ListenableFuture<SessionResult>
             main { reply = controller!!.sendCustomCommand(SessionCommand("SET_ENGINE", Bundle.EMPTY), Bundle().apply { putInt("engine", value) }) }
@@ -129,6 +140,19 @@ class NativeEngineTest {
             val manager = context.getSystemService(MediaSessionManager::class.java)
             val legacy = manager.getActiveSessions(null).firstOrNull { it.packageName == context.packageName }
             assertNotNull("The actual framework session must be available", legacy)
+            framework = legacy
+            legacy!!.registerCallback(observer, Handler(Looper.getMainLooper()))
+            instrumentation.waitForIdleSync()
+            handoverStates.clear()
+            repeat(2) { engine(0); engine(1) }
+            await(15000) {
+                var playing = false
+                main { playing = controller!!.isPlaying }
+                playing && (native { RustEngine.getProgress()?.positionSecs } ?: 0.0) > .5
+            }
+            instrumentation.waitForIdleSync()
+            assertFalse("Engine handover published an empty/stopped framework session: $handoverStates",
+                handoverStates.any { it == PlaybackState.STATE_NONE || it == PlaybackState.STATE_STOPPED })
             legacy!!.transportControls.stop()
             await(2000) {
                 var idle = false
@@ -138,6 +162,7 @@ class NativeEngineTest {
             android.util.Log.i("EPlayerTest", "Current framework Stop stopped real native playback; legacy control remains available")
         } finally {
             try {
+                framework?.unregisterCallback(observer)
                 controller?.let { current ->
                     main { current.stop(); current.clearMediaItems(); current.volume = volume }
                     try { engine(savedEngine) } finally { main { current.release() } }

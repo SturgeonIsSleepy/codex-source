@@ -222,3 +222,7 @@ USB 桥接剥离源码 6821dab1c635e3231b8d57a20861bd622c9956a4 /CI40391321733�
 7f578192da3c1ad41c541825e805be9dad0516cd /CI40560772114：35项为33通过/1失败/1登录跳过（93.815秒）。第二个EQ生命周期在legacy Stop后进入IDLE；没有出现新增的Service媒体STOP按键入口日志，因此不能把问题认定为通知删除PendingIntent，也未实施通知代次过滤或屏蔽任何控制。设备artifact12760188441 ZIP SHA25650882014f6f6a0f42c3555492e7b516b8764802630a035bfc8ed75db3edd60e9已下载核对。
 
 继续采集legacy来源的同UID/版本/包名校验布尔值，以及媒体按钮回调中的固定Stop/dismissal标志，避免仅凭包名推断发送者。同时新增真实框架控制正向检查：原生12秒合成音频有实际进度/时长/幅度后，通过Android框架MediaController.stop停止，2秒内须原生Stopped且会话IDLE；保持正常Stop能力。只临时采用测试所需MEDIA_CONTENT_CONTROL权限，finally释放并恢复原引擎/音量、清理唯一夹具。20 JVM/本地构建通过，新增设备总计36项，尚未执行，不将编译或后续其他通过替代这项结果。
+
+## 引擎交接框架状态观测（修复前）
+
+新增真实框架 MediaController 状态订阅：原生音频已有实际进度后，两次往返系统/原生引擎，要求不向媒体会话发布 STATE_NONE/STATE_STOPPED，再验证合法 framework Stop 仍停止原生输出。当前仅修改测试，产品交接顺序尚未改变；本地设备包构建通过，修复前 CI 待执行。代码审计确认当前先 session.setPlayer 再恢复队列，不能在设备观测前称其为旧 Stop 的根因。
