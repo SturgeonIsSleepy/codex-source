@@ -177,3 +177,9 @@ CI 40387213231 的 prepare 与原始 universal 安装/冷启动已通过；历�
 流媒体恢复后续审计：StreamProxy/适配器的通用catch包含取消，旧流任务在切本地曲时没有统一取消/代次检查，少数恢复路径直接调用native Play且未复用完整启动逻辑。先取得真实传输检查，再按单一播放所有权拆分，不直接叠加多套状态或删除在线播放代码。
 
 缓冲暂停候选修复：待启动位置保留到真正允许 native Play 时才清除；共享启动入口检查播放请求/暂停意图，完成下载时可保持已准备但未开始，用户恢复按待启动位置重新启动而非恢复空原生输出。播放请求/待启动位置跨线程可见。恢复检查进一步要求真实 native 进度/12秒时长和有限非零幅度。19 JVM/主程序/测试包构建通过；949c9e3 未修产品检查仍保留，候选修复设备待执行，不提前标红绿通过。未取消用户暂停期间的缓存下载，未新增轮询、状态补丁图或原生接口。
+
+## 联网预缓冲暂停红绿回归完成
+
+修复前949c9e3312fbb3018ca00bbff4f0a78340cfa6e5 /CI40394134796：34项为30通过/2失败/1登录跳过（91.72秒）。新检查明确失败“Prebuffer completion must not start native audio after pause”；同时旧LiveEqualizerTest在稳定基线前再次失败，native=stopped/IDLE/position3240/eq=false，日志20:22:19.704明确Native Stop reason=player-stop，不是EQ接口错误或适配器release。后者根因待控制器来源诊断，不能忽略第二项失败。设备artifact12685827899 ZIP SHA25685f8c73719b4853ade5a89ffa93b32a97d7d0579e37c5716cb3a4524c2398afd已下载核对。
+
+修复82075bae4d66745c3689a8fe3462119f7b29059f /CI40394832829：34项共33通过/1登录跳过（83.024秒）。下载完成仍保持原生不播放/会话暂停，关闭上游后主动恢复具有真实原生进度、12秒有效时长和非零幅度；三个EQ生命周期和其余检查同时通过。设备artifact12686274869 ZIP SHA256475b0bd6e95fb0a7c4c0f6fcc1b7b8fff6b315dc0a0f190c364760bebc851e59已实际下载；fastRelease APK043595068eae5b932c7e7d3c642b9d9b6389a8ed766e1e9f8c04546d7dcf1f2d，测试APK359a03d31e8eb268e0bea96b3afd0250a41ba95edca3e6c6402669f0353d7e3d。R8 not_requested；不把此通过称为已定位旧Stop命令来源。

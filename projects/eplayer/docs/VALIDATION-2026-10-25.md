@@ -173,3 +173,9 @@ PR #6 已合入发布防错配门禁；27 项根脚本通过，原始候选 prep
 设备 artifact12681038285 ZIP SHA256 f28f985aaab6e765bc4b81876f08196291c7156de17f6e1a5a3e18afdecdd5fe 已下载核对；fastRelease APK fc80328e24a4a6efd8bc157f5c66b095844cb39feda391fbdfb0972b1b88f57f，测试 APK a50e76449ce41917c0efbd82bfbf4fc65b62528a2844561f26282a1f0bb0f55d。暂停 PR #4/#7 合入，不发布 0.3.2。新增停止原因、原生状态事件及 DSP 更新诊断（不记录账号/URL），失败信息读取真实 native state；先确认发出 Stop 的路径或底层状态，再选择修复，不延长等待或放宽幅度阈值。
 
 诊断提交 8e410f0 /CI40389177223 为 32 通过/1 登录跳过，84.873 秒；设备 artifact12682520815 ZIP SHA256 80e4d70300526147acc16f1eb66c61d8cff5dfd0cf8f284124017d4186329fed 已下载，原生 EQ baseline0.13074183→0.1840731→0.13031313。此轮停止来源日志只在测试清理时出现，未复现原失败；不能声称已找到或修复间歇根因。下一检查在同一用例内建立 3 个完整独立生命周期，每轮均保留 3 次快速引擎切换、原幅度阈值与完整 finally 清理；任何一轮失败立即失败，不是断言重试。19 JVM/本地构建通过，强化检查设备待执行。
+
+## 联网预缓冲暂停红绿回归完成
+
+修复前949c9e3312fbb3018ca00bbff4f0a78340cfa6e5 /CI40394134796：34项为30通过/2失败/1登录跳过（91.72秒）。新检查明确失败“Prebuffer completion must not start native audio after pause”；同时旧LiveEqualizerTest在稳定基线前再次失败，native=stopped/IDLE/position3240/eq=false，日志20:22:19.704明确Native Stop reason=player-stop，不是EQ接口错误或适配器release。后者根因待控制器来源诊断，不能忽略第二项失败。设备artifact12685827899 ZIP SHA25685f8c73719b4853ade5a89ffa93b32a97d7d0579e37c5716cb3a4524c2398afd已下载核对。
+
+修复82075bae4d66745c3689a8fe3462119f7b29059f /CI40394832829：34项共33通过/1登录跳过（83.024秒）。下载完成仍保持原生不播放/会话暂停，关闭上游后主动恢复具有真实原生进度、12秒有效时长和非零幅度；三个EQ生命周期和其余检查同时通过。设备artifact12686274869 ZIP SHA256475b0bd6e95fb0a7c4c0f6fcc1b7b8fff6b315dc0a0f190c364760bebc851e59已实际下载；fastRelease APK043595068eae5b932c7e7d3c642b9d9b6389a8ed766e1e9f8c04546d7dcf1f2d，测试APK359a03d31e8eb268e0bea96b3afd0250a41ba95edca3e6c6402669f0353d7e3d。R8 not_requested；不把此通过称为已定位旧Stop命令来源。
