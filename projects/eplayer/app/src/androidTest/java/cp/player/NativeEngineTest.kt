@@ -1,6 +1,8 @@
 package cp.player
 
 import android.content.ComponentName
+import android.content.Intent
+import android.media.session.MediaSessionManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
@@ -22,6 +24,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.TimeUnit
+import java.util.UUID
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -87,6 +90,63 @@ class NativeEngineTest {
             main { direct?.release() }
             native { Unit } // Join queued adapter cleanup before restoring the service-owned engine.
             try { engine(savedEngine) } finally { main { controller.release() }; file.delete() }
+        }
+    }
+
+    @Test fun currentFrameworkStopStillStopsRealNativeAudio() {
+        val queue = context.getSharedPreferences("eplayer_queue", 0).getString("items", null)
+        assumeTrue("Preserve user playback", queue == null || queue == "[]")
+        val savedEngine = UserPreferences.getAudioEngine(context)
+        val id = "legacy-stop-${UUID.randomUUID()}"
+        val file = File.createTempFile("legacy-stop-", ".wav", context.cacheDir).apply { writeBytes(SyntheticAudio.wav(12)) }
+        instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.MEDIA_CONTENT_CONTROL")
+        var controller: MediaController? = null
+        var volume = 1f
+        fun engine(value: Int) {
+            lateinit var reply: ListenableFuture<SessionResult>
+            main { reply = controller!!.sendCustomCommand(SessionCommand("SET_ENGINE", Bundle.EMPTY), Bundle().apply { putInt("engine", value) }) }
+            assertEquals(SessionResult.RESULT_SUCCESS, reply.get(10, TimeUnit.SECONDS).resultCode)
+        }
+        try {
+            context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            controller = MediaController.Builder(context, SessionToken(context, ComponentName(context, MusicService::class.java)))
+                .setConnectionHints(Bundle().apply { putString("eplayer.qa.owner", "native-contract") })
+                .buildAsync().get(30, TimeUnit.SECONDS)
+            engine(1)
+            main {
+                volume = controller!!.volume
+                controller!!.volume = .2f
+                controller!!.setMediaItem(MediaItem.Builder().setMediaId(id).setUri(Uri.fromFile(file)).build())
+                controller!!.prepare(); controller!!.play()
+            }
+            await(15000) {
+                var playing = false
+                main { assertNull(controller!!.playerError); playing = controller!!.isPlaying }
+                val progress = native { RustEngine.getProgress() }
+                playing && progress != null && progress.positionSecs > .5 && progress.durationSecs in 11.9..12.1 &&
+                    cp.player.engine.MusicPulse.sample().let { it.isFinite() && it > .01f }
+            }
+            val manager = context.getSystemService(MediaSessionManager::class.java)
+            val legacy = manager.getActiveSessions(null).firstOrNull { it.packageName == context.packageName }
+            assertNotNull("The actual framework session must be available", legacy)
+            legacy!!.transportControls.stop()
+            await(2000) {
+                var idle = false
+                main { idle = controller!!.playbackState == Player.STATE_IDLE && !controller!!.playWhenReady }
+                idle && native { RustEngine.getState().equals("stopped", true) }
+            }
+            android.util.Log.i("EPlayerTest", "Current framework Stop stopped real native playback; legacy control remains available")
+        } finally {
+            try {
+                controller?.let { current ->
+                    main { current.stop(); current.clearMediaItems(); current.volume = volume }
+                    try { engine(savedEngine) } finally { main { current.release() } }
+                }
+            } finally {
+                instrumentation.uiAutomation.dropShellPermissionIdentity()
+                cp.player.app.RecentStore.remove(context, id)
+                file.delete()
+            }
         }
     }
 }

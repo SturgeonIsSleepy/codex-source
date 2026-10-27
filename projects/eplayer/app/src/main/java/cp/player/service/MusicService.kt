@@ -87,9 +87,19 @@ class MusicService : MediaSessionService() {
                     if (playerCommands.contains(Player.COMMAND_STOP)) {
                         // Only whitelist our fixture labels; never dump arbitrary connection hints.
                         val label = controller.connectionHints.getString("eplayer.qa.owner")
-                            .takeIf { it in setOf("integration", "equalizer", "stream") } ?: "external"
-                        Log.i("EPlayerSession", "Stop batch owner=$label package=${controller.packageName}")
+                            .takeIf { it in setOf("integration", "equalizer", "stream", "native-contract") } ?: "external"
+                        Log.i("EPlayerSession", "Stop batch owner=$label package=${controller.packageName} " +
+                            "sameUid=${controller.uid == android.os.Process.myUid()} version=${controller.controllerVersion} verified=${controller.isPackageNameVerified}")
                     }
+                }
+                override fun onMediaButtonEvent(session: MediaSession, controller: MediaSession.ControllerInfo,
+                    intent: Intent): Boolean {
+                    val key = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
+                    if (key?.keyCode == KeyEvent.KEYCODE_MEDIA_STOP) {
+                        val dismissal = intent.getBooleanExtra("androidx.media3.session.NOTIFICATION_DISMISSED_EVENT_KEY", false)
+                        Log.i("EPlayerSession", "Callback media STOP key; sameUid=${controller.uid == android.os.Process.myUid()} notificationDismissal=$dismissal")
+                    }
+                    return super.onMediaButtonEvent(session, controller, intent)
                 }
                 override fun onCustomCommand(session: MediaSession, controller: MediaSession.ControllerInfo,
                     command: SessionCommand, args: Bundle): ListenableFuture<SessionResult> {
