@@ -12,6 +12,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.test.platform.app.InstrumentationRegistry
 import cp.player.MainActivity
@@ -65,6 +66,12 @@ class PlayerLayoutTest {
             }
         }
         compose.waitForIdle()
+        // Keep a native component render for visual review; it is not an audio test result.
+        val folder = File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null), "layout-check").apply { mkdirs() }
+        val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
+        File(folder, "${if (wide) "landscape" else "portrait"}-$fontScale${if (requested) "-buffering" else ""}.png").outputStream().use {
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
         val metadata = compose.onNodeWithTag("player-metadata").getUnclippedBoundsInRoot()
         val artwork = compose.onNodeWithTag("player-artwork").getUnclippedBoundsInRoot()
         if (wide) {
@@ -74,6 +81,9 @@ class PlayerLayoutTest {
             compose.onNodeWithTag("player-portrait").assertExists()
             assertTrue("The entire title block precedes the artwork", metadata.bottom <= artwork.top)
             compose.onNodeWithTag("player-transport").assertIsDisplayed()
+            val transport = compose.onNodeWithTag("player-transport").getUnclippedBoundsInRoot()
+            assertTrue("The complete portrait artwork must fit above transport without scrolling: $artwork / $transport",
+                artwork.bottom > artwork.top && artwork.bottom <= transport.top + 1.dp)
         }
         for (description in listOf(if (requested) "暂停" else "播放", "上一首", "下一首", "随机播放", "喜欢", "循环关闭")) {
             val button = compose.onNodeWithContentDescription(description)
@@ -86,11 +96,5 @@ class PlayerLayoutTest {
         seek.assertIsDisplayed().performSemanticsAction(SemanticsActions.SetProgress) { set -> set(30000f) }
         assertEquals("Seek stays accessible without dragging the custom thumb", 30000f, sought.value!!, .01f)
         if (wide) compose.onNodeWithContentDescription("收起播放器").performScrollTo()
-        // Keep a native component render for visual review; it is not an audio test result.
-        val folder = File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null), "layout-check").apply { mkdirs() }
-        val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
-        File(folder, "${if (wide) "landscape" else "portrait"}-$fontScale${if (requested) "-buffering" else ""}.png").outputStream().use {
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
-        }
     }
 }
