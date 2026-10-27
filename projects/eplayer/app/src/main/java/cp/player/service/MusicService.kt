@@ -13,7 +13,9 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
+import android.view.KeyEvent
 import androidx.core.content.ContextCompat
+import androidx.core.content.IntentCompat
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -133,6 +135,13 @@ class MusicService : MediaSessionService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == Intent.ACTION_MEDIA_BUTTON) {
+            val key = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
+            if (key?.keyCode == KeyEvent.KEYCODE_MEDIA_STOP) {
+                val dismissal = intent.getBooleanExtra("androidx.media3.session.NOTIFICATION_DISMISSED_EVENT_KEY", false)
+                Log.i("EPlayerSession", "Incoming media STOP key; keyAction=${key.action} notificationDismissal=$dismissal")
+            }
+        }
         when (intent?.action) {
             "ACTION_TOGGLE_PLAY" -> player.togglePlayback()
             "ACTION_NEXT" -> player.seekToNextMediaItem()

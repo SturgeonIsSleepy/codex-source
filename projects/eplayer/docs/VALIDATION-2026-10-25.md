@@ -208,3 +208,11 @@ USB 桥接剥离源码 6821dab1c635e3231b8d57a20861bd622c9956a4 /CI40391321733�
 明确通过的分项：编辑窗口/取消/非法/三参数保存；本地file/content不初始化缓存及远端断网重读；无USB独占会话；三轮跨44.1→48kHz后真实EQ幅度保留；联网预缓冲暂停后不自动出声、关闭上游后恢复有真实原生进度/时长/幅度。保留原生停止命令来源诊断，稀发IDLE不能仅因新检查通过视为根因已修复。新增控制器夹具标签和Stop调用栈/批次来源采集，只记录内置白名单标签及包名，不输出任意连接提示、账号或URL。
 
 当前已读取独立PR11/codex/ncm-basic-completion的收尾交接：0.4.0账号/歌词/队列工作和内置模块隔离继续独立保存，未擅自合入本候选，不改其固定本地签名/已有登录会话；实机仍由本地agent处理。下一步：组合35项→main R8→确切原始包双引擎跨应用/截图→Release证据归档；若Stop来源复现，优先按标签/调用栈定位，保持真实记录。随后继续流媒体取消/所有权和未迁移的声音/存储控制。
+
+## 0.3.2 组合失败：已定位到旧媒体会话 Stop 请求
+
+4f35cbbcd588f7dbd8d487853e0459095e3e8ad4 /CI40558035337：35项为33通过/1失败/1登录跳过（109.775秒），R8 not_requested。唯一失败为第二个EQ生命周期开始后native=stopped/IDLE/position0，尚未应用EQ；其余缓存、联网暂停、编辑、插画检查通过。设备artifact12758985697 ZIP SHA256b03980d96b0c28496f0a8944c25d93818448e38f2ff22f704ab7be28f9118dab已实际下载核对。
+
+18:20:42.811的调用栈明确为FlickPlayer.handleStop→SimpleBasePlayer.stop→PlayerWrapper.stop→MediaSessionLegacyStub.onStop；批次来源owner=external、package=app.eplayer.music，不是带integration/equalizer/stream标签的测试控制器。前一轮清理的equalizer停止请求也分别记录，不能把外部legacy请求混称清理或DSP故障。
+
+继续阻止主线合入及0.3.2发布。新增固定媒体STOP按键入口的dismissal布尔标志日志，核对是否源于旧通知删除PendingIntent；不输出任意extras、不拒绝Stop命令。若证实旧通知事件迟到，下一步按播放代次绑定删除动作，并同时验证“旧动作不停止新播放”和“当前动作仍能停止”；不能通过屏蔽所有legacy Stop或放宽断言消除失败。20 JVM/本地组合构建与28根脚本检查已通过，新入口诊断设备待执行。
