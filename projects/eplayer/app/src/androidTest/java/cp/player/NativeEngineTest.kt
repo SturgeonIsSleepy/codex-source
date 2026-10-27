@@ -103,7 +103,6 @@ class NativeEngineTest {
         val savedEngine = UserPreferences.getAudioEngine(context)
         val id = "legacy-stop-${UUID.randomUUID()}"
         val file = File.createTempFile("legacy-stop-", ".wav", context.cacheDir).apply { writeBytes(SyntheticAudio.wav(12)) }
-        instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.MEDIA_CONTENT_CONTROL")
         var controller: MediaController? = null
         var volume = 1f
         var framework: android.media.session.MediaController? = null
@@ -120,6 +119,7 @@ class NativeEngineTest {
         }
         try {
             context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            instrumentation.waitForIdleSync()
             controller = MediaController.Builder(context, SessionToken(context, ComponentName(context, MusicService::class.java)))
                 .setConnectionHints(Bundle().apply { putString("eplayer.qa.owner", "native-contract") })
                 .buildAsync().get(30, TimeUnit.SECONDS)
@@ -138,7 +138,10 @@ class NativeEngineTest {
                     cp.player.engine.MusicPulse.sample().let { it.isFinite() && it > .01f }
             }
             val manager = context.getSystemService(MediaSessionManager::class.java)
-            val legacy = manager.getActiveSessions(null).firstOrNull { it.packageName == context.packageName }
+            val legacy = try {
+                instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.MEDIA_CONTENT_CONTROL")
+                manager.getActiveSessions(null).firstOrNull { it.packageName == context.packageName }
+            } finally { instrumentation.uiAutomation.dropShellPermissionIdentity() }
             assertNotNull("The actual framework session must be available", legacy)
             framework = legacy
             legacy!!.registerCallback(observer, Handler(Looper.getMainLooper()))

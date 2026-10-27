@@ -248,3 +248,9 @@ USB 桥接剥离源码 6821dab1c635e3231b8d57a20861bd622c9956a4 /CI40391321733�
 ## 引擎交接框架状态观测（修复前）
 
 新增真实框架 MediaController 状态订阅：原生音频已有实际进度后，两次往返系统/原生引擎，要求不向媒体会话发布 STATE_NONE/STATE_STOPPED，再验证合法 framework Stop 仍停止原生输出。当前仅修改测试，产品交接顺序尚未改变；本地设备包构建通过，修复前 CI 待执行。代码审计确认当前先 session.setPlayer 再恢复队列，不能在设备观测前称其为旧 Stop 的根因。
+
+## 框架 Stop 正向夹具首轮失败及权限范围修正
+
+4dbb6b1b83044b45c59c2551f3a688c3329bba9e /CI40563989815：36项34通过/1失败/1登录跳过（72.927秒），三轮LiveEqualizerTest通过。唯一失败是新增framework Stop检查在发送Stop之前原生音频未启动，不能称为legacy Stop再次复现，也没有本轮Stop发送者证据。artifact12762133513 ZIP SHA256a7d796318d3251be5c7656a675f8bf0cb15787789c7aa8d1a1633e40b857c33c已下载；普通fastRelease APK09f7fc873311c52b181da50de40d4223d7e3afdd719713c19efdc330fd2ec053，测试APK10a645380442ae13f91906a6b514b3700685659b907044b33e382f12c3c9ef6f。
+
+修正测试准备：启动Activity后等待主线程空闲；临时MEDIA_CONTENT_CONTROL仅包围读取active sessions，不再跨越音频启动和引擎切换。产品代码未变，本地测试包再次构建通过；设备待执行。修复前交接状态观测bce115366c3f064a7972652e244489c041c621cc已通过GitHub连接工具正常快进保存，CI40565618951进行中。Git HTTPS凭据失败后采用现有连接工具，未强推、未读取或写入凭据。
