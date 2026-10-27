@@ -6,7 +6,13 @@
 
 [0.3.1 Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.1) 已由 [CI 40387722240](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40387722240) 发布（ID424674767），五个附件 uploaded/digest 已逐项核对。之前两次 prepare 因 SDK 验签文字前缀失败；第三次精确安装/冷启动 2511ms 及证据校验通过，但创建后列表延迟导致发布失败，均如实记入计划。已按实际公开验签摘要修复并保留草稿 ID。0.3.0 旧附件不改；临时 CI 证书不同，不能保证无缝升级，先备份导入/设置。
 
-**接续开发 0.3.2**：[PR #4](https://github.com/SturgeonIsSleepy/codex-source/pull/4) /`agent/eplayer-20261026-core-boundaries`。纯音效能力、离页取消 AutoEQ、独立进程缓存和危险释放/递归删除 API 移除；19 JVM/本地构建通过，组合源码 CI40387147893 待结果，旧分支 31 通过/1 跳过不替代本轮。再接 `agent/eplayer-parametric-editor`（功能 7c68eb8）：Rust 频率/增益/Q 原子草稿编辑，共用数值校验，20 JVM/本地构建通过，新 UI 设备结果待执行。先完成组合设备回归，再分别合入；不能把尚未合入的功能写进 0.3.1 Release。
+**当前优先调查：原生 EQ 生命周期与输出重建**。[PR #4](https://github.com/SturgeonIsSleepy/codex-source/pull/4) /`agent/eplayer-20261026-core-boundaries` 的 5a956b5 /CI40387147893 为 31 通过/1 失败/1 登录跳过：稳定 baseline0.13126217 后应用 EQ 进入 IDLE/position4560/error=null/幅度NaN。证据12681038285（ZIP f28f985aaab6e765bc4b81876f08196291c7156de17f6e1a5a3e18afdecdd5fe）。诊断 8e410f0 /CI40389177223 为 32 通过/1 跳过（84.873 秒）；强化 a4f1c3e /CI40390584330 三个完整生命周期均通过（33 项共32通过/1跳过，69.336秒），但没有复现停止、没有根因修复，不以通过覆盖原失败。后一证据12683676039，ZIP83f738e4e3be6aa9c86eb84c1b56309bee646a8755e3548240c5bb72940c4ec3。
+
+下一步优先读取 `agent/eplayer-dsp-rate-switch` /9de19ab 的设备结果：只增加 44.1→48kHz 真音频 EQ 保留重现检查，代码审计显示 native 重建仅恢复音量、FlickPlayer 未按每次 Play 复位 DSP 标记；尚未修产品代码或认定设备重现。与先前 IDLE 间歇问题分开判定。暂不合入 PR #4/#7/#8/#9，不发布 0.3.2。
+
+其他已保存阶段：[PR #7](https://github.com/SturgeonIsSleepy/codex-source/pull/7) 的频率/增益/Q 编辑，20 JVM/本地构建、设备32通过/1跳过（87.735秒），eq-band-editor.png 已查看，证据12681888678（ZIP b3a3e49f229270e3bd8d08b9175de112efb8f211bb48492bebd761906b2cefc3）；[PR #8](https://github.com/SturgeonIsSleepy/codex-source/pull/8) 删除无调用的8个USB独占包装器/12个JNI声明，保留只读无独占探针，19JVM/本地构建通过、设备待结果；[PR #9](https://github.com/SturgeonIsSleepy/codex-source/pull/9) 将流媒体缓存磁盘初始化延后到远端 open，新增真实 file/content 旁路检查，19JVM/本地构建通过、设备待结果。各分支从已保存核心断点派生，后续正常合并保留新测试与双方记录，不强推。
+
+0.3.1 固定主线与确切 R8 检查的成功范围保持事实，但不能排除同类间歇问题影响旧版。后续成果不属于已发布 0.3.1；APK/原生库/日志仍走相应 Release，当前新分支临时 CI 证据在验证通过后归档，不能把未归档写成已完成。
 
 云端未操作实机；本地 agent 继续独占实机安装、音质/路由、焦点打断和真实账号验收。缓存清理界面、淡入淡出、新页面流程及长期动画检查仍有缺口，不能声称完整迁移已完成。Android Cloud 固定下载入口及无关项目保持不变。
 
