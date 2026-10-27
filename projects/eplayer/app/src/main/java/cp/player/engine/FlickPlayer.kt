@@ -52,14 +52,14 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     private class PlaylistItem(val uid: java.util.UUID, val item: MediaItem)
     private var playlist: List<PlaylistItem> = emptyList()
     private var currentMediaItemIndex = 0
-    private var playWhenReady = false
+    @Volatile private var playWhenReady = false
     private var isPlaying = false
     @Volatile private var released = false
     private var playbackError: PlaybackException? = null
     @Volatile private var playerVolume = 1f
     private var playbackState = Player.STATE_IDLE
     // Null once native playback has started; retain restored/paused seeks until then.
-    private var pendingStartPositionMs: Long? = 0L
+    @Volatile private var pendingStartPositionMs: Long? = 0L
 
     private val currentPositionMs = AtomicLong(0L)
     private val positionUpdateTimeMs = AtomicLong(0L)
@@ -795,7 +795,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         this.playWhenReady = playWhenReady
         if (playWhenReady) {
             pauseRequested = false
-            if (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_ENDED) {
+            if (pendingStartPositionMs != null || playbackState == Player.STATE_IDLE || playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_ENDED) {
                 if (playlist.isNotEmpty()) playCurrentItem(pendingStartPositionMs ?: 0)
             } else {
                 // JNI 调用移到引擎线程
@@ -1085,7 +1085,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
 
         val item = playlist[currentMediaItemIndex].item
         playbackError = null
-        pendingStartPositionMs = null
+        pendingStartPositionMs = startPositionMs
         updatePosition(startPositionMs)
         durationMs = item.mediaMetadata.extras?.getLong("duration") ?: 0L
         isDownloading = false
@@ -1153,7 +1153,9 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
 
     // Native commands use one dispatcher so Play -> Seek cannot be reversed by IO scheduling.
     private fun startNativeItem(path: String, startPositionMs: Long) {
-        if (released) return
+        if (released || !playWhenReady || pauseRequested) return
+        // A completed download can remain prepared but not started after a user pause.
+        pendingStartPositionMs = null
         if (startPositionMs > 0) lastSeekTimeMs.set(System.currentTimeMillis())
         val started = RustEngine.play(path)
         // The native output is created lazily by Play; setters before that can be rejected.
@@ -1209,6 +1211,10 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
 
                 if (tempFile != null) {
                     downloadComplete = true
+                    if (!playWhenReady && pendingStartPositionMs != null) {
+                        playbackState = Player.STATE_READY
+                        invalidateState()
+                    }
                     // 下载完成，检查是否需要恢复播放：
                     // 1. 正在缓冲状态（underrun 发生过）
                     // 2. 播放状态为 STATE_BUFFERING

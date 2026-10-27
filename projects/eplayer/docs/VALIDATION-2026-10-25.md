@@ -194,3 +194,9 @@ USB 桥接剥离源码 6821dab1c635e3231b8d57a20861bd622c9956a4 /CI40391321733�
 修复ed1034bf59ab0a1ef89813a411882ab4e82f1dd5 /CI40392967562：33项共32通过/1登录跳过（73.496秒）。三个完整生命周期全部通过44.1→48kHz真实换曲后EQ保留：baseline0.13058645→0.18459812，0.13047104→0.18418264，0.13153297→0.18589857。原幅度阈值不变，日志可见每次Play重新下发EQ/FX。修复前9de19ab的失败继续保留，不是断言重试。
 
 设备artifact12685077511 ZIP SHA25666bb2f0278e312362fe8dbbbd0e9a248ab82fce2fbeebe3e8432d84a029b23d5已实际下载；R8 not_requested，实机/音质未测。此证实采样率重建丢失DSP的修复，不代替早期IDLE间歇问题根因结论。准备整合已验证组件，另待联网预缓冲暂停红绿回归。
+
+## 联网预缓冲暂停红绿回归完成
+
+修复前949c9e3312fbb3018ca00bbff4f0a78340cfa6e5 /CI40394134796：34项为30通过/2失败/1登录跳过（91.72秒）。新检查明确失败“Prebuffer completion must not start native audio after pause”；同时旧LiveEqualizerTest在稳定基线前再次失败，native=stopped/IDLE/position3240/eq=false，日志20:22:19.704明确Native Stop reason=player-stop，不是EQ接口错误或适配器release。后者根因待控制器来源诊断，不能忽略第二项失败。设备artifact12685827899 ZIP SHA25685f8c73719b4853ade5a89ffa93b32a97d7d0579e37c5716cb3a4524c2398afd已下载核对。
+
+修复82075bae4d66745c3689a8fe3462119f7b29059f /CI40394832829：34项共33通过/1登录跳过（83.024秒）。下载完成仍保持原生不播放/会话暂停，关闭上游后主动恢复具有真实原生进度、12秒有效时长和非零幅度；三个EQ生命周期和其余检查同时通过。设备artifact12686274869 ZIP SHA256475b0bd6e95fb0a7c4c0f6fcc1b7b8fff6b315dc0a0f190c364760bebc851e59已实际下载；fastRelease APK043595068eae5b932c7e7d3c642b9d9b6389a8ed766e1e9f8c04546d7dcf1f2d，测试APK359a03d31e8eb268e0bea96b3afd0250a41ba95edca3e6c6402669f0353d7e3d。R8 not_requested；不把此通过称为已定位旧Stop命令来源。
