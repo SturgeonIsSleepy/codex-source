@@ -184,7 +184,19 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     fun previous() { controller?.seekToPreviousMediaItem() }
     fun next() { controller?.seekToNextMediaItem() }
     fun seek(position: Long) { controller?.seekTo(position); publish() }
-    fun setQuality(value: String) { quality.value = value; app.getSharedPreferences("eplayer_ui", 0).edit().putString("quality", value).apply() }
+    fun setQuality(value: String) {
+        quality.value = value
+        app.getSharedPreferences("eplayer_ui", 0).edit().putString("quality", value).apply()
+        val track = currentTrack() ?: return
+        if (track.source == null || track.song.id.startsWith("import_") || track.song.id.startsWith("local_") || track.song.id.startsWith("witch_")) return
+        controller?.let { player ->
+            val index = player.currentMediaItemIndex
+            if (index < 0) return@let
+            val position = player.currentPosition
+            val playing = player.playWhenReady
+            player.replaceMediaItem(index, track.mediaItem(value)); player.seekTo(index, position); player.prepare(); player.playWhenReady = playing
+        }
+    }
     fun removeQueue(index: Int) { controller?.let { if (index in 0 until it.mediaItemCount) it.removeMediaItem(index) } }
     fun moveQueue(from: Int, to: Int) { controller?.let { if (from in 0 until it.mediaItemCount && to in 0 until it.mediaItemCount) it.moveMediaItem(from, to) } }
     fun addNext(track: Track) { controller?.let { it.addMediaItem((it.currentMediaItemIndex + 1).coerceIn(0, it.mediaItemCount), track.mediaItem(quality.value)) } }
@@ -206,12 +218,12 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private fun sourceAction(action: suspend () -> Unit) = viewModelScope.launch {
         try { action() } catch (error: Exception) { message.value = error.message ?: "音源操作失败" }
     }
-    suspend fun lyrics(): String {
-        val source = playback.value.source ?: return "暂无歌词"
-        val song = playback.value.song ?: return "暂无歌词"
-        val id = playback.value.remoteId ?: song.id
-        return runCatching { SourceStore.call(app, source, "lyric/new", mapOf("id" to id))
-            .getAsJsonObject("lrc")?.get("lyric")?.asString }.getOrNull() ?: "暂无歌词"
+    suspend fun lyrics(): LyricsText {
+        val source = playback.value.source ?: return LyricsText("暂无歌词")
+        val song = playback.value.song ?: return LyricsText("暂无歌词")
+        return try { LyricsRepository(app).get(source, playback.value.remoteId ?: song.id) }
+        catch (error: kotlinx.coroutines.CancellationException) { throw error }
+        catch (error: Exception) { LyricsText(error.message ?: "歌词加载失败") }
     }
     fun download(track: Track) = viewModelScope.launch {
         val source = track.source ?: return@launch

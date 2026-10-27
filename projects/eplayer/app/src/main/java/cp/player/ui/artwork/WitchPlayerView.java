@@ -29,6 +29,8 @@ public final class WitchPlayerView extends FrameLayout {
     private AudioRhythm rhythm;
     private String audioUri;
     private boolean artworkOnly;
+    private boolean artworkActive=true;
+    public void setArtworkActive(boolean active){if(artworkActive!=active){artworkActive=active;art.lastFrame=0;art.invalidate();}}
     public void setArtworkOnly(boolean value) {
         artworkOnly=value;
         int visibility=value?GONE:VISIBLE;
@@ -133,7 +135,7 @@ public final class WitchPlayerView extends FrameLayout {
             c.drawBitmap(sky,null,new RectF(0,0,865,1280),paint);
             if(artworkOnly){
                 rig.draw(c,paint,motion);c.restore();
-                if(visible&&(playing||motion.transitioning(playing)))postInvalidateDelayed(33);
+                if(visible&&artworkActive&&(playing||motion.transitioning(playing)))postInvalidateDelayed(33);
                 return;
             }
             paint.setTypeface(brush);paint.setTextSize(44);
@@ -161,7 +163,7 @@ public final class WitchPlayerView extends FrameLayout {
             paint.setTypeface(brush);paint.setTextSize(25);c.drawText(time(dragging?duration*seek.getProgress()/10000:position),84,975,paint);
             paint.setTextAlign(Paint.Align.RIGHT);c.drawText(time(duration),764,975,paint);paint.setTextAlign(Paint.Align.LEFT);
             if(buffering){paint.setTypeface(hand);paint.setTextSize(22);c.drawText("加载中…",85,814,paint);}
-            c.restore();if(visible&&(playing||motion.transitioning(playing)))postInvalidateDelayed(33);
+            c.restore();if(visible&&artworkActive&&(playing||motion.transitioning(playing)))postInvalidateDelayed(33);
         }
         String time(long ms){long secs=Math.max(0,ms)/1000;return String.format(Locale.ROOT,"%d:%02d",secs/60,secs%60);}
     }

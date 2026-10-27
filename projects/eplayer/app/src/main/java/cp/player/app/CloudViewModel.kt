@@ -113,10 +113,10 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
         MusicRepository(app, source).like(id, value)
         likes.update { values -> values + (source to values[source].orEmpty().toMutableSet().apply { if (value) add(id) else remove(id) }) }
     }
-    fun create(name: String) = action {
+    fun create(name: String, private: Boolean = false) = action {
         require(name.isNotBlank()) { "请输入歌单名称" }
         val source = home.value.source ?: error("请先选择音源")
-        val created = MusicRepository(app, source).createPlaylist(name.trim())
+        val created = MusicRepository(app, source).createPlaylist(name.trim(), private)
         refresh(); open(created)
     }
     fun rename(target: MusicEntry, name: String) = action {
@@ -134,11 +134,15 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
     }
     fun addToPlaylist(target: MusicEntry, track: Track) = action {
         require(target.source == track.source) { "歌曲与歌单必须属于同一个音源" }
-        MusicRepository(app, target.source).changeTracks(target.id, listOf(track.remoteId ?: track.song.id), true)
+        if (target.special) MusicRepository(app, target.source).like(track.remoteId ?: track.song.id, true)
+        else MusicRepository(app, target.source).changeTracks(target.id, listOf(track.remoteId ?: track.song.id), true)
         message.value = "已添加到歌单"
     }
     fun removeFromPlaylist(target: MusicEntry, track: Track) = action {
-        MusicRepository(app, target.source).changeTracks(target.id, listOf(track.remoteId ?: track.song.id), false)
+        if (target.special) {
+            MusicRepository(app, target.source).like(track.remoteId ?: track.song.id, false)
+            likes.update { values -> values + (target.source to (values[target.source].orEmpty() - (track.remoteId ?: track.song.id))) }
+        } else MusicRepository(app, target.source).changeTracks(target.id, listOf(track.remoteId ?: track.song.id), false)
         load(target)
     }
     fun radio(play: (List<Track>) -> Unit) = action {
@@ -146,6 +150,7 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
         val tracks = MusicRepository(app, source).radio()
         check(tracks.isNotEmpty()) { "暂无推荐" }; play(tracks)
     }
+    fun logout() = action { home.value.source?.let { SourceStore.logout(app, it) } }
     private fun action(block: suspend () -> Unit) = viewModelScope.launch {
         if (busy.value) return@launch
         busy.value = true

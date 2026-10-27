@@ -72,6 +72,8 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     var libraryMode by rememberSaveable { mutableIntStateOf(0) }
     var createPlaylist by remember { mutableStateOf(false) }
     var playlistName by remember { mutableStateOf("") }
+    var privatePlaylist by remember { mutableStateOf(false) }
+    var logout by remember { mutableStateOf(false) }
     var selectedTrack by remember { mutableStateOf<Pair<Track, MusicEntry?>?>(null) }
     var commentTrack by remember { mutableStateOf<Track?>(null) }
     var onlyFavorites by rememberSaveable { mutableStateOf(false) }
@@ -102,6 +104,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
         if (allowed) model.scanLibrary() else model.message.value = "未获得音频读取权限"
     }
     BackHandler(enabled = page != 0 && !showPlayer) { page = 0 }
+    BackHandler(enabled = page == 0 && searched && !showPlayer) { query = ""; cloud.clearSearch() }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbar) },
@@ -300,6 +303,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                     }
                 }
                 if (active != null) item { SourceLogin(active!!.id) }
+                if (home.account != null) item { TextButton(onClick = { logout = true }, modifier = Modifier.fillMaxWidth()) { Text("退出登录") } }
             }
         }
     }
@@ -312,9 +316,15 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
         confirmButton = { TextButton(onClick = { model.removeImported(track); pendingTrackDelete = null }) { Text("删除") } },
         dismissButton = { TextButton(onClick = { pendingTrackDelete = null }) { Text("取消") } }) }
     if (createPlaylist) AlertDialog(onDismissRequest = { createPlaylist = false }, title = { Text("创建歌单") },
-        text = { OutlinedTextField(playlistName, { playlistName = it }, singleLine = true, placeholder = { Text("歌单名称") }) },
-        confirmButton = { TextButton(enabled = playlistName.isNotBlank(), onClick = { cloud.create(playlistName); createPlaylist = false; playlistName = "" }) { Text("创建") } },
+        text = { Column {
+            OutlinedTextField(playlistName, { playlistName = it }, singleLine = true, placeholder = { Text("歌单名称") })
+            Row(verticalAlignment = Alignment.CenterVertically) { Text("私密", Modifier.weight(1f)); Switch(privatePlaylist, { privatePlaylist = it }) }
+        } },
+        confirmButton = { TextButton(enabled = playlistName.isNotBlank(), onClick = { cloud.create(playlistName, privatePlaylist); createPlaylist = false; playlistName = "" }) { Text("创建") } },
         dismissButton = { TextButton(onClick = { createPlaylist = false }) { Text("取消") } })
+    if (logout) AlertDialog(onDismissRequest = { logout = false }, title = { Text("退出当前账号？") },
+        confirmButton = { TextButton(onClick = { cloud.logout(); logout = false }) { Text("退出登录") } },
+        dismissButton = { TextButton(onClick = { logout = false }) { Text("取消") } })
     CloudDetailScreen(cloud, model, { onShowPlayer(true) }) { track, playlist -> selectedTrack = track to playlist }
     if (showPlayer) Player(model, cloud, state, { selectedTrack = model.currentTrack()?.let { it to null } }, { commentTrack = model.currentTrack() }) { onShowPlayer(false) }
     selectedTrack?.let { (track, playlist) -> SongOptions(track, playlist, cloud, model, { commentTrack = it }, { entry -> onShowPlayer(false); cloud.open(entry) }) { selectedTrack = null } }
@@ -347,16 +357,20 @@ private fun Player(model: EPlayerViewModel, cloud: CloudViewModel, state: Playba
     val currentPosition by model.position.collectAsState()
     DisposableEffect(model) { model.setProgressVisible(true); onDispose { model.setProgressVisible(false) } }
     var queue by remember { mutableStateOf(false) }
-    var lyrics by remember { mutableStateOf<String?>(null) }
+    var lyrics by remember { mutableStateOf<LyricsText?>(null) }
+    var showLyrics by remember { mutableStateOf(false) }
     var seeking by remember { mutableStateOf<Float?>(null) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(state.song?.id) { seeking = null }
+    LaunchedEffect(showLyrics, state.source, state.remoteId, state.song?.id) {
+        if (showLyrics) { lyrics = null; lyrics = model.lyrics() } else lyrics = null
+    }
     Dialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding().padding(horizontal = 20.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = close) { Icon(Icons.Default.KeyboardArrowDown, "收起播放器") }
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = { scope.launch { lyrics = model.lyrics() } }) { Icon(Icons.Default.Lyrics, "歌词") }
+                IconButton(onClick = { showLyrics = true }) { Icon(Icons.Default.Lyrics, "歌词") }
                 if (state.source != null) IconButton(onClick = comments) { Icon(Icons.Default.ChatBubbleOutline, "评论") }
                 IconButton(onClick = more) { Icon(Icons.Default.MoreHoriz, "更多歌曲操作") }
                 IconButton(onClick = { queue = true }) { Icon(Icons.Default.QueueMusic, "播放队列") }
@@ -368,6 +382,7 @@ private fun Player(model: EPlayerViewModel, cloud: CloudViewModel, state: Playba
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 if (animate && !artworkReady) CircularProgressIndicator(Modifier.align(Alignment.Center))
                 else if (animate) AndroidView(factory = { WitchPlayerView(it).apply { setArtworkOnly(true) } }, modifier = Modifier.fillMaxSize(), update = { view ->
+                    view.setArtworkActive(!showLyrics && !queue)
                     view.update(state.song?.name.orEmpty(), state.playing, state.buffering, currentPosition, state.duration, object : WitchPlayerView.Controls {
                         override fun playPause() = model.playPause()
                         override fun previous() = model.previous()
@@ -405,13 +420,22 @@ private fun Player(model: EPlayerViewModel, cloud: CloudViewModel, state: Playba
     }
     if (queue) ModalBottomSheet(onDismissRequest = { queue = false }) {
         LazyColumn(contentPadding = PaddingValues(20.dp)) {
-            items(state.queue.size) { index -> SongRow(Track(state.queue[index]), state.queue[index].id == state.song?.id,
-                { model.queueIndex(index); queue = false }) }
+            items(state.queue.size) { index ->
+                var options by remember { mutableStateOf(false) }
+                SongRow(Track(state.queue[index]), state.queue[index].id == state.song?.id, { model.queueIndex(index); queue = false }) {
+                    Box {
+                        IconButton(onClick = { options = true }) { Icon(Icons.Default.MoreVert, "队列操作") }
+                        DropdownMenu(options, { options = false }) {
+                            if (index > 0) DropdownMenuItem(text = { Text("上移") }, onClick = { options = false; model.moveQueue(index, index - 1) })
+                            if (index < state.queue.lastIndex) DropdownMenuItem(text = { Text("下移") }, onClick = { options = false; model.moveQueue(index, index + 1) })
+                            DropdownMenuItem(text = { Text("移除") }, onClick = { options = false; model.removeQueue(index) })
+                        }
+                    }
+                }
+            }
         }
     }
-    lyrics?.let { text -> ModalBottomSheet(onDismissRequest = { lyrics = null }) {
-        LazyColumn(contentPadding = PaddingValues(24.dp)) { items(text.lines()) { Text(it, modifier = Modifier.padding(vertical = 8.dp)) } }
-    } }
+    if (showLyrics) LyricsSheet(lyrics, model) { showLyrics = false }
 }
 
 @Composable
@@ -447,6 +471,7 @@ private fun Settings(model: EPlayerViewModel, close: () -> Unit) {
 private fun SourceLogin(source: String) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val accountRevision by SourceStore.accountRevision.collectAsState()
     var open by rememberSaveable(source) { mutableStateOf(false) }
     var key by rememberSaveable(source) { mutableStateOf<String?>(null) }
     var url by rememberSaveable(source) { mutableStateOf<String?>(null) }
@@ -454,6 +479,7 @@ private fun SourceLogin(source: String) {
     var status by rememberSaveable(source) { mutableStateOf("") }
     var refresh by remember { mutableIntStateOf(0) }
     var logged by remember(source) { mutableStateOf(!UserPreferences.getPrefs(context).getString("cookie_$source", null).isNullOrBlank()) }
+    LaunchedEffect(source, accountRevision) { logged = !UserPreferences.getPrefs(context).getString("cookie_$source", null).isNullOrBlank() }
     fun close() { open = false; key = null; url = null; image = null }
     OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) { Text(if (logged) "切换账号" else "登录") }
     LaunchedEffect(open, source, refresh) {
