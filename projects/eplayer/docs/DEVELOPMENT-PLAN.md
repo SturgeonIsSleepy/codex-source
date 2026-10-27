@@ -308,3 +308,15 @@ f3fb52a356ec924e8a2c42b8134f12f11949a639 /CI40568783358：37项36通过/1登录�
 PR13已以正常合并保留全部父历史进入main113acb0d7c72f392aae754cb3c7cb65ea1be3df4，PR4随祖先提交自动标记merged；未强推、未修改PR11或AndroidCloud。主线CI40570928840正在构建普通/自用R8并将运行37项与R8冷启动；最终确切universal包跨应用和Release0.3.2仍待执行，不提前发布。
 
 为将无device artifact的SDK准备失败也收入Release，交付脚本支持可选evidence_jobs：归档已完成任务的原始日志、任务/运行元数据、源SHA和内容摘要，保留原failure结论；不允许未完成或ID不匹配任务供证。新增归档真实bytes/失败结论、拒绝未完成/错误任务和ID输入校验回归，根脚本合计31项通过。未改应用源码、构建签名、当前0.3.1交付manifest或旧附件；新版本manifest稍后索引job122417488564。
+
+## 主线R8与确切原始通用包均通过，准备发布0.3.2
+
+主线113acb0d7c72f392aae754cb3c7cb65ea1be3df4 /CI40570928840：普通/自用R8构建通过；37项36通过/1登录条件跳过（104.993秒），唯一跳过SourceLoginLiveTest.officialModuleCanCreateLocallyRenderedLoginCode，未跳过框架Stop或取消回归。普通x86_64 R8冷启动1378ms。artifact12765768463 ZIP SHA256e26259a226bf0bbc6d39ef8cc6b5d8ea5c58b056a2f227f39a20e08023613b90已下载并与GitHub digest核对；构建artifact12765359826 ZIP SHA256ce571178314066f820ba41af7decca1e79c99263725573104827ca8bff4d2576亦已下载核对。
+
+原始standard universal R8 APK：0.3.2/versionCode106，45,272,762字节，SHA25613c1401d2121e2cde477c2b3d08064366c65b34357e210253c641aa775f9a27c，证书c9ccdf76dd260a4cc48a595e21b940958580b3fe318b75ce3d3e482bbc7a37c0；V2验签通过，minSdk28/target36，含arm64-v8a/armeabi-v7a/x86_64。没有重签名、重打包或回构建替代文件；该CI临时签名与0.3.1不同，不能承诺原位升级，本地固定签名和登录会话仍不触碰。
+
+确切包跨应用CI40573577516通过2项（55.117秒），系统/原生均实际使用系统文件选择器导入30秒合成WAV，播放/暂停/12秒定位、Home后台进度、真实通知点击返回通过；报告source/source_run/APK摘要与113acb0/40570928840/13c1401完整匹配。artifact12766192574 ZIP SHA256e2f64c05e34848b21a3186ad4800277d0b7b5a4fdd37d060f21ef46d8306e126已下载并核对GitHub digest。归档r8-check/native-playing、native-paused、system-playing、system-paused、notification与returned-paused截图，以及native-motion.mp4（无声2.519秒55帧）/system-motion.mp4（无声3.475秒74帧）；已实际查看原生播放/暂停及六个原生动作抽帧。没有声学PCM/实机听感测量，不称逐帧全验收。
+
+主线加载的portrait-2.0/landscape-2.0、sound-full-page、release-home、player-rust-playing截图已查看。常规字号人物头帽/手部无明显错位；2倍字体长标题时插画在滚动容器中，首屏下半身未完全显示，滚动可见，仍列首屏空间分配优化，不能称所有视觉已完成。下一阶段优先调整这项，再推进跨曲下载所有权、无调用UI依赖剥离；另审计确认Rust lib.rs默认LevelFilter::Trace会产生大量JNI日志，尚未修改或重编原生库，不声称已节电。
+
+交付manifest现固定上述确切通用包、20个成功/失败artifact、5个已完成工作任务日志及R8跨应用证明12766192574。自动发布仍须精确通用包安装/冷启动和所有归档检查通过，Release0.3.2尚未发布；0.3.1既有五附件保持不变。原始SDK准备失败日志、回归失败、登录跳过及物理设备/真实源未执行范围均保留。
