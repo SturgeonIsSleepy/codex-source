@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
@@ -78,6 +79,15 @@ class MusicService : MediaSessionService() {
                         .setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
                             .add(SessionCommand("SET_ENGINE", Bundle.EMPTY))
                             .add(SessionCommand(PlaybackSleepTimer.COMMAND, Bundle.EMPTY)).build()).build()
+                }
+                override fun onPlayerInteractionFinished(session: MediaSession,
+                    controller: MediaSession.ControllerInfo, playerCommands: Player.Commands) {
+                    if (playerCommands.contains(Player.COMMAND_STOP)) {
+                        // Only whitelist our fixture labels; never dump arbitrary connection hints.
+                        val label = controller.connectionHints.getString("eplayer.qa.owner")
+                            .takeIf { it in setOf("integration", "equalizer", "stream") } ?: "external"
+                        Log.i("EPlayerSession", "Stop batch owner=$label package=${controller.packageName}")
+                    }
                 }
                 override fun onCustomCommand(session: MediaSession, controller: MediaSession.ControllerInfo,
                     command: SessionCommand, args: Bundle): ListenableFuture<SessionResult> {

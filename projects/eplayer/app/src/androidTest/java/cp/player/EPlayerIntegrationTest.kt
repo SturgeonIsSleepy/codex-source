@@ -150,7 +150,8 @@ class EPlayerIntegrationTest {
             assertArrayEquals("Rejected import must preserve the previous recording", valid, destination.readBytes())
             assertEquals(replacement, WitchPlaylist.uri(context, "witch_0"))
             val token = SessionToken(context, ComponentName(context, MusicService::class.java))
-            val future = MediaController.Builder(context, token).buildAsync()
+            val future = MediaController.Builder(context, token)
+                .setConnectionHints(Bundle().apply { putString("eplayer.qa.owner", "integration") }).buildAsync()
             controller = future.get(30, TimeUnit.SECONDS)
             val player = controller!!
             fun engine(value: Int) {

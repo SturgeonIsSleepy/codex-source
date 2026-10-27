@@ -79,7 +79,8 @@ class NativeStreamingTest {
         try {
             context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             controller = MediaController.Builder(context, SessionToken(context,
-                ComponentName(context, MusicService::class.java))).buildAsync().get(30, TimeUnit.SECONDS)
+                ComponentName(context, MusicService::class.java)))
+                .setConnectionHints(Bundle().apply { putString("eplayer.qa.owner", "stream") }).buildAsync().get(30, TimeUnit.SECONDS)
             val current = controller!!
             lateinit var switch: ListenableFuture<SessionResult>
             main { switch = current.sendCustomCommand(SessionCommand("SET_ENGINE", Bundle.EMPTY), Bundle().apply { putInt("engine", 1) }) }

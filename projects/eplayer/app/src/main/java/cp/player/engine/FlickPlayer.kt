@@ -983,6 +983,10 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     }
 
     override fun handleStop(): ListenableFuture<*> {
+        val origin = Thread.currentThread().stackTrace.filter {
+            it.className.startsWith("cp.player.") || it.className.startsWith("androidx.media3.")
+        }.take(6).joinToString(" <- ") { "${it.className.substringAfterLast('.')}.${it.methodName}:${it.lineNumber}" }
+        Log.i(TAG, "Player Stop origin: $origin")
         scope.launch(RustEngine.engineDispatcher) { RustEngine.stop("player-stop") }
         pauseRequested = false
         bufferingActive = false

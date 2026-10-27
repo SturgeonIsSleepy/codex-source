@@ -91,6 +91,7 @@ class LiveEqualizerTest {
         var volume = 1f
         try {
             player = MediaController.Builder(context, SessionToken(context, ComponentName(context, MusicService::class.java)))
+                .setConnectionHints(Bundle().apply { putString("eplayer.qa.owner", "equalizer") })
                 .buildAsync().get(30, TimeUnit.SECONDS)
             val current = player!!
             lateinit var switch: ListenableFuture<SessionResult>
