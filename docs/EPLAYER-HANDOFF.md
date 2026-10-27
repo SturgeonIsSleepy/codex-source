@@ -1,20 +1,24 @@
 # ePlayer 转移交接
 
-当前软件基线为 `331d31241159737aec196fe922431898764f6909`：已合入 PR #3/#5 的 JNI 顺序、取消过滤与公开 COMMAND_RELEASE 契约修复。主线 [CI 40379791181](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40379791181) 30 通过/1 登录跳过（76.436 秒），普通/自用 R8 构建与普通 R8 冷启动 1720ms 通过。a25a90b、fb48458 的历史失败保持原结论，不再作为当前待修断点。
+已发布的软件基线为 `331d31241159737aec196fe922431898764f6909`：已合入 PR #3/#5 的 JNI 顺序、取消过滤与公开 COMMAND_RELEASE 契约修复。主线 [CI 40379791181](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40379791181) 30 通过/1 登录跳过（76.436 秒），普通/自用 R8 构建与普通 R8 冷启动 1720ms 通过。a25a90b、fb48458 的历史失败保持原结论，不再作为当前待修断点。
 
 **交付 0.3.1** 固定上述源码与原始 universal APK，SHA256 `92b6b3d1f28940db408b033646b9a77233a0d1cd749c7e6c8b1ab6d0623973b3`，versionCode52，证书 `c92db3ca59c4ec286cea2f2b54f085b38d676b8e956a34b17c103fc61e04680a`。确切 R8 两种引擎均通过系统文件选择器导入、播放/暂停/12 秒定位、后台与真实通知点击返回（CI 40383667514、40385418880）。加载截图和约 2.8 秒无声动作预览已查看抽帧。PR #6 已合入匹配源码/构建/APK 的交付门禁。
 
 [0.3.1 Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.1) 已由 [CI 40387722240](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40387722240) 发布（ID424674767），五个附件 uploaded/digest 已逐项核对。之前两次 prepare 因 SDK 验签文字前缀失败；第三次精确安装/冷启动 2511ms 及证据校验通过，但创建后列表延迟导致发布失败，均如实记入计划。已按实际公开验签摘要修复并保留草稿 ID。0.3.0 旧附件不改；临时 CI 证书不同，不能保证无缝升级，先备份导入/设置。
 
-**当前优先调查：组合候选中的旧媒体会话 Stop**。[PR #4](https://github.com/SturgeonIsSleepy/codex-source/pull/4) /`agent/eplayer-20261026-core-boundaries` 已正常合并 PR7/8/9/10/12，当前诊断源码7f57819。20 JVM/本地普通debug主程序与设备包、28根脚本检查通过；未合入main，0.3.2尚未发布。main应用仍为0.3.1基线，本文的0.3.2结果均对应指定分支。
+**0.3.2 当前候选**：[PR #13](https://github.com/SturgeonIsSleepy/codex-source/pull/13) / `agent/eplayer-stream-cancellation` 接续 [PR #4](https://github.com/SturgeonIsSleepy/codex-source/pull/4) 的原生 DSP、预缓冲暂停、手动 EQ、缓存边界与 USB 独占桥接清理。20 JVM、28 根脚本及本地 debug 主程序/设备包构建通过；0.3.2 尚未发布。main 合入前仍是0.3.1，分支结果不能冒充最终R8交付。
 
-组合4f35cbb /[CI40558035337](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40558035337) 的35项为33通过/1失败/1登录跳过（109.775秒）。失败在第二EQ生命周期，native=stopped/IDLE/position0，尚未应用EQ。日志明确Stop由MediaSessionLegacyStub.onStop进入，owner=external/package=app.eplayer.music，不是已标记的integration/equalizer/stream控制器；Stop仍正常执行，未按来源屏蔽。设备证据12758985697，ZIP SHA256b03980d96b0c28496f0a8944c25d93818448e38f2ff22f704ab7be28f9118dab。下一步读7f57819的固定STOP按键入口/dismissal布尔日志，确认是否旧通知删除事件迟到，再作精确修复与正反回归。
+引擎交接已有真实框架红绿：修复前2de55f3 /[CI40565941188](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40565941188) 36项34通过/1失败/1登录跳过，音频播放及两次引擎往返后框架多次收到STATE_NONE。修复6120be5 /[CI40567120983](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40567120983) 36项35通过/1登录跳过（95.368秒），先恢复替代播放器队列/位置/播放请求再交接，空/停止状态断言通过，合法framework Stop仍在2秒内停止真实原生音频。三轮EQ和其余回归同时通过。设备artifact12764217339 ZIP SHA256c2292ff6a0cac691acda242cd4dc702673649ded5820e73a1072975690c1f08d已下载核对。
+
+历史组合4f35cbb、7f57819、bce1153曾被MediaSessionLegacyStub.onStop中断，失败记录仍完整保留。Media3会把系统UI请求的回调身份映射为应用通知控制器，同UID/应用包名不能证明原始发送者就是应用；没有按来源屏蔽Stop，不能把单轮通过称为所有历史Stop根因已解决。
+
+PR13新增下载取消资源契约：读循环检查取消、异常/取消关闭输出、只删本次未完成文件，成功文件保留。37项候选已通过：f3fb52a /CI40568783358，36通过/1登录跳过（76.455秒），artifact12763938192 ZIP SHA256db13411d737674567c994b3f4d3749d477eaebdf1db5cece3b545206c59283ea已核对；主线R8/确切交付仍待执行。修复前CI40568511349 attempt1因Emulator下载“Error on ZipFile unknown archive”在设备准备阶段失败，测试未执行、无device artifact；已仅重跑失败job。修复前重试仍执行中，不能提前称取消契约红绿通过。跨曲下载所有权与旧回调隔离仍待下一阶段，不能因资源关闭修复宣称已全部解决。
 
 已完成独立红绿：跨44.1→48kHz导致保存EQ丢失，修复后3轮真实幅度保留（CI40392967562，32通过/1跳过，73.496秒，证据12685077511）；联网预缓冲暂停后擅自播放，修复后完成下载保持原生不播放、关闭上游后主动恢复有真实进度/时长/幅度（CI40394832829，33通过/1跳过，83.024秒，证据12686274869）。修复前949c9e3同时有旧Stop与预缓冲两项失败，30通过/2失败/1跳过，完整保留。不能因分项红绿把组合失败写成通过。
 
 其他分项：频率/增益/Q编辑与取消/非法保护，设备32通过/1跳过、截图已查看；USB独占桥接残留删除，32通过/1跳过（证据12684602201）；缓存延迟初始化、真实file/content旁路和断网重读，33通过/1跳过（证据12685806249）。完整源SHA、APK/测试包摘要与截图索引见项目验证文档。人物/表情/动画资源没有改动。原始0.3.1附件保留；其确切R8证据不覆盖新增的两项网络/采样率回归。
 
-独立[PR11](https://github.com/SturgeonIsSleepy/codex-source/pull/11) /codex/ncm-basic-completion的0.4.0账号、歌词和队列成果仍在独立分支；已读取其收尾交接，未合入本候选，不接触固定本地签名、已登录会话或真实账号写入。恢复顺序：先解决组合Stop来源→35项组合→main一次完整R8→确切原始包跨应用验收→0.3.2 Release与日志归档；当前后续CI证据仍待新版本Release归档。
+独立[PR11](https://github.com/SturgeonIsSleepy/codex-source/pull/11) /codex/ncm-basic-completion的0.4.0账号、歌词和队列成果仍在独立分支；已读取其收尾交接，未合入本候选，不接触固定本地签名、已登录会话或真实账号写入。恢复顺序：修复前重试结果如实归档，候选37项已通过→PR13正常合入main并保留文档→一次完整普通/自用R8→确切原始包跨应用验收→0.3.2 Release与日志归档。之后再做依赖精简和跨曲下载所有权。未新增实机结果，当前后续CI证据仍待新版本Release归档。
 
 云端未操作实机；本地 agent 继续独占实机安装、音质/路由、焦点打断和真实账号验收。缓存清理界面、淡入淡出、新页面流程及长期动画检查仍有缺口，不能声称完整迁移已完成。Android Cloud 固定下载入口及无关项目保持不变。
 

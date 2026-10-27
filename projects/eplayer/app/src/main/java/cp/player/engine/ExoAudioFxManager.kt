@@ -9,6 +9,7 @@ import android.util.Log
 import android.content.Context
 import android.content.SharedPreferences
 import cp.player.util.DspPreferences
+import cp.player.core.audio.AudioEffectCapabilities
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -22,18 +23,16 @@ object ExoAudioFxManager {
         val loudnessEnhancer: LoudnessEnhancer?
     )
 
-    data class Capabilities(val frequencies: List<Int> = emptyList(), val minGain: Float = 0f,
-        val maxGain: Float = 0f, val virtualizer: Boolean = false, val bass: Boolean = false, val loudness: Boolean = false)
-    private val _capabilities = MutableStateFlow(Capabilities())
+    private val _capabilities = MutableStateFlow(AudioEffectCapabilities())
     val capabilities = _capabilities.asStateFlow()
     private fun publishCapabilities() {
         _capabilities.value = runCatching {
             val range = getBandLevelRange()
-            Capabilities((0 until getNumberOfBands().toInt()).map { getCenterFreq(it.toShort()) / 1000 },
+            AudioEffectCapabilities((0 until getNumberOfBands().toInt()).map { getCenterFreq(it.toShort()) / 1000 },
                 range[0] / 100f, range[1] / 100f, activeSessions.values.any { it.virtualizer != null },
                 activeSessions.values.any { it.bassBoost?.strengthSupported == true },
                 activeSessions.values.any { it.loudnessEnhancer != null })
-        }.getOrDefault(Capabilities())
+        }.getOrDefault(AudioEffectCapabilities())
     }
 
     private val activeSessions = mutableMapOf<Int, SessionFx>()

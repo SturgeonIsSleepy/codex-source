@@ -4,6 +4,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class EqualizerProfileTest {
+    @Test fun manualFilterBoundsRejectNonFiniteValuesInEveryField() {
+        assertTrue(EqualizerBand(10f, -24f, .05f).isValid())
+        assertTrue(EqualizerBand(48000f, 24f, 30f).isValid())
+        val good = EqualizerBand(440f, 0f, 1f)
+        for (value in listOf(Float.NaN, Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY)) {
+            assertFalse(good.copy(frequency = value).isValid())
+            assertFalse(good.copy(gain = value).isValid())
+            assertFalse(good.copy(q = value).isValid())
+        }
+        for (band in listOf(good.copy(frequency = 9f), good.copy(frequency = 48001f),
+            good.copy(gain = -24.1f), good.copy(gain = 24.1f), good.copy(q = .04f), good.copy(q = 30.1f)))
+            assertFalse(band.isValid())
+    }
     @Test fun preservesActiveCustomBandsAndPreampButNeverEnablesOffFilters() {
         val profile = EqualizerProfileParser.parse("""
             Preamp: -4.2 dB

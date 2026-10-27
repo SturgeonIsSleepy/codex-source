@@ -1,5 +1,9 @@
 # 核心边界与能力核对
 
+当前为 0.3.2 组合候选，尚未允许合入 main 或发布。0.3.1 是已发布基线；0.3.2 分项及修正后的36项组合设备回归已通过（35通过/1登录条件跳过）；引擎交接空状态已有红绿证据且合法框架Stop仍可停止原生输出，历史间歇性legacy Stop尚不能宣称全部根因解决。PR13的37项已为36通过/1登录跳过，最终主线R8/确切交付仍待执行。以下编号阶段保留当时结果，不能将其“待执行”视为当前状态；详细提交、运行与失败见 VALIDATION-2026-10-25.md。
+
+缓存已独立为进程所有，声音手记支持手动频率/增益/Q 和 AutoEQ 导入、取消、非法值拒绝。普通系统路由保留，Android 独占 USB 桥接已去除；真实外接设备路由仍由本地 agent 验证。账号、歌单及歌词的独立 PR11 不计入此组合候选。
+
 本轮基线：`888f1a4ad397213115ebabf39a33bf1705854367`。这是代码依赖核对，不是新增的功能验收通过记录。
 
 ## 边界
@@ -17,9 +21,9 @@
 ## 不能把“源码还在”写成“完整功能已经保留”
 
 - 搜索、推荐、账号、歌单、收藏、评论、下载已经有新页面或调用路径，但真实源、真实账号及故障切换仍需本地 agent 验证。
-- 均衡器与 DSP 实现仍在：ExoPlayer 监听 audioSessionId 加载保存的设置，Rust 也读取 DSP 偏好；当前新设置页尚未恢复完整编辑入口，不能当成已完成。
+- 均衡器：ExoPlayer 按实际 audioSession 能力应用设置；Rust 手动参数/AutoEQ 已接新页面，跨采样率重建输出后重新应用 DSP，已有真实幅度红绿证据。系统引擎不展示其不支持的频率/Q。该通过不等于间歇性 Stop 已修复。
 - `CrossfadeManager` 的旧双播放器实现仍在目录中，当前 `MusicService` 已是单播放器，没有直接使用该类。不要为了“精简”先删源码，也不要继续声称新会话已支持全部旧淡入淡出操作；应先决定并恢复对外能力。
-- 定时停止已接到 `PlaybackSleepTimer` 与 MediaSession，自适应设置区提供开启、调整、取消；页面生命周期不拥有计时任务。音频缓存管理入口仍未映射，DSP 与淡入淡出仍待接通。新增后台定时验收尚未运行，不能因单元测试通过就标记整项完成。
+- 定时停止由 `PlaybackSleepTimer` 和 MediaSession 持有，自适应设置区可开启、调整、取消；0.3.1 合成音频后台检查已通过。缓存管理入口和淡入淡出仍未恢复，不把已接 DSP 与未接能力混为一谈。
 - 新的普通版/自用版必须分别验证模块边界；普通版的自动测试不得依赖或上传自用版模块及真实登录凭据。
 
 ## 后续顺序
@@ -66,4 +70,32 @@ SoundSettingsStore 是偏好到界面状态的应用层适配；声音编辑组�
 
 ## 缓存入口审计（尚未接 UI）
 
-Exo 使用服务持有的 SimpleCache（cache/media），本地/导入文件直接走 DefaultDataSource，不重复缓存；现有 clearAudioCache 会 release 后递归删目录，而既有 CacheDataSource 仍持有旧对象，不能直接接按钮。CacheManager.clearAll 将 SEARCH_HISTORY 和 LOCAL_SONGS 等持久数据也列入缓存类型，亦不能直接接“清缓存”。恢复入口前应按数据职责拆分：保留历史、账号、曲库与下载，使用会话命令序列化播放缓存清理并验证后续可继续播放。当前没有暴露或执行清理，不删除用户数据。
+此段记录最初审计：当时 Exo 使用服务持有的 SimpleCache，旧 clearAudioCache 会 release 后递归删目录。现在已改为进程持有的 PlaybackCache（cache/media）并删除该未调用清理方法；本地/导入文件走 DefaultDataSource，远端首次 open 才建立缓存。既有 CacheDataSource 可持有缓存引用，仍不能接 release/delete 清理按钮。CacheManager.clearAll 将 SEARCH_HISTORY 和 LOCAL_SONGS 等持久数据也列入缓存类型，亦不能直接接“清缓存”。恢复入口前应按数据职责拆分：保留历史、账号、曲库与下载，使用会话命令序列化播放缓存清理并验证后续可继续播放。当前没有暴露或执行清理，不删除用户数据。
+
+## 第十五阶段（独立分支进行中）
+
+系统音效能力值移入 core/audio/AudioEffectCapabilities；应用状态与呈现仅传纯数据，不引用 Exo 管理器的嵌套类型。返回设置时取消未完成的 AutoEQ 读取/预览，防止离开声音页后弹出迟到的结果。既有 19 项 JVM、debug 主程序/设备测试包构建通过；尚未取得本阶段设备结果，b34e679 的通过记录仅对应第十四阶段。后续缓存操作必须以服务和存储职责明确为前提，不调用旧 release/delete 清理。
+
+第十六阶段缓存边界已改为 core/playback/PlaybackCache → SimpleCache，DataSourceFactoryProvider → PlaybackCache，MusicService → Player。不再 engine → MusicService → engine 循环引用；只持有 Application 上下文。存储路径与 256MiB LRU 保持已有行为，原无调用方的释放/删目录方法移除，不声称已有缓存清理能力。真实断网后命中缓存的新增回归已编译，设备待执行。用户导入、下载及历史不由该对象清理。
+
+当前进展修正（0.3.2）：声音编辑/AutoEQ 已在 0.3.1 实现，旧段落的“待接通”仅是阶段历史；主线 331d312 的真实 EQ 与释放契约已通过。PlaybackCache 现在独立于 MediaSession 服务，实例跨服务重建保持，256MiB 流媒体缓存不涵盖用户导入/下载。PR #4 组合主线设备结果仍待执行。
+
+## USB 独占 Android 桥接残留剥离
+
+全项目 Kotlin/Java/设备测试检索确认无生产调用后，删除 RustEngine 内 8 个独占注册/格式/硬件音量/静音/清理/等待包装器和 12 个未使用 JNI 声明，净减 82 行。不再提供设备 fd 注册、独占锁或硬件控制的 Android 入口；仅保留 NativeEngineTest 使用的只读“无独占会话”探针与普通诊断。未改 DSD 解码/普通输出、AudioManager、音频焦点、系统 USB/耳机路由和默认无 uac2 的构建。既有原生 .so 的可选上游导出尚未删除；本阶段不宣称已重编原生库。19 JVM/主程序/设备包构建通过；新组合设备结果未执行，与 EQ 停止诊断分支分开，不因删无调用方法宣称该问题已修复。
+## 流媒体缓存延迟初始化（独立性能阶段）
+
+创建播放器/数据源不再立即扫描 SimpleCache 目录和数据库；只有打开远端流时才建立缓存数据源。DefaultDataSource 的 file/content 直接路径不会初始化流媒体缓存，既有进程缓存路径/LRU/离线命中保持。延期数据源保留传输监听、URI/响应头及关闭语义，持有 Application 上下文。新增实际文件/ContentProvider 字节读取且缓存提供器不得被调用的检查，远端测试增加 factory/createDataSource 不触碰缓存、两次 open 各请求同一缓存的断言。19 JVM 和主程序/设备包编译通过；新增设备结果未执行，不声称已有启动耗时/实机性能测量。仍不提供危险的缓存 release/delete 清理按钮。
+
+## 下一步生命周期精简的前置条件
+
+| 现有路径 | 已确认的边界问题 | 先补的验收与约束 |
+| --- | --- | --- |
+| MusicService.SET_ENGINE | 旧顺序先发布空播放器，再恢复队列；候选已调为恢复后交接 | 实际 framework 状态订阅、两次往返引擎、合法 Stop、三轮 EQ；不得全局屏蔽旧控制协议 |
+| FlickPlayer.streamToRustEngine → StreamProxy | 通用 Exception 捕获包含协程取消；本地切曲未统一取消旧下载；迟到下载回调可更新当前路径 | 延迟 loopback 下载中切到本地曲，释放上游后仍须本地实际进度/时长/幅度；取消不得改当前会话为 IDLE |
+| StreamProxy.streamToCache | 输出流未由 use 管理，失败/取消时可能留打开的半文件；IO read 不主动检查取消 | 完整文件仍可断网重读；取消关闭数据源和输出，仅删除自己未完成的文件，不删正在播放或用户文件 |
+| FlickPlayer 的 seek/underrun 恢复 | 部分直接 RustEngine.play 绕过共同音量/DSP 初始化 | 实际恢复音频幅度/静音及采样率回归，再统一启动入口，不靠状态标志假装播放 |
+
+这些流媒体问题来自源码审计，尚未在本阶段改产品或标红绿通过。先完成引擎交接的设备结果，再以独立阶段处理下载所有权；缓存清理和 Crossfade 不提前删除，保持能力清单与真实调用路径一致。
+
+依赖精简预审：实际 Gradle standardDebugRuntimeClasspath 与 main/test/XML 调用搜索表明，旧 navigation-compose、media3-ui、palette-ktx、material3-window-size-class 直接声明无现存源码调用，旧 Sentry 用途的 window compileOnly 也无调用。尚未移除，需按阶段编译及设备回归确认传递依赖边界；window 本身仍被当前 Compose 链传递依赖，不能承诺完全去除或节电。Coil、ZXing、Lyricon provider 仍有实际调用，继续保留。

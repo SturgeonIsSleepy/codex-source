@@ -2,6 +2,11 @@ package cp.player.app
 
 import android.graphics.Bitmap
 import androidx.activity.compose.setContent
+import androidx.core.content.FileProvider
+import androidx.lifecycle.ViewModelProvider
+import cp.player.util.DspPreferences
+import cp.player.util.UserPreferences
+import org.junit.Assume.assumeTrue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -12,7 +17,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.test.platform.app.InstrumentationRegistry
 import cp.player.MainActivity
-import cp.player.engine.ExoAudioFxManager
+import cp.player.core.audio.AudioEffectCapabilities
 import cp.player.ui.theme.EPlayerTheme
 import java.io.File
 import org.junit.Assert.*
@@ -23,7 +28,82 @@ class SoundSettingsScreenTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
     private fun state(engine: Int = 1) = SoundSettingsState(engine, true,
         listOf(SoundBand(125f, 0f), SoundBand(1000f, 0f), SoundBand(8000f, 0f)), -12f, 12f,
-        true, .55f, .25f, 1f, false, 0f, false, 0f, false, 0f, ExoAudioFxManager.Capabilities())
+        true, .55f, .25f, 1f, false, 0f, false, 0f, false, 0f, AudioEffectCapabilities())
+
+    @Test fun importDialogCancelApplyAndInvalidFilePreserveTheRightSettings() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val dsp = context.getSharedPreferences("cp_player_dsp_prefs", 0)
+        assumeTrue("Preserve existing sound preferences", dsp.all.isEmpty())
+        val queue = context.getSharedPreferences("eplayer_queue", 0).getString("items", null)
+        assumeTrue("Preserve the user's playback queue", queue == null || queue == "[]")
+        val savedEngine = UserPreferences.getAudioEngine(context)
+        val file = File.createTempFile("autoeq-preview-", ".txt", context.cacheDir).apply {
+            writeText("Preamp: -4.2 dB\nFilter 1: ON PK Fc 440 Hz Gain 3.5 dB Q 0.8\nFilter 2: OFF PK Fc 2000 Hz Gain 9 dB Q 2")
+        }
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        var model: EPlayerViewModel? = null
+        try {
+            compose.runOnIdle { model = ViewModelProvider(compose.activity)[EPlayerViewModel::class.java] }
+            val current = model!!
+            compose.onNodeWithContentDescription("设置").performClick()
+            if (savedEngine != 1) compose.onNodeWithTag("audio-engine-1").performClick()
+            compose.waitUntil(15000) { UserPreferences.getAudioEngine(context) == 1 }
+            compose.onNodeWithTag("open-sound-settings").performClick()
+            compose.runOnIdle { current.soundSettings.previewProfile(uri) }
+            compose.waitUntil(15000) { current.soundSettings.profile.value != null }
+            compose.onNodeWithText("前置增益", substring = true).assertIsDisplayed()
+            save("autoeq-preview-dialog", "eq-import-preview")
+            assertTrue("Preview must not persist settings", dsp.all.isEmpty())
+            compose.onNodeWithText("取消").performClick()
+            compose.runOnIdle { assertNull(current.soundSettings.profile.value) }
+            assertTrue("Cancel must preserve saved settings", dsp.all.isEmpty())
+            compose.runOnIdle { current.soundSettings.previewProfile(uri) }
+            compose.waitUntil(15000) { current.soundSettings.profile.value != null }
+            compose.onNodeWithText("仅应用频段").performClick()
+            compose.runOnIdle {
+                assertTrue(DspPreferences.getEqEnabled(context))
+                val bands = DspPreferences.getPeqBands(context)
+                assertEquals(1, bands.size)
+                assertEquals(440f, bands[0].freq, .01f)
+                assertEquals(3.5f, bands[0].gain, .01f)
+                assertEquals(.8f, bands[0].q, .01f)
+                assertFalse("Unsupported preamp must not be enabled", DspPreferences.getPreamplifierEnabled(context))
+            }
+            val applied = dsp.all
+            file.writeText("GraphicEQ: NaN 6")
+            compose.runOnIdle { current.soundSettings.previewProfile(uri) }
+            compose.waitUntil(15000) { current.soundSettings.importIssue.value != null }
+            compose.onNodeWithText("导入未完成").assertIsDisplayed()
+            compose.onNodeWithText("知道了").performClick()
+            assertEquals("Invalid files must not partially overwrite the applied profile", applied, dsp.all)
+            compose.onNodeWithTag("edit-eq-band-0").performScrollTo().performClick()
+            compose.onNodeWithTag("eq-edit-frequency").performTextReplacement("NaN")
+            compose.onNodeWithText("保存频段").assertIsNotEnabled()
+            compose.onNodeWithText("取消").performClick()
+            assertEquals("A cancelled draft must not change the imported profile", applied, dsp.all)
+            compose.onNodeWithTag("edit-eq-band-0").performScrollTo().performClick()
+            compose.onNodeWithTag("eq-edit-frequency").performTextReplacement("660")
+            compose.onNodeWithTag("eq-edit-gain").performTextReplacement("-2.5")
+            compose.onNodeWithTag("eq-edit-q").performTextReplacement("1.2")
+            save("eq-band-editor", "eq-band-editor")
+            compose.onNodeWithText("保存频段").performClick()
+            compose.runOnIdle {
+                val bands = DspPreferences.getPeqBands(context)
+                assertEquals(1, bands.size)
+                assertEquals(660f, bands[0].freq, .01f)
+                assertEquals(-2.5f, bands[0].gain, .01f)
+                assertEquals(1.2f, bands[0].q, .01f)
+                assertTrue(DspPreferences.getEqEnabled(context))
+            }
+        } finally {
+            dsp.edit().clear().commit() // Original store must be empty (guard above).
+            model?.let { current ->
+                compose.runOnUiThread { current.soundSettings.dismissImport(); current.setEngine(savedEngine) }
+                compose.waitUntil(15000) { UserPreferences.getAudioEngine(context) == savedEngine }
+            }
+            file.delete()
+        }
+    }
 
     @Test fun realSettingsNavigationReturnsToTheSameHome() {
         compose.onNodeWithContentDescription("设置").performClick()

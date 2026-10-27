@@ -62,6 +62,15 @@ class LiveEqualizerTest {
         } }
     }
     @Test fun savedEqualizerChangesApplyWhilePlayingAndDisableCleanly() {
+        // The failure is intermittent after replacement, not a steady-state gain error.
+        // Recreate complete owners three times rather than retrying a failed assertion.
+        repeat(3) { round ->
+            android.util.Log.i("EPlayerTest", "Live EQ lifecycle round ${round + 1}/3")
+            verifySavedEqualizerLifecycle()
+        }
+    }
+
+    private fun verifySavedEqualizerLifecycle() {
         val dsp = context.getSharedPreferences("cp_player_dsp_prefs", 0)
         assumeTrue("Use a fresh installation; preserve existing sound settings", dsp.all.isEmpty())
         val queue = context.getSharedPreferences("eplayer_queue", 0).getString("items", null)
@@ -71,6 +80,8 @@ class LiveEqualizerTest {
         val savedEngine = UserPreferences.getAudioEngine(context)
         val file = File(context.cacheDir, "equalizer-fixture.wav").apply { writeBytes(SyntheticAudio.wav(12)) }
         val id = "equalizer-${UUID.randomUUID()}"
+        val changedRateId = "$id-48k"
+        val changedRateFile = File(context.cacheDir, "$changedRateId.wav").apply { writeBytes(SyntheticAudio.wav(12, 48000)) }
         val profileFile = File(context.cacheDir, "$id-autoeq.txt").apply {
             writeText("Filter 1: ON PK Fc 440 Hz Gain 6 dB Q 1\nFilter 2: OFF PK Fc 440 Hz Gain -12 dB Q 1")
         }
@@ -80,6 +91,7 @@ class LiveEqualizerTest {
         var volume = 1f
         try {
             player = MediaController.Builder(context, SessionToken(context, ComponentName(context, MusicService::class.java)))
+                .setConnectionHints(Bundle().apply { putString("eplayer.qa.owner", "equalizer") })
                 .buildAsync().get(30, TimeUnit.SECONDS)
             val current = player!!
             lateinit var switch: ListenableFuture<SessionResult>
@@ -107,7 +119,8 @@ class LiveEqualizerTest {
             val diagnostic = {
                 var state = ""
                 main { state = "playing=${current.isPlaying} state=${current.playbackState} position=${current.currentPosition} duration=${current.duration} error=${current.playerError}" }
-                "$state level=$latest samples=$samples eq=${DspPreferences.getEqEnabled(context)} bands=${DspPreferences.getPeqBands(context)}"
+                val native = runBlocking { withContext(RustEngine.engineDispatcher) { RustEngine.getState() } }
+                "$state native=$native level=$latest samples=$samples eq=${DspPreferences.getEqEnabled(context)} bands=${DspPreferences.getPeqBands(context)}"
             }
             await(describe = diagnostic) {
                 var active = false
@@ -136,6 +149,23 @@ class LiveEqualizerTest {
             }
             main { assertTrue("Changing EQ must not restart or pause playback", current.isPlaying) }
             android.util.Log.i("EPlayerTest", "Live native EQ: baseline=$baseline boosted=$boosted disabled=${level()}")
+            // Confirm the enabled filter has reached the old output before changing format.
+            main { DspPreferences.setEqEnabled(context, true) }
+            await(describe = { "Re-enable before rate change ${diagnostic()}" }) {
+                latest = level(); latest.isFinite() && latest > baseline + .025f
+            }
+            main {
+                current.setMediaItem(Song(changedRateId, "48 kHz 声音测试", "Synthetic fixture",
+                    album = "Test fixtures", durationMs = 12000).toMediaItem(
+                    FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", changedRateFile)))
+                current.prepare(); current.play()
+            }
+            await(describe = { "Saved EQ lost after 44.1→48 kHz ${diagnostic()}" }) {
+                var active = false
+                main { active = current.isPlaying && current.currentPosition >= 1000 }
+                latest = level(); active && latest.isFinite() && latest > baseline + .025f
+            }
+            android.util.Log.i("EPlayerTest", "Saved native EQ survived 44.1→48 kHz; level=$latest baseline=$baseline")
         } finally {
             settings.close(); effectsScope.cancel(); profileFile.delete()
             dsp.edit().clear().commit() // Guard above requires an originally empty store.
@@ -150,6 +180,8 @@ class LiveEqualizerTest {
                 main { current.release() }
             }
             RecentStore.remove(context, id)
+            RecentStore.remove(context, changedRateId)
+            changedRateFile.delete()
             file.delete()
         }
     }

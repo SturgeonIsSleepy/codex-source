@@ -238,3 +238,65 @@ USB 桥接剥离源码 6821dab1c635e3231b8d57a20861bd622c9956a4 /CI40391321733�
 18:20:42.811的调用栈明确为FlickPlayer.handleStop→SimpleBasePlayer.stop→PlayerWrapper.stop→MediaSessionLegacyStub.onStop；批次来源owner=external、package=app.eplayer.music，不是带integration/equalizer/stream标签的测试控制器。前一轮清理的equalizer停止请求也分别记录，不能把外部legacy请求混称清理或DSP故障。
 
 继续阻止主线合入及0.3.2发布。新增固定媒体STOP按键入口的dismissal布尔标志日志，核对是否源于旧通知删除PendingIntent；不输出任意extras、不拒绝Stop命令。若证实旧通知事件迟到，下一步按播放代次绑定删除动作，并同时验证“旧动作不停止新播放”和“当前动作仍能停止”；不能通过屏蔽所有legacy Stop或放宽断言消除失败。20 JVM/本地组合构建与28根脚本检查已通过，新入口诊断设备待执行。
+
+## Stop 入口诊断仍未确认通知删除来源
+
+7f578192da3c1ad41c541825e805be9dad0516cd /CI40560772114：35项为33通过/1失败/1登录跳过（93.815秒）。第二个EQ生命周期在legacy Stop后进入IDLE；没有出现新增的Service媒体STOP按键入口日志，因此不能把问题认定为通知删除PendingIntent，也未实施通知代次过滤或屏蔽任何控制。设备artifact12760188441 ZIP SHA25650882014f6f6a0f42c3555492e7b516b8764802630a035bfc8ed75db3edd60e9已下载核对。
+
+继续采集legacy来源的同UID/版本/包名校验布尔值，以及媒体按钮回调中的固定Stop/dismissal标志，避免仅凭包名推断发送者。同时新增真实框架控制正向检查：原生12秒合成音频有实际进度/时长/幅度后，通过Android框架MediaController.stop停止，2秒内须原生Stopped且会话IDLE；保持正常Stop能力。只临时采用测试所需MEDIA_CONTENT_CONTROL权限，finally释放并恢复原引擎/音量、清理唯一夹具。20 JVM/本地构建通过，新增设备总计36项，尚未执行，不将编译或后续其他通过替代这项结果。
+
+## 引擎交接框架状态观测（修复前）
+
+新增真实框架 MediaController 状态订阅：原生音频已有实际进度后，两次往返系统/原生引擎，要求不向媒体会话发布 STATE_NONE/STATE_STOPPED，再验证合法 framework Stop 仍停止原生输出。当前仅修改测试，产品交接顺序尚未改变；本地设备包构建通过，修复前 CI 待执行。代码审计确认当前先 session.setPlayer 再恢复队列，不能在设备观测前称其为旧 Stop 的根因。
+
+## 框架 Stop 正向夹具首轮失败及权限范围修正
+
+4dbb6b1b83044b45c59c2551f3a688c3329bba9e /CI40563989815：36项34通过/1失败/1登录跳过（72.927秒），三轮LiveEqualizerTest通过。唯一失败是新增framework Stop检查在发送Stop之前原生音频未启动，不能称为legacy Stop再次复现，也没有本轮Stop发送者证据。artifact12762133513 ZIP SHA256a7d796318d3251be5c7656a675f8bf0cb15787789c7aa8d1a1633e40b857c33c已下载；普通fastRelease APK09f7fc873311c52b181da50de40d4223d7e3afdd719713c19efdc330fd2ec053，测试APK10a645380442ae13f91906a6b514b3700685659b907044b33e382f12c3c9ef6f。
+
+修正测试准备：启动Activity后等待主线程空闲；临时MEDIA_CONTENT_CONTROL仅包围读取active sessions，不再跨越音频启动和引擎切换。产品代码未变，本地测试包再次构建通过；设备待执行。修复前交接状态观测bce115366c3f064a7972652e244489c041c621cc已通过GitHub连接工具正常快进保存，CI40565618951进行中。Git HTTPS凭据失败后采用现有连接工具，未强推、未读取或写入凭据。
+
+## 引擎交接顺序候选修复
+
+MusicService.SET_ENGINE 先恢复替代播放器的队列、位置、循环/随机、音量、prepare 和播放请求，再 session.setPlayer；仍保持唯一会话，随后释放旧播放器，不过滤任何媒体控制命令。20项 JVM、debug主程序和设备测试包构建通过，28项根脚本通过。修复前36项设备检查仍在运行，候选设备尚未执行；不得把本地通过写成旧Stop根因已修复。
+
+已实际查看4dbb6b1设备artifact中的 visual-check/player-rust-paused.png 和 layout-check/eq-band-editor.png，480×800暂停页和编辑窗口在该尺寸下未见明显头帽/手部错位或字体混用；未修改人物资源，静态截图不代表连续动画或实机验收。CORE-BOUNDARIES更新为当前能力，区分已接手动参数/AutoEQ与未接缓存清理、Crossfade，并记录后续流媒体取消/资源所有权的前置回归。
+
+## 交接修复前追加结果与诊断限制
+
+bce115366c3f064a7972652e244489c041c621cc /CI40565618951：36项33通过/2失败/1登录跳过（110.676秒）。LiveEqualizerTest再次被legacy Stop中断，新framework检查仍在音频启动前失败，尚未到达交接状态断言或主动Stop。artifact12762813323 ZIP SHA2567b46e5a4165ba197d8009fef6ca942f1703b38f4aaebc533a003c24469cdb281已下载核对，APK78681cbef2f56f857145ae8048564f904706921c45fc384b60533b6c8cd9a539。准备修正后的2de55f3设备轮次与产品交接候选6120be5分别排队，未用一个改动混称两项问题的根因。
+
+重要诊断限制：本轮Stop批次显示sameUid=true、version=1010000300、package=app.eplayer.music，但实际Media3 1.10.0字节码中 MediaSessionImpl.resolveControllerInfoForCallback 会将系统UI控制器映射为应用通知控制器。因此这些回调字段不能证明原始发送者就是应用自身；legacy调用栈仍是有效路径证据，未出现Service/回调媒体Stop按键日志也不能再凭包名认定具体来源。未添加过滤、反射私有字段或延时忽略Stop。
+
+## 引擎交接状态：真实设备修复前失败已确认
+
+准备修正后的2de55f35a307ac2a3cbb3189889ef2431fa0a062 /CI40565941188：36项34通过/1失败/1登录跳过（82.267秒）。真实原生音频启动和两次引擎往返均已走通；唯一失败正是新增framework状态断言，观测序列[2,2,0,0,0,0,2,6,2,0,0,6,6,6,0,0,6,6,6,6,6,0,0,0,0,6,6,3,3]多次包含STATE_NONE=0。不是音频启动失败，也未到达后续合法Stop断言。LiveEqualizerTest三轮通过，不把本轮未复现旧Stop称为已解决。
+
+artifact12763159386 ZIP SHA256e86aa9c186f745e3c0f08fd3d214d4ee5371aa3838b1703bc949e22dbf417376已下载核对；APK b0c810ee5e54687ee0191252fb10bceea56e12e8f0a3f70bbacab1aced85e6c9，测试包14b137b0735627d3a07b8902979ea7fcbbd028229ecb4bef4297430b13c8a9b5。产品交接修复6120be577274c32088a997e7a328314918ca6349 /CI40567120983正在执行，同一测试不放宽断言，尚未取得绿色结果。
+
+## 独立下一阶段：流媒体取消所有权修复前回归
+
+以PR4交接候选为基础建立agent/eplayer-stream-cancellation，避免替换正在执行的交接检查。本阶段先仅增加StreamProxyCancellationTest：真实本地数据源读到第一块后取消所属协程，后续不得通知ready，且自己的未完成输出应删除。使用独立ContextWrapper.cacheDir和唯一临时目录，全部读写/清理只限本测试；不访问账号、用户曲库或真实网络。编译通过，产品StreamProxy尚未修改，37项设备检查待执行，不提前声称红绿。该检查仅覆盖下载函数取消契约，切曲后旧回调不影响新原生输出仍需后续延迟loopback检查。Core交接的36项结果保持独立，继续优先处理。
+
+## 下载取消契约候选修复（设备待执行）
+
+StreamProxy 读取前后及通知前检查所属协程取消，CancellationException向上传播；FileOutputStream改为use确保异常/取消均关闭，失败或取消时只删除本次未完成输出；临时文件使用唯一名称，成功缓存保留。20 JVM、debug主程序及设备测试包构建通过。修复前测试05891511239a48e01699f357170b673f74502c64 /CI40568511349已在运行，修复后37项设备待执行；不提前声称红绿成功，不将检查取消等同于主动中断阻塞网络read。
+
+此改动尚未修改FlickPlayer通用catch或跨曲下载所有权，迟到回调与新曲目隔离仍需下一阶段真实loopback切曲回归；不通过增加睡眠、放宽幅度断言或屏蔽系统Stop规避失败。Core交接36项仍独立运行。
+
+## 引擎交接红绿回归完成；0.3.2 进入交付准备
+
+6120be577274c32088a997e7a328314918ca6349 /CI40567120983：36项35通过/1登录跳过（95.368秒）。同一框架状态检查通过，两次引擎往返不再出现STATE_NONE/STATE_STOPPED；随后合法framework Stop在2秒内让真实原生输出停止且会话IDLE。日志中主动Stop来源version=0；三轮EQ换采样率仍保持幅度（0.13085853→0.1858295、0.13058582→0.18418264、0.13077573→0.18495134）。这是空状态交接的红绿证据，不足以宣称所有历史外部Stop根因均消失。
+
+artifact12764217339 ZIP SHA256c2292ff6a0cac691acda242cd4dc702673649ded5820e73a1072975690c1f08d已实际下载核对；APK4a4c607140a643bec8818d0fda6daec237afd023fb20a405a3a66e7fc15e1e3f，测试包124f66ffe410d24b800e865adf4ad68f11471efa449c5793876cd6a1cb0342f0。R8 not_requested；仍需最终组合及主线普通/自用R8、确切交付、Release归档。
+
+0.3.2本轮冻结产品范围为既有Core组合、已验证交接顺序，以及PR13待验证的下载取消资源契约；此后先交付一次完整R8/确切包，不把依赖精简、跨曲下载所有权等下一阶段工作继续塞进该交付。PR4与main文档存在合并冲突，待PR13证据后正常合并main并保留双方内容，不强推。
+
+下载取消修复前CI40568511349 attempt1为环境准备失败：SDK Manager下载Android Emulator时“Error on ZipFile unknown archive”，模拟器/37项测试均未执行，无device artifact；不能称测试红色。已读取job122417488564日志并保存SHA2560bea9b611391ec6bbb8a37fc54222220b5ea3db881021f975faf9abeff20ed6d。仅重跑失败设备job，复用成功构建，不重复全量构建；候选f3fb52a356ec924e8a2c42b8134f12f11949a639 /CI40568783358正在运行，修复前重试随后排队。若环境仍失败，明确保留not_run，不无意义重试。
+
+## 37项候选通过，进入主线一次R8构建
+
+f3fb52a356ec924e8a2c42b8134f12f11949a639 /CI40568783358：37项36通过/1登录跳过（76.455秒），包含真实数据源取消后不通知ready、不残留本次未完成输出，原36项交接/框架Stop/EQ/联网暂停/布局同时通过。artifact12763938192 ZIP SHA256db13411d737674567c994b3f4d3749d477eaebdf1db5cece3b545206c59283ea已下载核对；APK0f72ecddfc559c9c5e6721f9a80aea657dc2773a1f2e00bf1b55a99bcb5ada23，测试包5273297ff3a58e488e217416706ed2301b2e5404582e327299be6cf16d1c7582。R8 not_requested。修复前0589151重试仍执行中，不提前称取消契约具有红绿证据。
+
+已正常合并main0e5af42进候选，两处文档冲突逐字确认main内容是当前文件完整前缀后保留完整当前版本；合并提交63d2a2a具有双方父提交，未强推。后续只有交接/规划说明变化，应用和测试与通过的f3fb52a相同。PR13现统一以main为目标，包含PR4全部源码；最终main构建/37项与确切原始包验收仍必须执行，不能复用fastRelease结果冒充R8通过。
+
+下一步：main普通/自用R8及37项→取确切原始universal APK的真实versionCode/证书/摘要→双引擎系统文件选择器导入/暂停定位/后台/实际通知返回→Release0.3.2归档所有新成功、失败及未执行记录。主线发布0.3.1附件保持不变。随后独立推进UI依赖精简和跨曲下载所有权。

@@ -16,12 +16,15 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import java.util.Locale
+import cp.player.core.audio.EqualizerBand
 
 /** Paper controls only. Preference persistence and decoder application live outside Compose. */
 @Composable
 internal fun SoundSettingsScreen(state: SoundSettingsState, equalizer: (Boolean) -> Unit,
     gain: (Int, Float) -> Unit, flat: () -> Unit, toggle: (String, Boolean) -> Unit,
-    amount: (String, Float) -> Unit, importProfile: (() -> Unit)? = null) {
+    amount: (String, Float) -> Unit, editBand: ((Int, EqualizerBand) -> Unit)? = null,
+    importProfile: (() -> Unit)? = null) {
+    var editing by remember(state.engine, state.bands.size) { mutableStateOf<Int?>(null) }
     Column(Modifier.fillMaxSize().testTag("sound-settings").verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(if (state.engine == 1) "Rust 音频 · 声音手记" else "系统音频 · 声音手记", style = MaterialTheme.typography.headlineSmall)
@@ -40,6 +43,11 @@ internal fun SoundSettingsScreen(state: SoundSettingsState, equalizer: (Boolean)
                 val frequency = if (band.frequency >= 1000) "${number(band.frequency / 1000)} kHz" else "${number(band.frequency)} Hz"
                 SoundAmount(frequency, band.gain, state.minGain..state.maxGain,
                     state.equalizer && state.minGain < state.maxGain, "${number(band.gain)} dB", "eq-band-$index") { gain(index, it) }
+                if (state.engine == 1 && editBand != null) {
+                    TextButton(onClick = { editing = index }, modifier = Modifier.testTag("edit-eq-band-$index")) {
+                        Text("编辑第 ${index + 1} 段 · Q ${number(band.q)}")
+                    }
+                }
             }
         }
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
@@ -60,6 +68,10 @@ internal fun SoundSettingsScreen(state: SoundSettingsState, equalizer: (Boolean)
         }
         Spacer(Modifier.height(24.dp))
     }
+    editing?.let { index -> state.bands.getOrNull(index)?.let { band ->
+        EqualizerBandDialog(index, EqualizerBand(band.frequency, band.gain, band.q),
+            dismiss = { editing = null }, save = { editBand?.invoke(index, it); editing = null })
+    } }
 }
 
 private fun number(value: Float) = String.format(Locale.ROOT, "%.1f", value)
