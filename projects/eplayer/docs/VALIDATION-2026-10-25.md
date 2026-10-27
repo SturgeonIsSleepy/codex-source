@@ -238,3 +238,9 @@ USB 桥接剥离源码 6821dab1c635e3231b8d57a20861bd622c9956a4 /CI40391321733�
 MusicService.SET_ENGINE 先恢复替代播放器的队列、位置、循环/随机、音量、prepare 和播放请求，再 session.setPlayer；仍保持唯一会话，随后释放旧播放器，不过滤任何媒体控制命令。20项 JVM、debug主程序和设备测试包构建通过，28项根脚本通过。修复前36项设备检查仍在运行，候选设备尚未执行；不得把本地通过写成旧Stop根因已修复。
 
 已实际查看4dbb6b1设备artifact中的 visual-check/player-rust-paused.png 和 layout-check/eq-band-editor.png，480×800暂停页和编辑窗口在该尺寸下未见明显头帽/手部错位或字体混用；未修改人物资源，静态截图不代表连续动画或实机验收。CORE-BOUNDARIES更新为当前能力，区分已接手动参数/AutoEQ与未接缓存清理、Crossfade，并记录后续流媒体取消/资源所有权的前置回归。
+
+## 交接修复前追加结果与诊断限制
+
+bce115366c3f064a7972652e244489c041c621cc /CI40565618951：36项33通过/2失败/1登录跳过（110.676秒）。LiveEqualizerTest再次被legacy Stop中断，新framework检查仍在音频启动前失败，尚未到达交接状态断言或主动Stop。artifact12762813323 ZIP SHA2567b46e5a4165ba197d8009fef6ca942f1703b38f4aaebc533a003c24469cdb281已下载核对，APK78681cbef2f56f857145ae8048564f904706921c45fc384b60533b6c8cd9a539。准备修正后的2de55f3设备轮次与产品交接候选6120be5分别排队，未用一个改动混称两项问题的根因。
+
+重要诊断限制：本轮Stop批次显示sameUid=true、version=1010000300、package=app.eplayer.music，但实际Media3 1.10.0字节码中 MediaSessionImpl.resolveControllerInfoForCallback 会将系统UI控制器映射为应用通知控制器。因此这些回调字段不能证明原始发送者就是应用自身；legacy调用栈仍是有效路径证据，未出现Service/回调媒体Stop按键日志也不能再凭包名认定具体来源。未添加过滤、反射私有字段或延时忽略Stop。
