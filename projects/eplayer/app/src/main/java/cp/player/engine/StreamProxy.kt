@@ -5,6 +5,9 @@ import android.net.Uri
 import android.util.Log
 import androidx.media3.common.C
 import androidx.media3.datasource.DataSpec
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -38,7 +41,10 @@ object StreamProxy {
         onProgress: (Long) -> Unit
     ): File? = withContext(Dispatchers.IO) {
         var dataSource: androidx.media3.datasource.DataSource? = null
+        var outputFile: File? = null
+        var completed = false
         try {
+            currentCoroutineContext().ensureActive()
             val cacheDir = context.cacheDir
             var ext = "media"
 
@@ -60,30 +66,34 @@ object StreamProxy {
                 }
             }
 
-            val tempFile = File(cacheDir, "${CACHE_PREFIX}${System.currentTimeMillis()}.${ext}")
-            val outputStream = FileOutputStream(tempFile)
+            currentCoroutineContext().ensureActive()
+            val tempFile = File.createTempFile(CACHE_PREFIX, ".$ext", cacheDir).also { outputFile = it }
             val buffer = ByteArray(128 * 1024)
             var bytesDownloaded = 0L
             var preBufferNotified = preBufferBytes <= 0 // If 0, don't wait for pre-buffer
 
-            while (true) {
-                val bytesRead = dataSource.read(buffer, 0, buffer.size)
-                if (bytesRead == C.RESULT_END_OF_INPUT || bytesRead < 0) break
+            FileOutputStream(tempFile).use { outputStream ->
+                while (true) {
+                    currentCoroutineContext().ensureActive()
+                    val bytesRead = dataSource.read(buffer, 0, buffer.size)
+                    currentCoroutineContext().ensureActive()
+                    if (bytesRead == C.RESULT_END_OF_INPUT || bytesRead < 0) break
 
-                outputStream.write(buffer, 0, bytesRead)
-                bytesDownloaded += bytesRead
-                onProgress(bytesDownloaded)
+                    outputStream.write(buffer, 0, bytesRead)
+                    bytesDownloaded += bytesRead
+                    onProgress(bytesDownloaded)
+                    currentCoroutineContext().ensureActive()
 
-                // Signal that enough data is buffered for playback to begin
-                if (!preBufferNotified && bytesDownloaded >= preBufferBytes) {
-                    outputStream.flush()
-                    preBufferNotified = true
-                    Log.i(TAG, "Pre-buffer threshold reached ($bytesDownloaded / $preBufferBytes bytes), signaling playback start")
-                    onPreBufferReady?.invoke(tempFile)
+                    if (!preBufferNotified && bytesDownloaded >= preBufferBytes) {
+                        outputStream.flush()
+                        preBufferNotified = true
+                        Log.i(TAG, "Pre-buffer threshold reached ($bytesDownloaded / $preBufferBytes bytes), signaling playback start")
+                        onPreBufferReady?.invoke(tempFile)
+                    }
                 }
+                outputStream.flush()
             }
-            outputStream.flush()
-            outputStream.close()
+            currentCoroutineContext().ensureActive()
 
             // If file is smaller than preBufferBytes, notify now
             if (!preBufferNotified) {
@@ -93,12 +103,16 @@ object StreamProxy {
 
             cleanupCache(cacheDir, tempFile)
             Log.i(TAG, "Download complete: $bytesDownloaded bytes -> ${tempFile.name}")
+            completed = true
             return@withContext tempFile
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Stream failed", e)
             return@withContext null
         } finally {
             try { dataSource?.close() } catch (e: Exception) {}
+            if (!completed) outputFile?.delete()
         }
     }
 
