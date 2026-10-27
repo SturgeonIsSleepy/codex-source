@@ -66,7 +66,9 @@ def archive_job_logs(archive, job_ids):
         run = json.loads(gh('api', f'repos/{REPO}/actions/runs/{job["run_id"]}'))
         if run.get('id') != job['run_id'] or not isinstance(run.get('head_sha'), str) or not re.fullmatch(r'[0-9a-f]{40}', run['head_sha']):
             raise RuntimeError('Evidence job source cannot be verified')
-        content = subprocess.check_output(['gh', 'api', f'repos/{REPO}/actions/jobs/{job_id}/logs'])
+        # Capture raw bytes only into the ZIP; never render log escape sequences to a terminal.
+        content = subprocess.check_output(['gh', 'api', '--allow-escape-sequences',
+                                           f'repos/{REPO}/actions/jobs/{job_id}/logs'])
         prefix = f'workflow-jobs/{job_id}'
         archive.writestr(f'{prefix}/log.txt', content)
         archive.writestr(f'{prefix}/metadata.json', json.dumps({'job': job, 'run': run}, indent=2) + '\n')

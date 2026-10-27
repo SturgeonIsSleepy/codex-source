@@ -298,3 +298,11 @@ PR13已以正常合并保留全部父历史进入main113acb0d7c72f392aae754cb3c7
 主线加载的portrait-2.0/landscape-2.0、sound-full-page、release-home、player-rust-playing截图已查看。常规字号人物头帽/手部无明显错位；2倍字体长标题时插画在滚动容器中，首屏下半身未完全显示，滚动可见，仍列首屏空间分配优化，不能称所有视觉已完成。下一阶段优先调整这项，再推进跨曲下载所有权、无调用UI依赖剥离；另审计确认Rust lib.rs默认LevelFilter::Trace会产生大量JNI日志，尚未修改或重编原生库，不声称已节电。
 
 交付manifest现固定上述确切通用包、20个成功/失败artifact、5个已完成工作任务日志及R8跨应用证明12766192574。自动发布仍须精确通用包安装/冷启动和所有归档检查通过，Release0.3.2尚未发布；0.3.1既有五附件保持不变。原始SDK准备失败日志、回归失败、登录跳过及物理设备/真实源未执行范围均保留。
+
+## 首次0.3.2发布停在日志归档，已修复原始日志捕获
+
+CI40575569334 /job122440962811：prepare中的APK摘要/版本/签名校验通过，精确原始通用包安装和冷启动通过（1677ms），随后publish在归档job122417488564日志时失败。GitHub CLI拒绝返回含ANSI终端颜色控制符的text响应，提示--allow-escape-sequences；不是应用播放、签名或SDK验收失败，Release0.3.2未发布。
+
+artifact12766293038 ZIP SHA256a8f01e60bffd7d1bd3c5e97ed11ecff6a67396f21ab3f7839464c9f7ef42e044已下载核对，delivery.json为passed且source/CI/SHA与113acb0/40570928840/13c1401匹配。原始失败job和该安装证据加入交付索引（共21个artifact、6个job）；不覆盖或丢弃失败。
+
+捕获日志时使用CLI明确提供的原始响应选项，只由check_output获得bytes并写ZIP，不向终端渲染控制符；ANSI颜色字节加入既有归档回归，仍核对完整原始字节/摘要与failure结论。31项根脚本通过。未改应用、源CI、APK、证书或0.3.1附件，重跑只涉及交付流程，不重复Gradle/Rust/R8构建；最终发布结果仍待执行。

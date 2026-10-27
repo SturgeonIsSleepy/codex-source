@@ -85,7 +85,7 @@ class JobEvidenceChecks(unittest.TestCase):
     def test_failed_setup_log_is_archived_with_original_result_and_source(self):
         job = dict(id=123, run_id=456, run_attempt=1, status='completed', conclusion='failure')
         run = dict(id=456, head_sha='a' * 40, conclusion='failure')
-        content = b'SDK install failed; no device tests executed\n'
+        content = b'\x1b[31mSDK install failed; no device tests executed\x1b[0m\n'
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, 'w') as archive, patch.object(delivery, 'gh', side_effect=[json.dumps(job), json.dumps(run)]), patch.object(delivery.subprocess, 'check_output', return_value=content):
             index = delivery.archive_job_logs(archive, [123])

@@ -26,15 +26,17 @@
     12765421803,
     12763938192,
     12765768463,
-    12766192574
+    12766192574,
+    12766293038
   ],
   "evidence_jobs": [
     122417488564,
     122424588230,
     122430886190,
     122427283727,
-    122433921152
+    122433921152,
+    122440962811
   ],
   "blackbox_artifact": 12766192574,
-  "validation_summary": "Native DSP is restored after output-rate changes; prebuffer pause intent, atomic parametric EQ, lazy process-owned cache, stateful engine handover and cancelled-download cleanup are included. Unused Android exclusive-USB bridges are removed; ordinary Android routing remains.\n\nStandard fastRelease API 36 instrumentation: 36 passed, 1 credential-dependent login test skipped (104.993 seconds). Standard/internal R8 builds passed; standard x86_64 R8 cold-start passed (1378ms). The untouched universal R8 APK passed two cross-app system/native tests (55.117 seconds): system document-picker import, real session playback, pause, seek to twelve seconds, background progress and actual notification return. Loaded playback/pause, settings and responsive layout frames were inspected; six frames from the silent 2.52-second native motion capture were viewed, and the 3.48-second system capture was preserved. Handover and cancellation pre-fix failures plus the SDK setup attempt where tests did not execute remain indexed.\n\nPhysical devices, live authenticated sources, subjective audio quality and long-duration animation remain unverified here. With 2x text and long titles, portrait artwork currently requires scrolling to reveal the full figure; initial-screen space allocation remains to improve. Cross-track download ownership, crossfade and cache-management UI are not complete. No user recordings are bundled."
+  "validation_summary": "Native DSP is restored after output-rate changes; prebuffer pause intent, atomic parametric EQ, lazy process-owned cache, stateful engine handover and cancelled-download cleanup are included. Unused Android exclusive-USB bridges are removed; ordinary Android routing remains.\n\nStandard fastRelease API 36 instrumentation: 36 passed, 1 credential-dependent login test skipped (104.993 seconds). Standard/internal R8 builds passed; standard x86_64 R8 cold-start passed (1378ms). The untouched universal R8 APK passed two cross-app system/native tests (55.117 seconds): system document-picker import, real session playback, pause, seek to twelve seconds, background progress and actual notification return. Loaded playback/pause, settings and responsive layout frames were inspected; six frames from the silent 2.52-second native motion capture were viewed, and the 3.48-second system capture was preserved. Handover and cancellation pre-fix failures plus the SDK setup attempt where tests did not execute remain indexed.\n\nPhysical devices, live authenticated sources, subjective audio quality and long-duration animation remain unverified here. With 2x text and long titles, portrait artwork currently requires scrolling to reveal the full figure; initial-screen space allocation remains to improve. Cross-track download ownership, crossfade and cache-management UI are not complete. No user recordings are bundled.\n\nFirst publication attempt installed/cold-started the exact universal APK successfully (1677ms), then stopped while archiving ANSI-colored workflow logs. That failed attempt is preserved; the raw log download now remains captured bytes written only to the archive. The APK is unchanged."
 }
