@@ -117,6 +117,15 @@ artifact 12611378871，ZIP SHA256 c81d6c734989a4a6fb65e02f105e47b126c0ae4fe6f75c
 
 R8 候选 artifact 12612652207 ZIP SHA256 c3a462eeec8b5941318fba30662db8762f664d05ae24287191fd497d80be237b。原始 universal APK 0.3.1/code46，SHA256 5f60192c2ba51a4c46727ef3eda094a488a897fbd4a8b0d4055ebc6462ab1c0d，证书 9ad8248ac5d246d9da74b38858a40ba510b35b53c5370d66f055043687a8bdf4；签名/版本/三 ABI 已实际校验，但不发布该失败源码候选。发布清单必须继续固定已发布的 0.3.0。
 
+## 独立边界阶段十五（CI 40228679080）
+
+源码 49c9eec3b07ffd5279dbc61fb513544b0f5c523b，30 项共 29 通过/1 登录条件跳过，74.221 秒；R8 not_requested。设备 artifact 12612457911 ZIP SHA256 e383c70303d45dc4ea6f1c2bf3f14353ddcd962083778a49233269d0d9fed5d0。纯能力模型/返回取消导入的现有软件流程通过；不覆盖失败的主线 a25a90b，也不能证明偶发 EQ 已解决。
+
+## 独立缓存与实际弹窗（CI 40229369907）
+
+源码 a48027065f016b863f358877c738a2122a7a4e47，32 项共 31 通过/1 登录条件跳过，72.218 秒。PlaybackCacheTest 实际由应用完整 DataSourceFactory 首读 loopback 合成 WAV、确认缓存长度，再关闭服务端，新建 DataSource 读回同一字节；只删除测试 UUID cache key。SoundSettingsScreenTest 实际点击取消、仅应用频段与错误提示，确认预览/取消不写偏好、有效参数落盘、OFF/前置增益不应用、无效文件不覆盖已有配置。没有操作系统文件选择器。
+
+设备 artifact 12611714141 ZIP SHA256 cbe573b3714efa3c810eb89b895915a88271bcdab0edef2cdb2f8f9f4849a9e4，已下载并实际查看 layout-check/autoeq-preview-dialog.png；标题、替换数量、前置增益说明、取消/确认按钮均可读。预览 artifact 12612099296 SHA256 490dbf51f3f969787ba78ad246ea44051c8c2c39635cd0baa5617a6d7360635b。R8 not_requested；该分支尚未合入，主线 EQ 失败与 0.3.1 发布暂停状态保持。
 ## 原生顺序修复验证
 
 第一轮源码 185870c2ee115a70ccb7d6def7a54aa1736e40cc，CI 40230148361，30 项共 29 通过/1 登录跳过，72.04 秒。第二轮含取消后事件过滤源码 2f6db3953057e0841503099f9660f66cecfae442，CI 40230802502，30 项共 29 通过/1 登录跳过，74.86 秒。三次快速系统/Rust 重建后，12 秒原生合成音频持续推进，稳定基线、原阈值提升与禁用恢复均通过；R8 not_requested，尚需主线 R8 构建/启动，不能覆盖 a25a90b 历史失败。
@@ -156,3 +165,54 @@ PR #6 已合入发布防错配门禁；27 项根脚本通过，原始候选 prep
 ## 0.3.1 发布完成
 
 [Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.1) ID424674767，CI40387722240 成功。五个附件均 uploaded；APK SHA256 与 331d312 的原始 CI universal 一致（92b6…），未重签。native-libs.tar.gz SHA256 945e0975c4aa3c7fea09d080095d4bea89982244cbe3daf018e378647ab1587d，validation.zip 295b0ab83eb94b90db8ad15727825ef620ea4500e5febff1edb53f7a25b2bbc4，notes f957610765f59fabdd280d2a683dbb20d66d99a0aa5fecc12b5ee1777261f226，SHA256SUMS de093abf8e73041811f66e93684b3ac8208614792f6d4edc480d3814ddbd382b。交付工作流证据 artifact12681359098（ZIP b4c39568f965769c1149ef0ed547a269155137ac5ebd817dc7cc6a485391072f）已下载核对，精确安装/冷启动 2471ms 通过。Release validation 包含相同最终交付报告/首页图及历史失败/成功证据，index.json 可按 artifact ID 查找截图和无声动作录像；该包不含后续 0.3.2 功能。
+
+## 0.3.2 组合回归失败（优先调查）
+
+源码 5a956b5614552f25463bbaafaf96895ba4fca774 /CI40387147893，33 项为 31 通过/1 失败/1 登录跳过，92.071 秒；R8 not_requested。实际缓存断网重读、导入预览取消/应用/非法文件、公开 release、播放与插画检查通过，LiveEqualizerTest 失败：稳定 baseline0.13126217、position≥1s 后，应用 EQ 时进入 IDLE/position4560/duration12000/error=null，boostedNaN。运行日志已见每次公开释放调用 stopEngine，不能重新归为缺 COMMAND_RELEASE；此前 0.3.1 的成功与精确 R8 证据保持其原范围，后续快速切换可靠性仍需调查。
+
+设备 artifact12681038285 ZIP SHA256 f28f985aaab6e765bc4b81876f08196291c7156de17f6e1a5a3e18afdecdd5fe 已下载核对；fastRelease APK fc80328e24a4a6efd8bc157f5c66b095844cb39feda391fbdfb0972b1b88f57f，测试 APK a50e76449ce41917c0efbd82bfbf4fc65b62528a2844561f26282a1f0bb0f55d。暂停 PR #4/#7 合入，不发布 0.3.2。新增停止原因、原生状态事件及 DSP 更新诊断（不记录账号/URL），失败信息读取真实 native state；先确认发出 Stop 的路径或底层状态，再选择修复，不延长等待或放宽幅度阈值。
+
+诊断提交 8e410f0 /CI40389177223 为 32 通过/1 登录跳过，84.873 秒；设备 artifact12682520815 ZIP SHA256 80e4d70300526147acc16f1eb66c61d8cff5dfd0cf8f284124017d4186329fed 已下载，原生 EQ baseline0.13074183→0.1840731→0.13031313。此轮停止来源日志只在测试清理时出现，未复现原失败；不能声称已找到或修复间歇根因。下一检查在同一用例内建立 3 个完整独立生命周期，每轮均保留 3 次快速引擎切换、原幅度阈值与完整 finally 清理；任何一轮失败立即失败，不是断言重试。19 JVM/本地构建通过，强化检查设备待执行。
+## 参数均衡编辑设备结果
+
+源码 8db92a93695f0e048c8ace5798e8f9b80c93b4ba /CI40388022692：33 项共 32 通过/1 真实登录条件跳过，87.735 秒，R8 not_requested。编辑链路实际拒绝 NaN、取消保持已导入参数、保存 660Hz/−2.5dB/Q1.2 后偏好全部匹配；均衡器保持启用。layout-check/eq-band-editor.png 已实际查看，三参数和保存/取消可见，使用统一文楷。真实 EQ 此轮为 baseline0.13074374→boost0.18503658→关闭0.13031313；不将本轮通过掩盖 5a956b5 的间歇停止。暂不合入，继续等待诊断来源。
+
+设备 artifact12681888678 ZIP SHA256 b3a3e49f229270e3bd8d08b9175de112efb8f211bb48492bebd761906b2cefc3 已下载核对；fastRelease APK 910a8aa7640965176b7da71d71c869d8225ec3265a959db351b8a5e9a8dc22e4，测试 APK 6731e0bb740e8ef3edc86b0839cbaa76702ed7bbc87688fc30bfa3c00720e15a。频率/Q 的独立声学响应、实机/账号未测，不能声称均已验收。未改人物素材或 0.3.1 已发布包。
+
+USB 桥接剥离源码 6821dab1c635e3231b8d57a20861bd622c9956a4 /CI40391321733：33 项共32通过/1登录跳过（91.445秒），含无独占会话、公开释放、三个完整 EQ 生命周期、缓存/导入/布局/插画。R8 not_requested，未声称普通 Android 物理 USB/耳机已验收。设备 artifact12684602201，ZIP SHA256 53d5bdb7603d628bd349162efe496fc4c70a88f20fd5804d5bc7f2210b08b390 已实际下载；fastRelease APK 26d57bec854645621637f2a90a8205126cae21248860bb68e5e5b14db768e63a，测试APK667c82e04127ab8488926330ddba76addc733218ff7d47a468f9835efe2c6da4。独立保存，不以本轮通过抹去其他源码的间歇停止记录。
+
+延迟缓存源码56d9156c0c58b67deec86ed13ddeffcda660f69a /CI40392011912：34项共33通过/1登录跳过（77.564秒），新增实际file/content字节读取未调用缓存提供器、远端factory/createDataSource未初始化缓存、两次open请求同一缓存及断网重读均通过。含三个完整EQ生命周期，R8 not_requested；没有启动耗时/物理设备性能结论。设备artifact12685806249 ZIP SHA256 b8794cc9b30ac894c1653b4d17d063f5716896d108a2a6274332b0d60e126205已实际下载核对；fastRelease APK a915fda743c68312e80075062d9fbea62b661006d5a88654c3cb0ddcbb318079，测试APK4415eaebf0b0de3f21bfc7bd3d543c531d28c99de4da4b47c403c8faa4227529。
+
+## 跨采样率丢失 EQ 已取得修复前证据
+
+9de19abb6dbf0ef0da909c9f3d7d2d3b069b3cc8 /CI40392306433：33项为31通过/1失败/1登录跳过（67.195秒）。明确失败在“Saved EQ lost after 44.1→48 kHz”：native/Media3 都在播放、设置 EQ=true/440Hz+6dB/Q1，但幅度0.13068521回到平直（原baseline0.13072309），不满足原提升阈值。日志确认输出由44100改成48000，后续Play未重新下发EQ，包含单曲循环重播也未恢复；与旧IDLE间歇停止是不同表现。
+
+设备artifact12685521332 ZIP SHA256 b1bfe632d7e88d9d8737cab3f18039d09b4d3f00b748751fb2b75e74ae98865a已实际下载。候选修复ed1034b在每次成功Play后复位DSP标记并重新下发保存EQ/FX，设备尚待结果；不降低阈值、不删失败检查。
+
+## 跨采样率 DSP 红绿回归完成
+
+修复ed1034bf59ab0a1ef89813a411882ab4e82f1dd5 /CI40392967562：33项共32通过/1登录跳过（73.496秒）。三个完整生命周期全部通过44.1→48kHz真实换曲后EQ保留：baseline0.13058645→0.18459812，0.13047104→0.18418264，0.13153297→0.18589857。原幅度阈值不变，日志可见每次Play重新下发EQ/FX。修复前9de19ab的失败继续保留，不是断言重试。
+
+设备artifact12685077511 ZIP SHA25666bb2f0278e312362fe8dbbbd0e9a248ab82fce2fbeebe3e8432d84a029b23d5已实际下载；R8 not_requested，实机/音质未测。此证实采样率重建丢失DSP的修复，不代替早期IDLE间歇问题根因结论。准备整合已验证组件，另待联网预缓冲暂停红绿回归。
+
+## 联网预缓冲暂停红绿回归完成
+
+修复前949c9e3312fbb3018ca00bbff4f0a78340cfa6e5 /CI40394134796：34项为30通过/2失败/1登录跳过（91.72秒）。新检查明确失败“Prebuffer completion must not start native audio after pause”；同时旧LiveEqualizerTest在稳定基线前再次失败，native=stopped/IDLE/position3240/eq=false，日志20:22:19.704明确Native Stop reason=player-stop，不是EQ接口错误或适配器release。后者根因待控制器来源诊断，不能忽略第二项失败。设备artifact12685827899 ZIP SHA25685f8c73719b4853ade5a89ffa93b32a97d7d0579e37c5716cb3a4524c2398afd已下载核对。
+
+修复82075bae4d66745c3689a8fe3462119f7b29059f /CI40394832829：34项共33通过/1登录跳过（83.024秒）。下载完成仍保持原生不播放/会话暂停，关闭上游后主动恢复具有真实原生进度、12秒有效时长和非零幅度；三个EQ生命周期和其余检查同时通过。设备artifact12686274869 ZIP SHA256475b0bd6e95fb0a7c4c0f6fcc1b7b8fff6b315dc0a0f190c364760bebc851e59已实际下载；fastRelease APK043595068eae5b932c7e7d3c642b9d9b6389a8ed766e1e9f8c04546d7dcf1f2d，测试APK359a03d31e8eb268e0bea96b3afd0250a41ba95edca3e6c6402669f0353d7e3d。R8 not_requested；不把此通过称为已定位旧Stop命令来源。
+
+## 2026-10-28 北京时间：0.3.2 组合候选
+
+已重新实际读取远端 README、AGENTS、catalog、交接和计划；main69325ed无他人新增主线提交。正常合并 PR7/8/9/10/12 的已保存分支到 PR4 开发线，保留分项成功/失败及提交历史，未强推、未改独立角色参考或Android Cloud入口。20项JVM、普通debug主程序/设备包构建和28项根脚本检查通过；35项组合设备检查尚未执行，普通/自用R8尚未执行，不发布0.3.2。整合后先取得组合结果，再仅向main推进一次完整R8构建，避免逐个阶段重复大构建。
+
+明确通过的分项：编辑窗口/取消/非法/三参数保存；本地file/content不初始化缓存及远端断网重读；无USB独占会话；三轮跨44.1→48kHz后真实EQ幅度保留；联网预缓冲暂停后不自动出声、关闭上游后恢复有真实原生进度/时长/幅度。保留原生停止命令来源诊断，稀发IDLE不能仅因新检查通过视为根因已修复。新增控制器夹具标签和Stop调用栈/批次来源采集，只记录内置白名单标签及包名，不输出任意连接提示、账号或URL。
+
+当前已读取独立PR11/codex/ncm-basic-completion的收尾交接：0.4.0账号/歌词/队列工作和内置模块隔离继续独立保存，未擅自合入本候选，不改其固定本地签名/已有登录会话；实机仍由本地agent处理。下一步：组合35项→main R8→确切原始包双引擎跨应用/截图→Release证据归档；若Stop来源复现，优先按标签/调用栈定位，保持真实记录。随后继续流媒体取消/所有权和未迁移的声音/存储控制。
+
+## 0.3.2 组合失败：已定位到旧媒体会话 Stop 请求
+
+4f35cbbcd588f7dbd8d487853e0459095e3e8ad4 /CI40558035337：35项为33通过/1失败/1登录跳过（109.775秒），R8 not_requested。唯一失败为第二个EQ生命周期开始后native=stopped/IDLE/position0，尚未应用EQ；其余缓存、联网暂停、编辑、插画检查通过。设备artifact12758985697 ZIP SHA256b03980d96b0c28496f0a8944c25d93818448e38f2ff22f704ab7be28f9118dab已实际下载核对。
+
+18:20:42.811的调用栈明确为FlickPlayer.handleStop→SimpleBasePlayer.stop→PlayerWrapper.stop→MediaSessionLegacyStub.onStop；批次来源owner=external、package=app.eplayer.music，不是带integration/equalizer/stream标签的测试控制器。前一轮清理的equalizer停止请求也分别记录，不能把外部legacy请求混称清理或DSP故障。
+
+继续阻止主线合入及0.3.2发布。新增固定媒体STOP按键入口的dismissal布尔标志日志，核对是否源于旧通知删除PendingIntent；不输出任意extras、不拒绝Stop命令。若证实旧通知事件迟到，下一步按播放代次绑定删除动作，并同时验证“旧动作不停止新播放”和“当前动作仍能停止”；不能通过屏蔽所有legacy Stop或放宽断言消除失败。20 JVM/本地组合构建与28根脚本检查已通过，新入口诊断设备待执行。
