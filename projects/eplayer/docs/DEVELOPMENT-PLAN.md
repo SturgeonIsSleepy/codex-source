@@ -184,3 +184,9 @@ CI 40387213231 的 prepare 与原始 universal 安装/冷启动已通过；历�
 全项目 Kotlin/Java/设备测试检索确认无生产调用后，删除 RustEngine 内 8 个独占注册/格式/硬件音量/静音/清理/等待包装器和 12 个未使用 JNI 声明，净减 82 行。不再提供设备 fd 注册、独占锁或硬件控制的 Android 入口；仅保留 NativeEngineTest 使用的只读“无独占会话”探针与普通诊断。未改 DSD 解码/普通输出、AudioManager、音频焦点、系统 USB/耳机路由和默认无 uac2 的构建。既有原生 .so 的可选上游导出尚未删除；本阶段不宣称已重编原生库。19 JVM/主程序/设备包构建通过；新组合设备结果未执行，与 EQ 停止诊断分支分开，不因删无调用方法宣称该问题已修复。
 
 USB 桥接剥离源码 6821dab1c635e3231b8d57a20861bd622c9956a4 /CI40391321733：33 项共32通过/1登录跳过（91.445秒），含无独占会话、公开释放、三个完整 EQ 生命周期、缓存/导入/布局/插画。R8 not_requested，未声称普通 Android 物理 USB/耳机已验收。设备 artifact12684602201，ZIP SHA256 53d5bdb7603d628bd349162efe496fc4c70a88f20fd5804d5bc7f2210b08b390 已实际下载；fastRelease APK 26d57bec854645621637f2a90a8205126cae21248860bb68e5e5b14db768e63a，测试APK667c82e04127ab8488926330ddba76addc733218ff7d47a468f9835efe2c6da4。独立保存，不以本轮通过抹去其他源码的间歇停止记录。
+
+## 流媒体缓存延迟初始化（独立性能阶段）
+
+创建播放器/数据源不再立即扫描 SimpleCache 目录和数据库；只有打开远端流时才建立缓存数据源。DefaultDataSource 的 file/content 直接路径不会初始化流媒体缓存，既有进程缓存路径/LRU/离线命中保持。延期数据源保留传输监听、URI/响应头及关闭语义，持有 Application 上下文。新增实际文件/ContentProvider 字节读取且缓存提供器不得被调用的检查，远端测试增加 factory/createDataSource 不触碰缓存、两次 open 各请求同一缓存的断言。19 JVM 和主程序/设备包编译通过；新增设备结果未执行，不声称已有启动耗时/实机性能测量。仍不提供危险的缓存 release/delete 清理按钮。
+
+延迟缓存源码56d9156c0c58b67deec86ed13ddeffcda660f69a /CI40392011912：34项共33通过/1登录跳过（77.564秒），新增实际file/content字节读取未调用缓存提供器、远端factory/createDataSource未初始化缓存、两次open请求同一缓存及断网重读均通过。含三个完整EQ生命周期，R8 not_requested；没有启动耗时/物理设备性能结论。设备artifact12685806249 ZIP SHA256 b8794cc9b30ac894c1653b4d17d063f5716896d108a2a6274332b0d60e126205已实际下载核对；fastRelease APK a915fda743c68312e80075062d9fbea62b661006d5a88654c3cb0ddcbb318079，测试APK4415eaebf0b0de3f21bfc7bd3d543c531d28c99de4da4b47c403c8faa4227529。
