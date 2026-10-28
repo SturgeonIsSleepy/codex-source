@@ -53,7 +53,8 @@ public class R8MusicCheck extends InstrumentationTestCase {
         try {
             shell("am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n app.eplayer.music/cp.player.MainActivity");
             waitFor("home", () -> find("设置", true) != null);
-            click(find("设置", true));
+            if (find("播放与声音", false) == null && find(engine, false) == null) click(find("设置", true));
+            waitFor("settings root or engine", () -> find("播放与声音", false) != null || find(engine, false) != null);
             if (find("播放与声音", false) != null) click(find("播放与声音", false));
             waitFor("settings engine", () -> find(engine, false) != null);
             click(find(engine, false));

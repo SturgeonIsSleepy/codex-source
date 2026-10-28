@@ -96,7 +96,8 @@ half4 main(float2 xy) {
     float fresnel = .035 + .965 * pow(1. - cos(incidence), 5.);
     float reflection = pow(abs(dotLight), 5.) * pow(sin(incidence), 5.);
     float shine = min(.8, (.09 + .46 * max(0.,dotLight) + .18 * max(0.,-dotLight)) * rim + inner * .07 + reflection * fresnel * .28);
-    float3 base = mix(float3(color.rgb), float3(dark > .5 ? .10 : 1.), dark > .5 ? .25 : .11);
+    float3 sampled = float3(color.rgb) + float3(dark > .5 ? .05 : 1.) * (1. - color.a);
+    float3 base = mix(sampled, float3(dark > .5 ? .10 : 1.), dark > .5 ? .25 : .11);
     return half4(mix(base, float3(1), shine), 1.);
 }
 """

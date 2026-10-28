@@ -27,7 +27,7 @@ class LightNavigationTest {
         compose.onNodeWithText("Hi-Res").assertIsDisplayed()
         compose.onNodeWithText("无损").assertIsDisplayed()
         // Open and inspect only; never change a real user's quality or account.
-        compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        androidx.test.espresso.Espresso.pressBack()
         compose.onNodeWithText("播放与声音").assertIsDisplayed()
         compose.onNodeWithContentDescription("首页").performClick()
     }

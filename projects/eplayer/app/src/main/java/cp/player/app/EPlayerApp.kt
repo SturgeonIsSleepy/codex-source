@@ -97,7 +97,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     BackHandler(enabled = searched && !showPlayer) { query = ""; cloud.clearSearch() }
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Box(Modifier.fillMaxSize().recordGlassScene(scene)) {
+        Box(Modifier.fillMaxSize().recordGlassScene(scene).background(MaterialTheme.colorScheme.background)) {
             LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), state = if (discovery) rememberLazyListState() else lists[page],
                 contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = if (state.song != null) 192.dp else 112.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
