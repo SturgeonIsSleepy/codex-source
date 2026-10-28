@@ -196,16 +196,21 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     fun next() { controller?.seekToNextMediaItem() }
     fun seek(position: Long) { controller?.seekTo(position); publish() }
     fun setQuality(value: String) {
+        if (value == quality.value) return
         quality.value = value
         app.getSharedPreferences("eplayer_ui", 0).edit().putString("quality", value).apply()
-        val track = currentTrack() ?: return
-        if (track.source == null || track.song.id.startsWith("import_") || track.song.id.startsWith("local_") || track.song.id.startsWith("witch_")) return
         controller?.let { player ->
+            val original = (0 until player.mediaItemCount).map(player::getMediaItemAt)
+            val updated = original.map { it.withQuality(value) }
+            val changed = original.indices.filter { original[it] != updated[it] }
+            if (changed.isEmpty()) return@let
             val index = player.currentMediaItemIndex
-            if (index < 0) return@let
-            val position = player.currentPosition
-            val playing = player.playWhenReady
-            player.replaceMediaItem(index, track.mediaItem(value)); player.seekTo(index, position); player.prepare(); player.playWhenReady = playing
+            if (index in changed) {
+                val position = player.currentPosition.coerceAtLeast(0)
+                val playing = player.playWhenReady
+                player.setMediaItems(updated, index, position)
+                player.prepare(); player.playWhenReady = playing
+            } else changed.forEach { player.replaceMediaItem(it, updated[it]) }
         }
     }
     fun removeQueue(index: Int) { controller?.let { if (index in 0 until it.mediaItemCount) it.removeMediaItem(index) } }
