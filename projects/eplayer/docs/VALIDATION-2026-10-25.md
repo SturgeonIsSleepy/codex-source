@@ -349,3 +349,10 @@ PlayerLayout竖屏移除固定100dp元数据预留与内部滚动容器，元数
 日志18:21:00.175原生开始playing，.176当前RustAudioFocus收到永久LOSS(-1)，.226原生paused。审计实际Media3 1.10字节码：ExoPlayerImplInternal在播放Looper管理AudioFocusManager，release等待ConditionVariable，releaseInternal释放焦点后才open；原顺序在释放旧Exo之前恢复新Rust PWR，旧线程可能晚请求焦点。修复只把播放请求移到session.setPlayer和旧播放器release之后；已准备的非空队列先交接，保留上一轮避免NONE/STOPPED的修复。未全局屏蔽失焦、改变外部路由或自动播放策略。
 
 现有真实框架Stop检查增为三轮快速双引擎往返，并用另一个Android AudioFocusRequest验证永久失焦确实暂停原生，明确恢复后再验证合法framework Stop。原LiveEqualizer三轮真实幅度检查保留，不删不跳过。本地20项JVM、debug主程序/设备包构建通过（32秒），根脚本31项与目录检查通过；设备新结果待执行，不因视觉单项通过称完整通过。PR11/PR14独立0.4/0.5已读最新规划，保留对方固定签名、真实源、导航/歌词和依赖清理成果；后续跨曲下载所有权仍是共同未完成核心边界。
+
+
+## 跨曲下载所有权：先补真实失败夹具，产品尚未修复
+
+新增switchingFromPrebufferToLocalTrackCannotBeOverwrittenByOldDownload：loopback先发送96KiB（低于240KiB阈值），服务切到30秒本地合成WAV，要求实际原生时长/进度/有限非零幅度与MediaController队列/PWR/READY一致；再释放旧12秒HTTP，并在服务端确认客户端响应消费/关闭后连续检查2秒，不能让旧下载覆盖新曲或置IDLE。尚未运行设备，未预判为失败或通过。
+
+提取DelayedAudioServer复用原预缓冲暂停检查与新检查，连接/线程/等待均有上限，支持取消时服务端遇到预期SocketException（不吞SocketTimeout）。共有withNativePlayer只在确认空队列后接管，恢复音量/引擎并释放控制器，不删用户媒体/账号。每个URI使用UUID，缓存清理只涉及该URI与字节完全匹配的新夹具临时文件。初次本地设备包编译因Song.album缺参失败，补齐Test专辑后构建通过（4秒）。产品FlickPlayer尚未改动，焦点修复cfb1ec4的CI40747846822独立运行中，不重复大构建或本地慢模拟器。
