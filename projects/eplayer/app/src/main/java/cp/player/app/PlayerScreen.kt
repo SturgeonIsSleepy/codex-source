@@ -92,8 +92,8 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
     } }
 }
 
-/** Portrait keeps transport visible. Wide screens reserve a separate, unclipped artwork pane.
- * Metadata can scroll at large font sizes without extending underneath the character.
+/** Portrait fits artwork into the space remaining after metadata and transport.
+ * Wide screens keep a separate artwork pane while metadata and controls can scroll.
  */
 @Composable
 internal fun PlayerLayout(song: Song?, buffering: Boolean, header: @Composable () -> Unit,
@@ -112,12 +112,9 @@ internal fun PlayerLayout(song: Song?, buffering: Boolean, header: @Composable (
         } else {
             Column(Modifier.fillMaxSize().padding(horizontal = 20.dp).testTag("player-portrait")) {
                 header()
-                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-                    val artHeight = (maxHeight - 100.dp).coerceAtLeast(160.dp)
-                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                        PlayerMetadata(song)
-                        artwork(Modifier.fillMaxWidth().height(artHeight).testTag("player-artwork"))
-                    }
+                Column(Modifier.weight(1f).fillMaxWidth()) {
+                    PlayerMetadata(song)
+                    artwork(Modifier.weight(1f).fillMaxWidth().testTag("player-artwork"))
                 }
                 if (buffering) LinearProgressIndicator(Modifier.fillMaxWidth())
                 controls()
