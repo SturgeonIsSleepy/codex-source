@@ -39,6 +39,19 @@ class MusicService : MediaSessionService() {
     private var rustFocus: RustAudioFocus? = null
     private var engine = 0
     private val handler = Handler(Looper.getMainLooper())
+    private val listeningClock = cp.player.app.ListeningClock()
+    private val listeningCheckpoint = Runnable { checkpointListening(saveQueue = true) }
+    private fun checkpointListening(finishing: Boolean = false, saveQueue: Boolean = false) {
+        val id = player.currentMediaItem?.let { item ->
+            "${item.mediaMetadata.extras?.getString("source").orEmpty()}:${item.mediaId}"
+        }
+        listeningClock.update(SystemClock.elapsedRealtime(), id, !finishing && player.isPlaying)?.let { (track, elapsed) ->
+            cp.player.app.ListeningStatsStore.record(this, track, elapsed)
+        }
+        if (saveQueue) QueueStore.save(this, player, queueChanged = false)
+        handler.removeCallbacks(listeningCheckpoint)
+        if (!finishing && player.isPlaying) handler.postDelayed(listeningCheckpoint, 30000)
+    }
     private val sleepTimer = PlaybackSleepTimer(SystemClock::elapsedRealtime, { delay, action ->
         val task = Runnable { action() }
         handler.postDelayed(task, delay)
@@ -52,6 +65,7 @@ class MusicService : MediaSessionService() {
     }
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
+            if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION)) checkpointListening()
             if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION,
                     Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_POSITION_DISCONTINUITY)) {
                 QueueStore.save(this@MusicService, player, queueChanged = events.contains(Player.EVENT_TIMELINE_CHANGED))
@@ -64,6 +78,7 @@ class MusicService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
+        cp.player.app.ListeningStatsStore.refresh(this)
         audio = getSystemService(AudioManager::class.java)
         ContextCompat.registerReceiver(this, noisy, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY), ContextCompat.RECEIVER_NOT_EXPORTED)
         engine = UserPreferences.getAudioEngine(this)
@@ -167,6 +182,7 @@ class MusicService : MediaSessionService() {
     }
     override fun onTaskRemoved(rootIntent: Intent?) { if (!player.playWhenReady) stopSelf() }
     override fun onDestroy() {
+        checkpointListening(finishing = true)
         sleepTimer.set(0)
         rustFocus?.close(); rustFocus = null
         QueueStore.save(this, player)
