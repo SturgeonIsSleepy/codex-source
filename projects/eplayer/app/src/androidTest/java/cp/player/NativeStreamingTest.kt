@@ -176,4 +176,40 @@ class NativeStreamingTest {
         }
     }
 
+    @Test fun stopDuringPrebufferCannotBecomeReadyWhenOldResponseCompletes() {
+        val id = "stream-stop-${UUID.randomUUID()}"
+        val body = SyntheticAudio.wav(12)
+        val previousFiles = context.cacheDir.listFiles().orEmpty().map { it.name }.toSet()
+        val server = DelayedAudioServer(id, body, allowClientCancellation = true)
+        try { withNativePlayer { current ->
+            main {
+                current.setMediaItem(Song(id, "缓冲停止", "Synthetic fixture", album = "Test", durationMs = 12000).toMediaItem(server.uri))
+                current.prepare(); current.play()
+            }
+            assertTrue(server.firstChunk.await(15, TimeUnit.SECONDS))
+            main { current.stop() }
+            await {
+                var stopped = false
+                main { stopped = current.playbackState == Player.STATE_IDLE && !current.playWhenReady }
+                stopped && nativeState().equals("stopped", true)
+            }
+            server.finish()
+            repeat(10) {
+                main {
+                    assertEquals("Completed cancelled transfer must not turn Stop into READY", Player.STATE_IDLE, current.playbackState)
+                    assertFalse(current.playWhenReady); assertFalse(current.isPlaying)
+                }
+                assertTrue(nativeState().equals("stopped", true))
+                SystemClock.sleep(100)
+            }
+        } } finally {
+            server.close()
+            PlaybackCache.get(context).removeResource(server.uri.toString())
+            context.cacheDir.listFiles().orEmpty().filter {
+                it.name.startsWith("stream_cache_") && it.name !in previousFiles && it.length() == body.size.toLong()
+            }.forEach { if (it.readBytes().contentEquals(body)) it.delete() }
+            RecentStore.remove(context, id)
+        }
+    }
+
 }

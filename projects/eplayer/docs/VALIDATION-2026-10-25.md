@@ -356,3 +356,12 @@ PlayerLayout竖屏移除固定100dp元数据预留与内部滚动容器，元数
 新增switchingFromPrebufferToLocalTrackCannotBeOverwrittenByOldDownload：loopback先发送96KiB（低于240KiB阈值），服务切到30秒本地合成WAV，要求实际原生时长/进度/有限非零幅度与MediaController队列/PWR/READY一致；再释放旧12秒HTTP，并在服务端确认客户端响应消费/关闭后连续检查2秒，不能让旧下载覆盖新曲或置IDLE。尚未运行设备，未预判为失败或通过。
 
 提取DelayedAudioServer复用原预缓冲暂停检查与新检查，连接/线程/等待均有上限，支持取消时服务端遇到预期SocketException（不吞SocketTimeout）。共有withNativePlayer只在确认空队列后接管，恢复音量/引擎并释放控制器，不删用户媒体/账号。每个URI使用UUID，缓存清理只涉及该URI与字节完全匹配的新夹具临时文件。初次本地设备包编译因Song.album缺参失败，补齐Test专辑后构建通过（4秒）。产品FlickPlayer尚未改动，焦点修复cfb1ec4的CI40747846822独立运行中，不重复大构建或本地慢模拟器。
+
+
+## 焦点候选回归与原生回执边界
+
+cfb1ec419d2587082c6b82af8c24fa2b64227911 /[CI40747846822](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40747846822)：37项35通过/1失败/1登录跳过（87.333秒）。LiveEqualizer三轮通过，原先永久失焦停0秒未复现；新增三轮框架交接检查失败，状态含STATE_NONE=0。后续竞争焦点/合法Stop步骤因前置断言失败未执行，不标通过。artifact12842787502 ZIP SHA256b797e86266a1f2093fe5992ae36c1ee642a8581d20e809803aa3f9cf79cd4ea2已下载核对；portrait-2.0首屏全身图再次查看通过。
+
+runtime.txt在18:51:03.044至.097记录连续stopped/buffering/playing/paused/stop回执，显式测试清理Stop在.438才到。沿用独立PR11的24873a8485a9d1ecc2903a9d6ce5563d0cbfde95启动回执边界（该分支最终1d74691c36e17a519d4bacea087c79e3f9d38b0e已有设备回归）：等待Playing确认时保留BUFFERING，忽略前一个原生命令的stopped/idle/paused，handleStop和错误仍立即结束等待。只移植此核心小修，不覆盖PR11账号/歌词/本地签名等内容；本分支尚待组合验证，不能直接挪用其绿色结果。
+
+同时实现下载所有权：park/换曲/空队列/Stop统一cancelStreaming，取消旧下载与seek/underrun恢复并集中重置下载状态；ready和progress子任务归属下载协程，所有路径/预缓存决策回主线程，JNI仍串行引擎线程。取消显式重抛，不改新曲IDLE；无新增曲目代号、整脸素材或状态补丁。新增缓冲期Stop的真实HTTP完成检查，Stop后保持IDLE而非被旧下载转READY。原暂停后离线续播检查继续保留。e39becf /CI40748464795为仅新跨曲检查、未改产品的独立修复前运行，当前尚未取得结果。最新组合本地20 JVM/主程序/设备包构建通过（6秒），设备待执行；Rust原生库不重编，未声明性能或物理设备通过。
