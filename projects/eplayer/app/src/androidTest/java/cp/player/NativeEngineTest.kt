@@ -147,7 +147,7 @@ class NativeEngineTest {
             legacy!!.registerCallback(observer, Handler(Looper.getMainLooper()))
             instrumentation.waitForIdleSync()
             handoverStates.clear()
-            repeat(2) { engine(0); engine(1) }
+            repeat(3) { engine(0); engine(1) }
             await(15000) {
                 var playing = false
                 main { playing = controller!!.isPlaying }
@@ -156,6 +156,27 @@ class NativeEngineTest {
             instrumentation.waitForIdleSync()
             assertFalse("Engine handover published an empty/stopped framework session: $handoverStates",
                 handoverStates.any { it == PlaybackState.STATE_NONE || it == PlaybackState.STATE_STOPPED })
+            // The handover fix must not ignore a genuine permanent loss to another focus owner.
+            val audio = context.getSystemService(android.media.AudioManager::class.java)
+            val competingFocus = android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC).build())
+                .setOnAudioFocusChangeListener({}, Handler(Looper.getMainLooper())).build()
+            try {
+                assertEquals(android.media.AudioManager.AUDIOFOCUS_REQUEST_GRANTED, audio.requestAudioFocus(competingFocus))
+                await(2000) {
+                    var paused = false
+                    main { paused = !controller!!.playWhenReady }
+                    paused && native { RustEngine.getState().equals("paused", true) }
+                }
+            } finally { audio.abandonAudioFocusRequest(competingFocus) }
+            main { assertFalse("Permanent focus loss must require explicit resume", controller!!.playWhenReady); controller!!.play() }
+            await(5000) {
+                var playing = false
+                main { playing = controller!!.isPlaying }
+                playing && native { RustEngine.getState().equals("playing", true) }
+            }
             legacy!!.transportControls.stop()
             await(2000) {
                 var idle = false

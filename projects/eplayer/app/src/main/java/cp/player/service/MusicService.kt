@@ -139,10 +139,12 @@ class MusicService : MediaSessionService() {
                         if (items.isNotEmpty()) {
                             player.setMediaItems(items, index, position)
                             player.prepare()
-                            player.playWhenReady = playing
                         }
                         session.setPlayer(player)
+                        // Media3 requests focus on its playback thread. Drain that owner's release
+                        // before the replacement requests focus, or a late old request can pause it.
                         CPPlayerManager.releasePlayer(previous)
+                        if (items.isNotEmpty()) player.playWhenReady = playing
                     }
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }

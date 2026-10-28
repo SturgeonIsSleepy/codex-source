@@ -340,3 +340,12 @@ CI40576719254成功发布Release425943718 /eplayer-v0.3.2（非draft、preview�
 PlayerLayout竖屏移除固定100dp元数据预留与内部滚动容器，元数据先按实际内容测量，AndroidView用剩余高度；WitchPlayerView原有min(width/865,height/1280)等比绘制无需变化。减少一层BoxWithConstraints/滚动状态，没有增加测量回调、补丁图、表情帧或新的播放状态。横屏独立插画/可滚动操作区不变。
 
 本地20 JVM、debug主程序/设备包构建通过（53秒），31项根脚本通过。修复前161c63f /CI40577808745的35通过/1失败/1登录跳过和98dp越界证据保留，当前候选设备绿色尚未执行。同步main20cd8c5发布说明时保留双方文档与独立0.3.3登记，不覆盖0.3.2原始APK或无关项目。下一步同一37项真实检查，查看portrait-2.0首屏全身，再继续核心边界工作；不以编译通过替代视觉通过。
+
+
+## 2026-10-28：首屏边界通过，组合暴露旧引擎焦点竞态
+
+候选7c991a000afc8bafef11ab0a0d72af403ecb6fc2 /[CI40743065174](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40743065174)：37项35通过/1失败/1登录跳过（69.822秒）。横竖屏/1倍2倍字号及新增首屏人物边界通过，已实际查看layout-check/portrait-2.0.png，人物全身和控制区同屏。未改角色素材、皮肤、眼睛或骨架。唯一失败LiveEqualizerTest.savedEqualizerChangesApplyWhilePlayingAndDisableCleanly：READY、PWR=false、position=0、duration=12000、native=paused、level=0，无错误；不是STATE_IDLE或UI假进度。artifact12840673407 ZIP SHA25685dc83175484aa290dd1e3bb3509ecec99d600eb0e8ada032a4530330c841d26已下载核对，保留失败截图/原始日志，不冒充绿色。
+
+日志18:21:00.175原生开始playing，.176当前RustAudioFocus收到永久LOSS(-1)，.226原生paused。审计实际Media3 1.10字节码：ExoPlayerImplInternal在播放Looper管理AudioFocusManager，release等待ConditionVariable，releaseInternal释放焦点后才open；原顺序在释放旧Exo之前恢复新Rust PWR，旧线程可能晚请求焦点。修复只把播放请求移到session.setPlayer和旧播放器release之后；已准备的非空队列先交接，保留上一轮避免NONE/STOPPED的修复。未全局屏蔽失焦、改变外部路由或自动播放策略。
+
+现有真实框架Stop检查增为三轮快速双引擎往返，并用另一个Android AudioFocusRequest验证永久失焦确实暂停原生，明确恢复后再验证合法framework Stop。原LiveEqualizer三轮真实幅度检查保留，不删不跳过。本地20项JVM、debug主程序/设备包构建通过（32秒），根脚本31项与目录检查通过；设备新结果待执行，不因视觉单项通过称完整通过。PR11/PR14独立0.4/0.5已读最新规划，保留对方固定签名、真实源、导航/歌词和依赖清理成果；后续跨曲下载所有权仍是共同未完成核心边界。
