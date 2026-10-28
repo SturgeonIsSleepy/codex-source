@@ -365,3 +365,15 @@ cfb1ec419d2587082c6b82af8c24fa2b64227911 /[CI40747846822](https://github.com/Stu
 runtime.txt在18:51:03.044至.097记录连续stopped/buffering/playing/paused/stop回执，显式测试清理Stop在.438才到。沿用独立PR11的24873a8485a9d1ecc2903a9d6ce5563d0cbfde95启动回执边界（该分支最终1d74691c36e17a519d4bacea087c79e3f9d38b0e已有设备回归）：等待Playing确认时保留BUFFERING，忽略前一个原生命令的stopped/idle/paused，handleStop和错误仍立即结束等待。只移植此核心小修，不覆盖PR11账号/歌词/本地签名等内容；本分支尚待组合验证，不能直接挪用其绿色结果。
 
 同时实现下载所有权：park/换曲/空队列/Stop统一cancelStreaming，取消旧下载与seek/underrun恢复并集中重置下载状态；ready和progress子任务归属下载协程，所有路径/预缓存决策回主线程，JNI仍串行引擎线程。取消显式重抛，不改新曲IDLE；无新增曲目代号、整脸素材或状态补丁。新增缓冲期Stop的真实HTTP完成检查，Stop后保持IDLE而非被旧下载转READY。原暂停后离线续播检查继续保留。e39becf /CI40748464795为仅新跨曲检查、未改产品的独立修复前运行，当前尚未取得结果。最新组合本地20 JVM/主程序/设备包构建通过（6秒），设备待执行；Rust原生库不重编，未声明性能或物理设备通过。
+
+
+修复前下载检查e39becf /CI40748464795 attempt1：build成功，设备job123032345846在安装system-images;android-36;google_apis;x86_64时报Error on ZipFile unknown archive，未启动应用测试，无device artifact。不是已复现产品失败。已仅重跑该设备job，保留第一次原始job日志；e86295b组合CI40749734603单独运行，不重复成功构建。后续依实际attempt2记录红/绿，不能因SDK失败声称下载缺陷有红色设备证据。
+
+
+## 0.3.3核心组合已通过，继续独立0.5.1集成
+
+源码e86295be40881de16e8e5c15794474a65847e281 /[CI40749734603](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40749734603)：39项38通过/1真实登录条件跳过（71.056秒）。原三轮EQ、三轮双引擎往返无NONE/STOPPED、另一个AudioFocusRequest造成正常永久失焦暂停、显式恢复及实际framework Stop均执行通过；跨曲旧下载不能替换30秒本地真实进度/时长/非零幅度，缓冲Stop保持IDLE，预缓冲暂停后关闭上游再恢复亦通过。不是物理外设/电话/听感验证。
+
+artifact12843119440 ZIP SHA25631c82ec07ccd43aa1d3c4232e1a0b2813026b9a47a97dad067a01225de0e5822已下载核对；实际查看layout-check/portrait-2.0.png首屏全身及visual-check/player-rust-playing.png、player-rust-paused.png，闭眼/睁眼与头帽对齐保持。新代码未改任何人物/字体资产，没有逐脸换帧。开发分支本轮没有R8/确切发布APK验证；不挪用0.3.2发布结果。修复前e39becf attempt2仍在运行，SDK首次失败不算产品红色。
+
+独立0.5.0基线916f4e1 /CI40699053291证据12822860756 ZIP SHA256c73796d7c5d33e1aa5db2eeb5b9e0e3260ccbe0b66001a33357c305d8c298b3c已下载核对，实际查看release-home、portrait-2.0、settings-full-page：新导航/首页已经存在，大字号裁切仍存在。准备agent/eplayer-050-core-integration，以e86295b与ab7a227两父普通合并，不重写PR11/14历史；0.5.1未发布，组合验收不能继承旧绿色。去掉页面硬编码MusicRed，采用主题主色统一天空蓝，并保留深色模式、共同人物/字体、完整音乐源与新歌词流程。用户自用签名/模块/账号不操作。
