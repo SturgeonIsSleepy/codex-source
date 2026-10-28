@@ -2,11 +2,11 @@
 
 CPPlayer remains responsible for source modules, metadata, queues, MediaSession, downloads and playback. ePlayer adds an artwork presentation layer rather than a second playback service.
 
-- `WitchPlayerPanel` forwards CPPlayer UI state and callbacks to `WitchPlayerView`.
+- `app/PlayerScreen.kt` projects the service state into the ePlayer layout and the artwork-only `WitchPlayerView`; it owns neither decoder nor a second queue.
 - `CharacterArtwork` prepares one registered skin restoration; the common portrait is reused for every expression.
 - `EyeBlink` changes only clipped eye apertures. Hair, face boundaries and hands remain on the shared portrait.
 - `CharacterMotion` uses damped continuous motion and settles after pause. Bitmap density is disabled so geometry stays consistent across device DPI.
-- `AudioRhythm` analyzes local recordings for tempo and energy. The ExoPlayer PCM processor and Rust render meter provide live energy for streamed songs. The PCM processor forwards the original bytes unchanged; native metering reads sparse samples and stores one atomic value.
+- Production artwork reads live energy from the ExoPlayer PCM processor and Rust render meter. `AudioRhythm` retains the reference offline analysis model; the current artwork path passes no offline rhythm. The PCM processor forwards the original bytes unchanged; native metering reads sparse samples and stores one atomic value.
 - `WitchPlaylist` validates imported audio before atomically replacing an app-private recording. It coexists with the complete CPPlayer library.
 - `MainActivity` observes new launch intents so notification/widget returns can expand an already-running player.
 
