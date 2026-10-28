@@ -4,17 +4,21 @@
 
 ## 当前开发版本 0.3.3
 
-本阶段先优化长标题/大字号下的竖屏插画空间分配，让首屏完整展示人物并保持全部控制可达。当前先加真实布局回归，产品布局尚未修改；后续继续跨曲下载所有权、无调用UI依赖剥离。[0.3.2预览](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.2)已发布，R8/确切包已通过；本分支0.3.3仍在开发。
+本阶段先修长标题/2倍字体的竖屏首屏插画空间：修复前检查已复现98dp画面落入控制区，当前产品修复待实施；沿用共同人物/眼睛素材和现有等比绘制。后续接跨曲下载所有权、无调用UI依赖剥离。本分支0.3.3未发布。
+
+0.3.2已发布验证预览：手动频率/增益/Q与AutoEQ、换采样率后DSP恢复、联网缓冲暂停、完整队列状态交接、进程所有的延迟缓存与下载取消清理；删除无调用的USB独占桥接。源码基线113acb0，完整边界见[变更](CHANGELOG.md)和[验证索引](docs/VALIDATION-2026-10-25.md)。
 
 普通版与自用版分离，账号、云端发现、搜索、收藏、歌单和下载流程正在迁移。功能边界与已知缺口见 [CORE-BOUNDARIES.md](docs/CORE-BOUNDARIES.md)；历史模拟器检查不能代替最新代码或实机验收。播放页采用独立组件，按宽度与方向适配，并为大字体保留滚动及可达操作区。
 
-## 0.3.1 验证预览版
+## 0.3.2 验证预览版
 
-[APK、原生库及验证记录](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.1)。普通 fastRelease Android 16 检查 30 通过/1 登录条件跳过；普通/自用 R8 构建、普通 R8 冷启动和原始 universal 安装/启动通过。相同 R8 APK 的系统/原生双引擎已通过实际文件选择器导入、暂停/定位、后台播放与系统通知点击返回；截图和短时无声动作预览随验证归档提供。原生公开释放契约和实时 EQ 渲染检查通过。实机音质/路由、真实账号及长时稳定性未验收。
+[APK、三ABI原生库、日志和验证归档](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.2)。主线Android 16检查36通过/1登录条件跳过（37项，104.993秒）；普通/自用R8构建通过。未经重打包的通用R8包另通过系统/原生2项跨应用检查（55.117秒）：系统文件选择器导入、播放/暂停、12秒定位、后台与实际通知点击返回。最终该通用包安装/冷启动1749ms和发布归档通过。
 
-使用 CI 临时签名，versionCode52；与 0.3.0 证书不同。升级前备份本地音频及设置，必要时卸载旧预览；不保证后续构建可覆盖升级。旧 [0.3.0](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0) 附件保留。参数频率/Q 编辑与缓存边界后续工作不属于此包。
+原始APK：versionCode106，SHA256 `13c1401d2121e2cde477c2b3d08064366c65b34357e210253c641aa775f9a27c`，minSdk28/target36。CI临时证书与0.3.1不同，不保证覆盖升级；已有导入与设置请先备份，固定本地签名/实机登录由本地agent接续。旧[0.3.1](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.1)和[0.3.0](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.0)附件保留。
 
-已知调查项：后续 0.3.2 组合回归在快速切换引擎后，实时 EQ 发生间歇停止；正在 [PR #4](https://github.com/SturgeonIsSleepy/codex-source/pull/4) 定位。0.3.1 的通过记录保留其实际范围，暂不能排除同类间歇问题。
+验证ZIP的index.json索引21个历史artifact和6份原始任务日志。确切R8截图/无声短片位于history/12766192574.zip的r8-check、native-motion.mp4和system-motion.mp4；主线布局图见history/12765768463.zip。失败、SDK准备阶段未执行和登录跳过保持原结论。
+
+尚未完成：实机音质/路由、真实账号和长时稳定性；2倍字体长标题时首屏完整人物适配；跨曲下载所有权、淡入淡出和缓存管理入口。旧Stop路径已记录，交接空状态与取消契约有红绿证据，不宣称所有潜在停止根因均已消失。下一开发分支agent/eplayer-portrait-fit先处理首屏插画完整显示。
 
 ## 0.1.1 历史预览版
 
