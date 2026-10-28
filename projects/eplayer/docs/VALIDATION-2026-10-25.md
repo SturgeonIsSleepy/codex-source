@@ -405,3 +405,12 @@ LyricsFlowTest给UUID独占的离线歌词缓存与30秒合成WAV建立暂停会
 FlickPlayer去掉awaitingNativeStart附加标志，以已有用户意图统一处理：仍请求播放的内部Stopped保持BUFFERING，已请求暂停保持READY，显式Player.stop仍同步IDLE且不可被旧Playing/Paused复活；本地输出真实持续停止超过15秒报告错误并停止，不永久假装Playing。暂停意图只由恢复/显式Stop解除，旧Paused不能改变它。合法框架Stop检查继续保留，新增1秒稳定性窗口；未按来源过滤任何Stop。会话状态日志记录是否真正发布到session，设备采集补系统媒体/通知标签，帮助检验是否出现“暂时IDLE→通知移除→系统Stop”的链条，不把该链条预判为已证实。
 
 诊断字段首次把nullable session误作lateinit，导致本地编译失败，改为安全引用后28 JVM/主程序/设备包构建通过（6秒）；收尾源码28 JVM/主程序/设备包构建通过（5秒），设备结果待执行。31项根脚本通过，失败路径也保存系统媒体诊断的证据契约已补检查。下一项同47项整轮及实际截图，不盲重跑旧失败源码。
+
+
+## 9a55215未修复系统Stop；交接中人为PAUSED的进一步审计
+
+9a5521578ce7b43752fa4d83c8e2ad2c6614eb39 /CI40756489129：47项45通过/1失败/1登录跳过（100.501秒），仍是EQ启动state=IDLE/native=stopped，未解决。artifact12845774812 ZIP SHA256eed1c0f5611cfa82661a65c2d46819dc381209f3e3a8aa053277171bf58c5517已下载核对。系统MediaSessionService日志明确19:50:07.095 callingPackage=com.android.systemui，随后legacy Stop；此前当前会话BUFFERING，不可再声称“临时IDLE→通知撤销”已证实或已修复。新事件/意图边界保留其独立价值，但不当作这次Stop根因已解决。
+
+进一步实际读Android16 AOSP LegacyMediaDataManagerImpl/MediaCarouselController：关闭媒体续播时，paused媒体数据可经removePlayer→dismissMediaData→transportControls.stop；异步回调可能晚到。当前MusicService在仍发布旧player时previous.pause，并将PWR=false的新player交接后才恢复true，真实框架日志19:50:05.038/.066/.068连续PAUSED后再BUFFERING。这个人为暂停不属于用户暂停，新增同一三轮真实框架检查，禁止播放请求中的交接发布PAUSED（既有NONE/STOPPED与真实失焦暂停/合法Stop检查保留）。当前只加断言，产品未改；本地/设备结果待执行。
+
+下一候选用短期ForwardingPlayer交接快照，已恢复非空新队列对外保持BUFFERING/PWR=true，旧player在解除发布后再pause/release，最后启动并发布实际新player。不是过滤任何系统Stop，也不把新音频提前启动来抢焦点；需要同检查红绿和EQ真实幅度组合通过。另审计快速原生Playing可能在Main订阅排队期间丢失，待用UNDISPATCHED同步建立事件订阅，不增加整脸贴图/新用户状态标志。

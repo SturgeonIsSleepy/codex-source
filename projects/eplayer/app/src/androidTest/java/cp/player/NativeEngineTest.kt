@@ -154,8 +154,8 @@ class NativeEngineTest {
                 playing && (native { RustEngine.getProgress()?.positionSecs } ?: 0.0) > .5
             }
             instrumentation.waitForIdleSync()
-            assertFalse("Engine handover published an empty/stopped framework session: $handoverStates",
-                handoverStates.any { it == PlaybackState.STATE_NONE || it == PlaybackState.STATE_STOPPED })
+            assertFalse("Playing engine handover published an empty/stopped/paused framework session: $handoverStates",
+                handoverStates.any { it == PlaybackState.STATE_NONE || it == PlaybackState.STATE_STOPPED || it == PlaybackState.STATE_PAUSED })
             // The handover fix must not ignore a genuine permanent loss to another focus owner.
             val audio = context.getSystemService(android.media.AudioManager::class.java)
             val competingFocus = android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN)
