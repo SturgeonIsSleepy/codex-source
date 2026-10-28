@@ -95,6 +95,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
             }.onFailure { message.value = "播放服务连接失败：${it.cause?.message ?: it.message}" }
         }, MoreExecutors.directExecutor())
     }
+    fun refreshPlaybackSnapshot() { publish() }
     fun setVisible(value: Boolean) { visible = value; restartTicker(); if (value) observeDownloads() else { downloadObserver?.cancel(); downloadObserver = null } }
     fun setProgressVisible(value: Boolean) { progressVisible = value; if (value) publish() else restartTicker() }
     private fun publish() {

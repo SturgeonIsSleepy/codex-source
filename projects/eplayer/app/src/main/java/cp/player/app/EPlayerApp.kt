@@ -85,7 +85,10 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
         model.setVisible(lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
         onDispose { lifecycle.removeObserver(observer); model.setVisible(false) }
     }
-    LaunchedEffect(page) { if (page != 0) cloud.ensureLibrary() }
+    LaunchedEffect(page, discovery) {
+        if (page == 0 && !discovery) model.refreshPlaybackSnapshot()
+        else if (page != 0) cloud.ensureLibrary()
+    }
     DisposableEffect(discovery) {
         cloud.setDiscoveryVisible(discovery)
         onDispose { if (discovery) cloud.setDiscoveryVisible(false) }

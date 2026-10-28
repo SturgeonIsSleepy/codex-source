@@ -40,14 +40,15 @@ class MusicService : MediaSessionService() {
     private var engine = 0
     private val handler = Handler(Looper.getMainLooper())
     private val listeningClock = cp.player.app.ListeningClock()
-    private val listeningCheckpoint = Runnable { checkpointListening() }
-    private fun checkpointListening(finishing: Boolean = false) {
+    private val listeningCheckpoint = Runnable { checkpointListening(saveQueue = true) }
+    private fun checkpointListening(finishing: Boolean = false, saveQueue: Boolean = false) {
         val id = player.currentMediaItem?.let { item ->
             "${item.mediaMetadata.extras?.getString("source").orEmpty()}:${item.mediaId}"
         }
         listeningClock.update(SystemClock.elapsedRealtime(), id, !finishing && player.isPlaying)?.let { (track, elapsed) ->
             cp.player.app.ListeningStatsStore.record(this, track, elapsed)
         }
+        if (saveQueue) QueueStore.save(this, player, queueChanged = false)
         handler.removeCallbacks(listeningCheckpoint)
         if (!finishing && player.isPlaying) handler.postDelayed(listeningCheckpoint, 30000)
     }
