@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.google.gson.Gson
+import com.google.gson.JsonParser
 import java.io.File
 import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +29,18 @@ object LyricParser {
         val shift = offset.find(text)?.groupValues?.get(1)?.toLongOrNull() ?: 0
         val result = mutableListOf<TimedLine>()
         text.lines().forEach { line ->
+            // NCM embeds author/composer credits as JSON among normal LRC lines.
+            // Render the text fragments, never the transport representation.
+            val credit = if (line.trimStart().startsWith("{")) runCatching {
+                val value = JsonParser.parseString(line).asJsonObject
+                val fragments = value.getAsJsonArray("c") ?: return@runCatching null
+                val content = fragments.joinToString("") { it.asJsonObject.get("tx")?.asString.orEmpty() }.trim()
+                TimedLine(((value.get("t")?.asLong ?: 0L) + shift).coerceAtLeast(0), content)
+            }.getOrNull() else null
+            if (credit != null) {
+                if (credit.text.isNotBlank()) result += credit
+                return@forEach
+            }
             val stamps = stamp.findAll(line).toList()
             val content = stamp.replace(line, "").trim()
             if (stamps.isEmpty()) {

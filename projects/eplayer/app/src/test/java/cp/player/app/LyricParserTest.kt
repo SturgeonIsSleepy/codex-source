@@ -24,4 +24,17 @@ class LyricParserTest {
     @Test fun untimedContentIsStillReadable() {
         assertEquals(listOf("fixture-a", "fixture-b"), LyricParser.parse("fixture-a\n\nfixture-b").map { it.text })
     }
+    @Test fun neteaseJsonCreditsDisplayTextInsteadOfJson() {
+        val text = """{"t":0,"c":[{"tx":"作词: "},{"tx":"Ririko"}]}
+{"t":1000,"c":[{"tx":"作曲: "},{"tx":"Ririko"}]}
+[00:02.50]纯音乐，请欣赏"""
+        val lines = LyricParser.parse(text)
+        assertEquals(listOf("作词: Ririko", "作曲: Ririko", "纯音乐，请欣赏"), lines.map { it.text })
+        assertEquals(listOf(0L, 1000L, 2500L), lines.map { it.time })
+    }
+    @Test fun emptyJsonCreditsDoNotCreateBlankLyricRows() {
+        assertEquals(listOf(TimedLine(1000, "first")),
+            LyricParser.parse("""{"t":0,"c":[]}
+[00:01]first"""))
+    }
 }
