@@ -54,6 +54,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     private var currentMediaItemIndex = 0
     @Volatile private var playWhenReady = false
     private var isPlaying = false
+    private var awaitingNativeStart = false
     @Volatile private var released = false
     private var playbackError: PlaybackException? = null
     @Volatile private var playerVolume = 1f
@@ -302,8 +303,17 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
             return
         }
 
+        // Stop is queued asynchronously before Play. Its acknowledgement can arrive
+        // after startNativeItem has submitted the new command. Keep the new item
+        // buffering until Playing acknowledges startup instead of publishing IDLE.
+        // Explicit Player.stop() still changes state immediately in handleStop.
+        if (awaitingNativeStart && state.lowercase() in setOf("stopped", "idle", "paused")) {
+            Log.d(TAG, "Ignoring previous native command acknowledgement during startup: $state")
+            return
+        }
         when (state.lowercase()) {
             "playing" -> {
+                awaitingNativeStart = false
                 // 流媒体 Seek 后：接受 "Playing" 状态，同时启动看门狗。
                 // 如果 Seek 目标超出已下载范围，解码器会阻塞在 I/O 上（ring buffer 为空，
                 // 音频回调输出静音），引擎不会发送 TrackEnded 也不会发送进度。
@@ -486,6 +496,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     }
 
     private fun handleError(message: String) {
+        awaitingNativeStart = false
         Log.e(TAG, "Rust error: $message")
 
         if (isDownloading && !downloadComplete) {
@@ -983,6 +994,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     }
 
     override fun handleStop(): ListenableFuture<*> {
+        awaitingNativeStart = false
         val origin = Thread.currentThread().stackTrace.filter {
             it.className.startsWith("cp.player.") || it.className.startsWith("androidx.media3.")
         }.take(6).joinToString(" <- ") { "${it.className.substringAfterLast('.')}.${it.methodName}:${it.lineNumber}" }
@@ -1088,6 +1100,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         if (playlist.isEmpty()) return
 
         val item = playlist[currentMediaItemIndex].item
+        awaitingNativeStart = true
         playbackError = null
         pendingStartPositionMs = startPositionMs
         updatePosition(startPositionMs)

@@ -147,7 +147,7 @@ class NativeEngineTest {
             legacy!!.registerCallback(observer, Handler(Looper.getMainLooper()))
             instrumentation.waitForIdleSync()
             handoverStates.clear()
-            repeat(2) { engine(0); engine(1) }
+            repeat(3) { engine(0); engine(1) }
             await(15000) {
                 var playing = false
                 main { playing = controller!!.isPlaying }
