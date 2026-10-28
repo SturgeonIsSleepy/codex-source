@@ -1,3 +1,6 @@
+import hashlib
+import io
+import zipfile
 import importlib.util
 import json
 import os
@@ -76,3 +79,34 @@ class DeliveryChecks(unittest.TestCase):
                        f'Signer #1 certificate SHA-256 digest: {delivery.CERT}\nSigner #2 certificate SHA-256 digest: {"0" * 64}\n']:
             with self.subTest(output=output), self.assertRaises(RuntimeError):
                 delivery.verify_certificate(output)
+
+
+class JobEvidenceChecks(unittest.TestCase):
+    def test_failed_setup_log_is_archived_with_original_result_and_source(self):
+        job = dict(id=123, run_id=456, run_attempt=1, status='completed', conclusion='failure')
+        run = dict(id=456, head_sha='a' * 40, conclusion='failure')
+        content = b'\x1b[31mSDK install failed; no device tests executed\x1b[0m\n'
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w') as archive, patch.object(delivery, 'gh', side_effect=[json.dumps(job), json.dumps(run)]), patch.object(delivery.subprocess, 'check_output', return_value=content):
+            index = delivery.archive_job_logs(archive, [123])
+        with zipfile.ZipFile(buffer) as archive:
+            self.assertEqual(content, archive.read(index[0]['path']))
+            self.assertEqual(hashlib.sha256(content).hexdigest(), index[0]['sha256'])
+            metadata = json.loads(archive.read('workflow-jobs/123/metadata.json'))
+            self.assertEqual('failure', metadata['job']['conclusion'])
+            self.assertEqual(1, index[0]['run_attempt'])
+            self.assertEqual('a' * 40, index[0]['source'])
+
+    def test_incomplete_or_mismatched_job_cannot_supply_release_evidence(self):
+        for job in [dict(id=123, status='in_progress', run_id=456), dict(id=789, status='completed', run_id=456)]:
+            with self.subTest(job=job), zipfile.ZipFile(io.BytesIO(), 'w') as archive, patch.object(delivery, 'gh', return_value=json.dumps(job)), patch.object(delivery.subprocess, 'check_output') as download, self.assertRaises(RuntimeError):
+                delivery.archive_job_logs(archive, [123])
+            download.assert_not_called()
+
+    def test_job_ids_are_validated_before_any_release_operation(self):
+        for jobs in [[True], [0], [-1], [123, 123], '--repo']:
+            with self.subTest(jobs=jobs), tempfile.TemporaryDirectory() as folder:
+                path = Path(folder) / 'manifest.json'
+                path.write_text(json.dumps(dict(delivery.CONFIG, evidence_jobs=jobs)))
+                with self.assertRaises(ValueError):
+                    delivery.load_manifest(path)

@@ -2,6 +2,9 @@ package cp.player.core.audio
 
 /** A decoder-independent imported profile; unsupported processing stays explicit. */
 data class EqualizerBand(val frequency: Float, val gain: Float, val q: Float)
+/** Shared bounds for imported and manually edited native peaking filters. */
+fun EqualizerBand.isValid(): Boolean = frequency.isFinite() && frequency in 10f..48000f &&
+    gain.isFinite() && gain in -24f..24f && q.isFinite() && q in .05f..30f
 data class EqualizerProfile(val bands: List<EqualizerBand>, val preamp: Float?, val warnings: List<String>)
 
 object EqualizerProfileParser {
@@ -17,8 +20,7 @@ object EqualizerProfileParser {
             val f = frequency.toFloatOrNull()
             val g = gain.toFloatOrNull()
             val width = q.toFloatOrNull()
-            require(f != null && f.isFinite() && f in 10f..48000f && g != null && g.isFinite() && g in -24f..24f &&
-                width != null && width.isFinite() && width in .05f..30f) { "频率、增益或 Q 值无效" }
+            require(f != null && g != null && width != null && EqualizerBand(f, g, width).isValid()) { "频率、增益或 Q 值无效" }
             require(bands.size < MAX_BANDS) { "均衡器频段过多" }
             bands += EqualizerBand(f, g, width)
         }

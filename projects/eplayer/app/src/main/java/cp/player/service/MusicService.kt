@@ -12,10 +12,11 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Log
+import android.view.KeyEvent
 import androidx.core.content.ContextCompat
+import androidx.core.content.IntentCompat
 import androidx.media3.common.Player
-import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
-import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
@@ -29,7 +30,6 @@ import cp.player.core.playback.PlaybackSleepTimer
 import cp.player.engine.CPPlayerManager
 import cp.player.util.UserPreferences
 import cp.player.widget.MusicWidgetProvider
-import java.io.File
 
 /** One audio player, event-driven notifications and no background UI/lyric polling. */
 class MusicService : MediaSessionService() {
@@ -82,6 +82,25 @@ class MusicService : MediaSessionService() {
                             .add(SessionCommand("SET_ENGINE", Bundle.EMPTY))
                             .add(SessionCommand(PlaybackSleepTimer.COMMAND, Bundle.EMPTY)).build()).build()
                 }
+                override fun onPlayerInteractionFinished(session: MediaSession,
+                    controller: MediaSession.ControllerInfo, playerCommands: Player.Commands) {
+                    if (playerCommands.contains(Player.COMMAND_STOP)) {
+                        // Only whitelist our fixture labels; never dump arbitrary connection hints.
+                        val label = controller.connectionHints.getString("eplayer.qa.owner")
+                            .takeIf { it in setOf("integration", "equalizer", "stream", "native-contract") } ?: "external"
+                        Log.i("EPlayerSession", "Stop batch owner=$label package=${controller.packageName} " +
+                            "sameUid=${controller.uid == android.os.Process.myUid()} version=${controller.controllerVersion} verified=${controller.isPackageNameVerified}")
+                    }
+                }
+                override fun onMediaButtonEvent(session: MediaSession, controller: MediaSession.ControllerInfo,
+                    intent: Intent): Boolean {
+                    val key = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
+                    if (key?.keyCode == KeyEvent.KEYCODE_MEDIA_STOP) {
+                        val dismissal = intent.getBooleanExtra("androidx.media3.session.NOTIFICATION_DISMISSED_EVENT_KEY", false)
+                        Log.i("EPlayerSession", "Callback media STOP key; sameUid=${controller.uid == android.os.Process.myUid()} notificationDismissal=$dismissal")
+                    }
+                    return super.onMediaButtonEvent(session, controller, intent)
+                }
                 override fun onCustomCommand(session: MediaSession, controller: MediaSession.ControllerInfo,
                     command: SessionCommand, args: Bundle): ListenableFuture<SessionResult> {
                     if (command.customAction == PlaybackSleepTimer.COMMAND) {
@@ -115,9 +134,15 @@ class MusicService : MediaSessionService() {
                         player.shuffleModeEnabled = shuffle
                         player.volume = volume
                         player.addListener(listener)
+                        // Restore the replacement before publishing it to modern and framework controllers.
+                        // Publishing its initial empty/IDLE state makes a live handover look like a stop.
+                        if (items.isNotEmpty()) {
+                            player.setMediaItems(items, index, position)
+                            player.prepare()
+                            player.playWhenReady = playing
+                        }
                         session.setPlayer(player)
                         CPPlayerManager.releasePlayer(previous)
-                        if (items.isNotEmpty()) { player.setMediaItems(items, index, position); player.prepare(); player.playWhenReady = playing }
                     }
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
@@ -126,6 +151,13 @@ class MusicService : MediaSessionService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == Intent.ACTION_MEDIA_BUTTON) {
+            val key = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
+            if (key?.keyCode == KeyEvent.KEYCODE_MEDIA_STOP) {
+                val dismissal = intent.getBooleanExtra("androidx.media3.session.NOTIFICATION_DISMISSED_EVENT_KEY", false)
+                Log.i("EPlayerSession", "Incoming media STOP key; keyAction=${key.action} notificationDismissal=$dismissal")
+            }
+        }
         when (intent?.action) {
             "ACTION_TOGGLE_PLAY" -> player.togglePlayback()
             "ACTION_NEXT" -> player.seekToNextMediaItem()
@@ -152,15 +184,5 @@ class MusicService : MediaSessionService() {
         val metadata = player.mediaMetadata
         ids.forEach { MusicWidgetProvider.updateAppWidget(this, manager, it, metadata.title?.toString(),
             metadata.artist?.toString(), metadata.artworkUri?.toString(), player.isPlaying) }
-    }
-    companion object {
-        private var cache: SimpleCache? = null
-        @Synchronized fun getCache(context: Context): SimpleCache = cache ?: SimpleCache(
-            File(context.cacheDir, "media"), LeastRecentlyUsedCacheEvictor(256L * 1024 * 1024),
-            androidx.media3.database.StandaloneDatabaseProvider(context)).also { cache = it }
-        @Synchronized fun clearAudioCache(context: Context) {
-            cache?.release(); cache = null
-            File(context.cacheDir, "media").deleteRecursively()
-        }
     }
 }

@@ -115,8 +115,9 @@ object RustEngine {
         return nativeResume()
     }
 
-    fun stop(): Boolean {
+    fun stop(reason: String = "unspecified"): Boolean {
         if (!isInitialized) return false
+        Log.i(TAG, "Native Stop requested; reason=$reason")
         return nativeStop()
     }
 
@@ -132,6 +133,7 @@ object RustEngine {
 
     fun setEqualizer(enabled: Boolean, freqs: FloatArray, gains: FloatArray, qs: FloatArray): Boolean {
         if (!isInitialized) return false
+        Log.i(TAG, "Native EQ update; enabled=$enabled bands=${freqs.size}")
         return nativeSetEqualizer(enabled, freqs, gains, qs)
     }
 
@@ -148,6 +150,7 @@ object RustEngine {
         width: Float
     ): Boolean {
         if (!isInitialized) return false
+        Log.i(TAG, "Native FX update; enabled=$enabled")
         return nativeSetFx(
             enabled, balance, tempo, damp, filterHz, delayMs, size, mix, feedback, width
         )
@@ -236,6 +239,7 @@ object RustEngine {
             when (type) {
                 "StateChanged" -> {
                     val state = json.optString("state", "Idle")
+                    Log.i(TAG, "Native state event: $state")
                     val path = json.optString("path", "").ifEmpty { null }
                     _engineState.value = state
                     _audioEvents.tryEmit(AudioEvent.StateChanged(state, path))
@@ -288,45 +292,14 @@ object RustEngine {
         Log.i(TAG, "stopEngine: Stopping Rust polling and engine")
         pollJob?.cancel()
         pollJob = null
-        val success = stop()
+        val success = stop("adapter-release")
         Log.i(TAG, "stopEngine: nativeStop returned: $success")
     }
 
     // JNI external methods
-    fun setRustDirectUsbPlaybackFormat(
-        sampleRate: Int,
-        bitDepth: Int,
-        channels: Int,
-        isDop: Boolean,
-        isNativeDsd: Boolean
-    ): Boolean {
-        if (!isInitialized) return false
-        return nativeSetRustDirectUsbPlaybackFormat(sampleRate, bitDepth, channels, isDop, isNativeDsd)
-    }
-
-    fun hasRustDirectUsbHardwareVolume(): Boolean {
-        if (!isInitialized) return false
-        return nativeHasRustDirectUsbHardwareVolume()
-    }
-
     fun isRustDirectUsbSessionActive(): Boolean {
         if (!isInitialized) return false
         return nativeIsRustDirectUsbSessionActive()
-    }
-
-    fun getRustDirectUsbHardwareVolume(): Double {
-        if (!isInitialized) return 0.0
-        return nativeGetRustDirectUsbHardwareVolume()
-    }
-
-    fun setRustDirectUsbHardwareVolume(volume: Double): Boolean {
-        if (!isInitialized) return false
-        return nativeSetRustDirectUsbHardwareVolume(volume)
-    }
-
-    fun setRustDirectUsbHardwareMute(muted: Boolean): Boolean {
-        if (!isInitialized) return false
-        return nativeSetRustDirectUsbHardwareMute(muted)
     }
 
     private external fun nativeInit(): Boolean
@@ -348,65 +321,14 @@ object RustEngine {
     private external fun nativeGetProgress(): String?
     private external fun nativePollEvent(): String?
     
-    // USB Audio Direct JNI external methods
-    private external fun nativeRegisterRustDirectUsbDevice(
-        fd: Int,
-        vendorId: Int,
-        productId: Int,
-        productName: String?,
-        manufacturer: String?,
-        serial: String?,
-        deviceName: String?
-    ): Boolean
-    private external fun nativeSetRustDirectUsbPlaybackFormat(
-        sampleRate: Int,
-        bitDepth: Int,
-        channels: Int,
-        isDop: Boolean,
-        isNativeDsd: Boolean
-    ): Boolean
-    private external fun nativeSetRustDirectUsbLockEnabled(enabled: Boolean): Boolean
-    private external fun nativeHasRustDirectUsbHardwareVolume(): Boolean
-    private external fun nativeGetRustDirectUsbHardwareVolume(): Double
-    private external fun nativeSetRustDirectUsbHardwareVolume(volume: Double): Boolean
-    private external fun nativeGetRustDirectUsbHardwareMute(): Int
-    private external fun nativeSetRustDirectUsbHardwareMute(muted: Boolean): Boolean
-    private external fun nativeVerifyRustDirectUsbHardwareVolumeHealth(): Int
     fun getRustAudioDebugStateJson(): String {
         if (!isInitialized) return "{}"
         return nativeGetRustAudioDebugStateJson()
     }
 
     private external fun nativeGetRustAudioDebugStateJson(): String
-    private external fun nativeClearRustDirectUsbPlayback(): Boolean
-    private external fun nativeWaitRustDirectUsbSessionStopped(timeoutMs: Int): Boolean
+    // Read-only regression probe; no Android path can register/claim a USB device.
     private external fun nativeIsRustDirectUsbSessionActive(): Boolean
-    private external fun nativeMarkRustDirectUsbFallback(reason: String?): Boolean
-    
-    fun registerDirectUsbDevice(
-        fd: Int,
-        vendorId: Int,
-        productId: Int,
-        productName: String?,
-        manufacturer: String?,
-        serial: String?,
-        deviceName: String?
-    ): Boolean {
-        if (!isInitialized) return false
-        return nativeRegisterRustDirectUsbDevice(
-            fd, vendorId, productId, productName, manufacturer, serial, deviceName
-        )
-    }
-
-    fun clearDirectUsbPlayback(): Boolean {
-        if (!isInitialized) return false
-        return nativeClearRustDirectUsbPlayback()
-    }
-
-    fun waitRustDirectUsbSessionStopped(timeoutMs: Int): Boolean {
-        if (!isInitialized) return true
-        return nativeWaitRustDirectUsbSessionStopped(timeoutMs)
-    }
 
     // ═══════════════════════════════════════════════
     // DSD / DAP 设置 JNI

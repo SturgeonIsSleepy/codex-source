@@ -29,23 +29,27 @@ internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
     val importFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(store::previewProfile) }
     var showSound by rememberSaveable { mutableStateOf(false) }
     DisposableEffect(store) { onDispose { store.dismissImport() } }
-    Dialog(onDismissRequest = { if (showSound) showSound = false else close() },
+    val back: () -> Unit = {
+        if (showSound) { store.dismissImport(); showSound = false } else close()
+    }
+    Dialog(onDismissRequest = back,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Surface(Modifier.fillMaxSize().testTag("settings-panel")) {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(if (showSound) "声音" else "设置", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
-                    TextButton(onClick = { if (showSound) showSound = false else close() }) { Text(if (showSound) "返回设置" else "完成") }
+                    TextButton(onClick = back) { Text(if (showSound) "返回设置" else "完成") }
                 }
                 HorizontalDivider()
                 if (showSound) {
-                    SoundSettingsScreen(sound, store::equalizer, store::band, store::flat, store::toggle, store::amount) { importFile.launch(arrayOf("text/*")) }
+                    SoundSettingsScreen(sound, store::equalizer, store::band, store::flat, store::toggle,
+                        store::amount, editBand = store::editBand) { importFile.launch(arrayOf("text/*")) }
                 } else PlaybackSettings(model, sound.engine) { showSound = true }
             }
         }
     }
     profile?.let { imported ->
-        AlertDialog(onDismissRequest = store::dismissImport, title = { Text("导入均衡器") }, text = {
+        AlertDialog(onDismissRequest = store::dismissImport, modifier = Modifier.testTag("eq-import-preview"), title = { Text("导入均衡器") }, text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("将替换当前 ${sound.bands.size} 段，应用文件中的 ${imported.bands.size} 段滤波器并启用均衡器。")
                 imported.preamp?.takeIf { it != 0f }?.let { Text("文件的前置增益 $it dB 尚未支持，不会应用。") }
@@ -83,7 +87,7 @@ private fun PlaybackSettings(model: EPlayerViewModel, engine: Int, openSound: ()
             }
         }
         listOf("系统音频", "Rust 音频").forEachIndexed { index, label ->
-            Row(Modifier.fillMaxWidth().clickable { model.setEngine(index) }, verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().testTag("audio-engine-$index").clickable { model.setEngine(index) }, verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(engine == index, { model.setEngine(index) }); Text(label)
             }
         }
