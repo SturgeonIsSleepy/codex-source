@@ -29,6 +29,7 @@ import cp.player.core.playback.togglePlayback
 import cp.player.core.playback.PlaybackSleepTimer
 import cp.player.engine.CPPlayerManager
 import cp.player.util.UserPreferences
+import cp.player.core.playback.PlaybackHandoverPlayer
 import cp.player.widget.MusicWidgetProvider
 
 /** One audio player, event-driven notifications and no background UI/lyric polling. */
@@ -66,8 +67,8 @@ class MusicService : MediaSessionService() {
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
             if (events.containsAny(Player.EVENT_PLAYBACK_STATE_CHANGED, Player.EVENT_PLAY_WHEN_READY_CHANGED)) {
-                Log.i("EPlayerSession", "Playback engine=$engine published=${session?.player === player} " +
-                    "state=${player.playbackState} requested=${player.playWhenReady} items=${player.mediaItemCount}")
+                Log.i("EPlayerSession", "Playback engine=$engine targetState=${player.playbackState} targetRequested=${player.playWhenReady} " +
+                    "publishedState=${session?.player?.playbackState} publishedRequested=${session?.player?.playWhenReady} items=${player.mediaItemCount}")
             }
             if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION)) checkpointListening()
             if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION,
@@ -144,7 +145,6 @@ class MusicService : MediaSessionService() {
                         val previous = player
                         rustFocus?.close(); rustFocus = null
                         previous.removeListener(listener)
-                        previous.pause()
                         engine = requested
                         UserPreferences.saveAudioEngine(this@MusicService, engine)
                         player = CPPlayerManager.createPlayer(this@MusicService, engine)
@@ -159,11 +159,15 @@ class MusicService : MediaSessionService() {
                             player.setMediaItems(items, index, position)
                             player.prepare()
                         }
-                        session.setPlayer(player)
+                        // Do not publish the old pause or the new player's initial false PWR.
+                        // SystemUI may dismiss a paused card and send a delayed Stop.
+                        session.setPlayer(PlaybackHandoverPlayer(player, playing && items.isNotEmpty()))
+                        previous.pause()
                         // Media3 requests focus on its playback thread. Drain that owner's release
                         // before the replacement requests focus, or a late old request can pause it.
                         CPPlayerManager.releasePlayer(previous)
                         if (items.isNotEmpty()) player.playWhenReady = playing
+                        session.setPlayer(player)
                     }
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }

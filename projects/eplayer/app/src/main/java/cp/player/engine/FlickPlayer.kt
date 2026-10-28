@@ -15,6 +15,7 @@ import androidx.media3.common.SimpleBasePlayer
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
@@ -236,7 +237,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     // ═══════════════════════════════════════════════
 
     private fun observeRustEvents() {
-        engineEventJob = scope.launch {
+        engineEventJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             RustEngine.audioEvents.collect { event ->
                 if (playlist.isEmpty() || pendingStartPositionMs != null || playbackError != null) return@collect
                 when (event) {

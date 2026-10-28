@@ -414,3 +414,12 @@ FlickPlayer去掉awaitingNativeStart附加标志，以已有用户意图统一�
 进一步实际读Android16 AOSP LegacyMediaDataManagerImpl/MediaCarouselController：关闭媒体续播时，paused媒体数据可经removePlayer→dismissMediaData→transportControls.stop；异步回调可能晚到。当前MusicService在仍发布旧player时previous.pause，并将PWR=false的新player交接后才恢复true，真实框架日志19:50:05.038/.066/.068连续PAUSED后再BUFFERING。这个人为暂停不属于用户暂停，新增同一三轮真实框架检查，禁止播放请求中的交接发布PAUSED（既有NONE/STOPPED与真实失焦暂停/合法Stop检查保留）。当前只加断言，产品未改；本地/设备结果待执行。
 
 下一候选用短期ForwardingPlayer交接快照，已恢复非空新队列对外保持BUFFERING/PWR=true，旧player在解除发布后再pause/release，最后启动并发布实际新player。不是过滤任何系统Stop，也不把新音频提前启动来抢焦点；需要同检查红绿和EQ真实幅度组合通过。另审计快速原生Playing可能在Main订阅排队期间丢失，待用UNDISPATCHED同步建立事件订阅，不增加整脸贴图/新用户状态标志。
+
+
+## 交接快照候选已构建，等待强化框架红绿
+
+3c853ab6d951722ac1e05b87c3ee8992db57f4a7 /CI40761055147只增加“请求播放的三轮往返不得出现PAUSED”断言，设备结果待取得；未改产品。本地设备包构建通过（17秒）。
+
+产品候选增加core/playback/PlaybackHandoverPlayer（短期ForwardingPlayer，无队列/解码器/服务）：新队列prepare后先以BUFFERING和原播放请求交接session，再暂停/释放旧player、恢复实际新player PWR，最后解除快照。旧player的pause已不在发布期间发生；真实暂停/失焦/Stop不被过滤，未启动新音频抢旧焦点。Flick的SharedFlow订阅改UNDISPATCHED，在构造的Main调用内立即建立，避免新Playing在订阅排队期间丢失；后续事件仍调度Main。28 JVM/主程序/设备包本地构建通过（16秒），31根脚本通过；强化47项设备尚未运行，不能称系统Stop已解决。
+
+新增只读CI诊断：记录qs_media_resumption原值，不修改；失败/超时/不完整时保存限定媒体相关的SystemUI与media_session dumpsys，帮助核对旧移除时序。只在本轮新建的隔离CI模拟器执行，不接用户设备。元数据不包含账户/音源凭据，根失败证据契约检查保留两份快照。
