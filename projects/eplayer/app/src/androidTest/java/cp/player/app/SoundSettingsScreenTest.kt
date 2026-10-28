@@ -46,6 +46,7 @@ class SoundSettingsScreenTest {
             compose.runOnIdle { model = ViewModelProvider(compose.activity)[EPlayerViewModel::class.java] }
             val current = model!!
             compose.onNodeWithContentDescription("设置").performClick()
+            compose.onNodeWithText("播放与声音").performClick()
             if (savedEngine != 1) compose.onNodeWithTag("audio-engine-1").performClick()
             compose.waitUntil(15000) { UserPreferences.getAudioEngine(context) == 1 }
             compose.onNodeWithTag("open-sound-settings").performClick()
@@ -107,6 +108,7 @@ class SoundSettingsScreenTest {
 
     @Test fun realSettingsNavigationReturnsToTheSameHome() {
         compose.onNodeWithContentDescription("设置").performClick()
+        compose.onNodeWithText("播放与声音").performClick()
         compose.onNodeWithTag("open-sound-settings").assertIsDisplayed()
         save("settings-full-page", "settings-panel")
         compose.onNodeWithTag("open-sound-settings").performClick()

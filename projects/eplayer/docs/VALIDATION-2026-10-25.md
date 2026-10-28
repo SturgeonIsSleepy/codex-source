@@ -377,3 +377,12 @@ runtime.txt在18:51:03.044至.097记录连续stopped/buffering/playing/paused/st
 artifact12843119440 ZIP SHA25631c82ec07ccd43aa1d3c4232e1a0b2813026b9a47a97dad067a01225de0e5822已下载核对；实际查看layout-check/portrait-2.0.png首屏全身及visual-check/player-rust-playing.png、player-rust-paused.png，闭眼/睁眼与头帽对齐保持。新代码未改任何人物/字体资产，没有逐脸换帧。开发分支本轮没有R8/确切发布APK验证；不挪用0.3.2发布结果。修复前e39becf attempt2仍在运行，SDK首次失败不算产品红色。
 
 独立0.5.0基线916f4e1 /CI40699053291证据12822860756 ZIP SHA256c73796d7c5d33e1aa5db2eeb5b9e0e3260ccbe0b66001a33357c305d8c298b3c已下载核对，实际查看release-home、portrait-2.0、settings-full-page：新导航/首页已经存在，大字号裁切仍存在。准备agent/eplayer-050-core-integration，以e86295b与ab7a227两父普通合并，不重写PR11/14历史；0.5.1未发布，组合验收不能继承旧绿色。去掉页面硬编码MusicRed，采用主题主色统一天空蓝，并保留深色模式、共同人物/字体、完整音乐源与新歌词流程。用户自用签名/模块/账号不操作。
+
+
+修复前e39becf /CI40748464795 attempt2已实际执行：38项36通过/1失败/1登录条件跳过（102.660秒），唯一失败switchingFromPrebufferToLocalTrackCannotBeOverwrittenByOldDownload，旧响应完成后本地30秒原生输出被改变。artifact12844910325 ZIP SHA25699b1c4474c563e88bd445a58446568344bfc680fabaafe114e84bda2fca6c079已下载核对，runtime保留本地nativePlay之后旧stream_cache再次nativePlay。与e86295b/CI40749734603相同检查通过形成红绿；首次SDK ZIP失败未执行仍保留，未撤销任何失败结果。
+
+## 0.5.1正常两父集成准备
+
+agent/eplayer-050-core-integration把037f742（e86295b的39项已验收核心及文档）与ab7a227（PR14、含PR11）正常合并，保留双方历史。冲突限于版本/入口说明与相同启动回执注释，实际保留源/账号/歌词、低频断点、导航、新增音乐源回归及本轮下载/焦点/布局修复；未改任何AndroidCloud入口、其他项目、图片或字体资产。统一MaterialTheme主色供首页/曲库/搜索/音质/底栏使用，移除MusicRed硬编码，纸白天空蓝与夜间蓝色容器并保留深色功能。原PR14的12个无调用旧文件/依赖清理保留，不能把从未接入的新会话淡入淡出功能称为已恢复。
+
+本地全新独立工作区构建通过（4分1秒），28项JVM全部通过，debug主程序/测试包已构建；本地临时debug密钥仅用于编译，不复制本地agent固定签名，也不安装到用户设备。只复用已校验Release原生库、SDK缓存；尚未运行本集成45项设备检查/R8/确切包和全页视觉。不挪用旧绿色结果；下一项就是组合验收，不在未完成前发布APK。

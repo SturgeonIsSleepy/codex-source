@@ -42,7 +42,7 @@ class MusicRepository(private val context: Context, val source: String) {
         return MusicEntry(item.str("id") ?: return null, item.str("name") ?: return null, source, kind,
             creator?.str("nickname") ?: artist?.str("name").orEmpty(),
             item.str("coverImgUrl") ?: item.str("picUrl") ?: item.str("img1v1Url"), creator?.str("userId"),
-            item.number("trackCount").takeIf { it > 0 } ?: item.number("size"), item.flag("subscribed"), item.number("specialType") == 5)
+            item.number("trackCount").takeIf { it > 0 } ?: item.number("size"), item.flag("subscribed") || item.flag("followed"), item.number("specialType") == 5)
     }
     private fun entries(array: JsonArray, kind: MusicKind): List<MusicEntry> = array.mapNotNull { entry(it, kind) }
     suspend fun account(): Account? {
@@ -80,7 +80,9 @@ class MusicRepository(private val context: Context, val source: String) {
         MusicKind.ALBUM -> {
             val response = request("album", mapOf("id" to target.id))
             val album = response.obj("album")
-            MusicDetail(album?.let { entry(it, target.kind) } ?: target, tracks(response.array("songs")), description = album?.str("description").orEmpty())
+            val information = runCatching { request("album/detail/dynamic", mapOf("id" to target.id)) }.getOrNull()
+            val albumEntry = album?.let { entry(it, target.kind) } ?: target
+            MusicDetail(albumEntry.copy(subscribed = information?.flag("isSub") ?: albumEntry.subscribed), tracks(response.array("songs")), description = album?.str("description").orEmpty())
         }
         MusicKind.ARTIST -> {
             val response = request("artists", mapOf("id" to target.id))
@@ -109,8 +111,8 @@ class MusicRepository(private val context: Context, val source: String) {
         }
     }
     suspend fun like(id: String, liked: Boolean) { request("like", mapOf("id" to id, "like" to liked.toString())) }
-    suspend fun createPlaylist(name: String): MusicEntry {
-        val response = request("playlist/create", mapOf("name" to name))
+    suspend fun createPlaylist(name: String, private: Boolean = false): MusicEntry {
+        val response = request("playlist/create", mapOf("name" to name, "privacy" to if (private) "10" else "0"))
         return response.obj("playlist")?.let { entry(it, MusicKind.PLAYLIST) } ?: error("创建歌单失败")
     }
     suspend fun renamePlaylist(id: String, name: String) { request("playlist/name/update", mapOf("id" to id, "name" to name)) }

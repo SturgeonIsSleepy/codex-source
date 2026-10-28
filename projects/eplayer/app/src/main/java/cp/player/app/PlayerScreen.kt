@@ -51,13 +51,19 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
     val position by model.position.collectAsState()
     DisposableEffect(model) { model.setProgressVisible(true); onDispose { model.setProgressVisible(false) } }
     var queue by remember { mutableStateOf(false) }
-    var lyrics by remember { mutableStateOf<String?>(null) }
+    var qualitySheet by remember { mutableStateOf(false) }
+    val quality by model.quality.collectAsState()
+    var lyrics by remember { mutableStateOf<LyricsText?>(null) }
+    var showLyrics by remember { mutableStateOf(false) }
     var seeking by remember(state.song?.id) { mutableStateOf<Float?>(null) }
     val scope = rememberCoroutineScope()
     val liked = state.song?.let { song ->
         if (state.source == null) song.id in favorites else (state.remoteId ?: song.id) in likes[state.source].orEmpty()
     } ?: false
-    val openLyrics = { scope.launch { lyrics = model.lyrics() }; Unit }
+    LaunchedEffect(showLyrics, state.source, state.remoteId, state.song?.id) {
+        lyrics = if (showLyrics) model.lyrics() else null
+    }
+    val openLyrics = { showLyrics = true }
     Dialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         PlayerLayout(
             state.song, state.buffering,
@@ -68,9 +74,11 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
                     factory = { WitchPlayerView(it) }, modifier = modifier,
                     update = { view ->
                         view.setMotionEnabled(animate)
+                        view.setArtworkActive(!showLyrics && !queue)
                         view.setPlayback(state.playing, state.playRequested, position) })
             },
             controls = {
+                Column {
                 PlayerTransport(state, position, seeking, { seeking = it }, {
                     seeking?.let { model.seek(it.toLong()) }; seeking = null
                 }, model::playPause, model::previous, model::next, model::shuffle, model::repeat, liked) {
@@ -78,18 +86,32 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
                         if (state.source == null) model.favorite(song) else model.currentTrack()?.let(cloud::like)
                     }
                 }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    TextButton(onClick = { qualitySheet = true }) { Text(qualityName(quality), style = MaterialTheme.typography.labelMedium) }
+                }
+                }
             }
         )
     }
     if (queue) ModalBottomSheet(onDismissRequest = { queue = false }) {
         LazyColumn(contentPadding = PaddingValues(20.dp)) {
-            items(state.queue.size) { index -> SongRow(Track(state.queue[index]), state.queue[index].id == state.song?.id,
-                { model.queueIndex(index); queue = false }) }
+            items(state.queue.size) { index ->
+                var options by remember { mutableStateOf(false) }
+                SongRow(Track(state.queue[index]), state.queue[index].id == state.song?.id, { model.queueIndex(index); queue = false }) {
+                    Box {
+                        IconButton(onClick = { options = true }) { Icon(Icons.Default.MoreVert, "队列操作") }
+                        DropdownMenu(options, { options = false }) {
+                            if (index > 0) DropdownMenuItem(text = { Text("上移") }, onClick = { options = false; model.moveQueue(index, index - 1) })
+                            if (index < state.queue.lastIndex) DropdownMenuItem(text = { Text("下移") }, onClick = { options = false; model.moveQueue(index, index + 1) })
+                            DropdownMenuItem(text = { Text("移除") }, onClick = { options = false; model.removeQueue(index) })
+                        }
+                    }
+                }
+            }
         }
     }
-    lyrics?.let { text -> ModalBottomSheet(onDismissRequest = { lyrics = null }) {
-        LazyColumn(contentPadding = PaddingValues(24.dp)) { items(text.lines()) { Text(it, modifier = Modifier.padding(vertical = 8.dp)) } }
-    } }
+    if (qualitySheet) QualitySheet(model) { qualitySheet = false }
+    if (showLyrics) LyricsScreen(lyrics, model) { showLyrics = false }
 }
 
 /** Portrait fits artwork into the space remaining after metadata and transport.
@@ -196,7 +218,7 @@ internal fun PlayerTransport(state: Playback, position: Long, seeking: Float?, s
     }
 }
 
-private fun playerTime(milliseconds: Long): String {
+internal fun playerTime(milliseconds: Long): String {
     val seconds = milliseconds.coerceAtLeast(0) / 1000
     return String.format(Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60)
 }

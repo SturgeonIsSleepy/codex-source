@@ -30,20 +30,32 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
     private var refreshJob: Job? = null
     private var searchJob: Job? = null
     private var searchGeneration = 0
+    private var libraryEnabled = false
+    private var discoveryVisible = false
 
     init {
         viewModelScope.launch { ProviderManager.currentProviderFlow.collect { provider ->
             home.value = CloudHome(source = provider?.id)
             pages.value = emptyList(); clearSearch()
-            refresh()
+            if (libraryEnabled) refresh()
         } }
         viewModelScope.launch { SourceStore.accountChanges.collect { source -> if (source == home.value.source) {
             home.value = CloudHome(source = source); pages.value = emptyList(); clearSearch()
-            likes.update { it - source }; refresh()
+            likes.update { it - source }; if (libraryEnabled) refresh()
         } } }
     }
     private suspend fun <T> optional(action: suspend () -> T): T? = try { action() } catch (error: CancellationException) { throw error } catch (_: Exception) { null }
+    fun ensureLibrary() {
+        if (libraryEnabled) return
+        libraryEnabled = true
+        refresh()
+    }
+    fun setDiscoveryVisible(visible: Boolean) {
+        discoveryVisible = visible
+        if (visible) { libraryEnabled = true; refresh() }
+    }
     fun refresh() {
+        if (!libraryEnabled) return
         refreshJob?.cancel()
         val source = home.value.source ?: return
         refreshJob = viewModelScope.launch {
@@ -53,7 +65,7 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
                 val account = repo.account()
                 coroutineScope {
                     val playlists = async { if (account == null) emptyList() else repo.playlists(account.id) }
-                    val recommendations = async { optional { repo.recommendations(account != null) }.orEmpty() }
+                    val recommendations = async { if (discoveryVisible) optional { repo.recommendations(account != null) }.orEmpty() else home.value.recommendations }
                     val liked = async { if (account == null) emptySet() else optional { repo.liked(account.id) }.orEmpty() }
                     val result = CloudHome(source, account, playlists.await(), recommendations.await())
                     val likedIds = liked.await()
@@ -113,10 +125,10 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
         MusicRepository(app, source).like(id, value)
         likes.update { values -> values + (source to values[source].orEmpty().toMutableSet().apply { if (value) add(id) else remove(id) }) }
     }
-    fun create(name: String) = action {
+    fun create(name: String, private: Boolean = false) = action {
         require(name.isNotBlank()) { "请输入歌单名称" }
         val source = home.value.source ?: error("请先选择音源")
-        val created = MusicRepository(app, source).createPlaylist(name.trim())
+        val created = MusicRepository(app, source).createPlaylist(name.trim(), private)
         refresh(); open(created)
     }
     fun rename(target: MusicEntry, name: String) = action {
@@ -134,11 +146,15 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
     }
     fun addToPlaylist(target: MusicEntry, track: Track) = action {
         require(target.source == track.source) { "歌曲与歌单必须属于同一个音源" }
-        MusicRepository(app, target.source).changeTracks(target.id, listOf(track.remoteId ?: track.song.id), true)
+        if (target.special) MusicRepository(app, target.source).like(track.remoteId ?: track.song.id, true)
+        else MusicRepository(app, target.source).changeTracks(target.id, listOf(track.remoteId ?: track.song.id), true)
         message.value = "已添加到歌单"
     }
     fun removeFromPlaylist(target: MusicEntry, track: Track) = action {
-        MusicRepository(app, target.source).changeTracks(target.id, listOf(track.remoteId ?: track.song.id), false)
+        if (target.special) {
+            MusicRepository(app, target.source).like(track.remoteId ?: track.song.id, false)
+            likes.update { values -> values + (target.source to (values[target.source].orEmpty() - (track.remoteId ?: track.song.id))) }
+        } else MusicRepository(app, target.source).changeTracks(target.id, listOf(track.remoteId ?: track.song.id), false)
         load(target)
     }
     fun radio(play: (List<Track>) -> Unit) = action {
@@ -146,6 +162,7 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
         val tracks = MusicRepository(app, source).radio()
         check(tracks.isNotEmpty()) { "暂无推荐" }; play(tracks)
     }
+    fun logout() = action { home.value.source?.let { SourceStore.logout(app, it) } }
     private fun action(block: suspend () -> Unit) = viewModelScope.launch {
         if (busy.value) return@launch
         busy.value = true

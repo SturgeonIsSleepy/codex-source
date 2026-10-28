@@ -304,9 +304,14 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
             return
         }
 
-        // Adopt PR11's startup acknowledgement boundary: the preceding asynchronous Stop
-        // may arrive after the replacement Play was submitted. Explicit stop remains immediate.
-        if (awaitingNativeStart && state.lowercase() in setOf("stopped", "idle", "paused")) return
+        // Stop is queued asynchronously before Play. Its acknowledgement can arrive
+        // after startNativeItem has submitted the new command. Keep the new item
+        // buffering until Playing acknowledges startup instead of publishing IDLE.
+        // Explicit Player.stop() still changes state immediately in handleStop.
+        if (awaitingNativeStart && state.lowercase() in setOf("stopped", "idle", "paused")) {
+            Log.d(TAG, "Ignoring previous native command acknowledgement during startup: $state")
+            return
+        }
         when (state.lowercase()) {
             "playing" -> {
                 awaitingNativeStart = false

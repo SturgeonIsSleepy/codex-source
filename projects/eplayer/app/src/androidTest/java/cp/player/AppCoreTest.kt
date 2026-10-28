@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import cp.player.app.SourceStore
 import cp.player.app.Track
+import cp.player.app.withQuality
 import cp.player.model.Song
 import cp.player.provider.ModuleManager
 import java.io.File
@@ -71,5 +72,18 @@ class AppCoreTest {
         assertEquals("source-a", item.localConfiguration!!.uri.getQueryParameter("source"))
         assertEquals("source-a", item.mediaMetadata.extras!!.getString("source"))
         assertEquals("很长的歌曲名称", item.mediaMetadata.title.toString())
+    }
+    @Test fun qualityUpdatesKeepSourceIdentityAndNeverRewriteLocalFiles() {
+        val first = Track(Song("123", "first", "artist", album = "album"), source = "source-a").mediaItem("standard")
+        val next = Track(Song("456", "next", "artist", album = "album"), source = "source-b").mediaItem("standard")
+        val local = Track(Song("local_7", "local", "artist", album = "album"), uri = "content://media/external/audio/media/7").mediaItem()
+        val queue = listOf(first, local, next).map { it.withQuality("lossless") }
+        assertEquals("lossless", queue[0].localConfiguration!!.uri.getQueryParameter("quality"))
+        assertEquals("lossless", queue[2].localConfiguration!!.uri.getQueryParameter("quality"))
+        assertEquals("source-b", queue[2].localConfiguration!!.uri.getQueryParameter("source"))
+        assertEquals(next.mediaMetadata, queue[2].mediaMetadata)
+        assertSame(local, queue[1])
+        assertSame(queue[0], queue[0].withQuality("lossless"))
+        assertEquals(first.localConfiguration!!.uri, queue[0].withQuality("standard").localConfiguration!!.uri)
     }
 }

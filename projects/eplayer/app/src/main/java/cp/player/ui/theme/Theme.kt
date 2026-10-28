@@ -1,6 +1,7 @@
 package cp.player.ui.theme
 
 import android.app.Activity
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,23 +16,28 @@ val TravelHand = FontFamily(Font(R.font.travel_hand, weight = FontWeight.Medium)
 
 // Shared with nested dialogs, sheets and cover wrappers: one palette throughout ePlayer.
 val PaperColors = lightColorScheme(
-    primary = Color(0xFF292622), onPrimary = Color.White,
+    primary = Color(0xFF2C6E89), onPrimary = Color.White,
     primaryContainer = Color(0xFFD8EEF5), onPrimaryContainer = Color(0xFF24373F),
     secondary = Color(0xFF695448), onSecondary = Color.White,
     secondaryContainer = Color(0xFFF2E8DD), onSecondaryContainer = Color(0xFF40342D),
-    tertiary = Color(0xFF3F7F9C), tertiaryContainer = Color(0xFFE1F2F9),
-    background = Color.White, onBackground = Color(0xFF272520),
-    surface = Color.White, onSurface = Color(0xFF272520),
-    surfaceVariant = Color(0xFFF5F3EF), onSurfaceVariant = Color(0xFF6E6961),
+    tertiary = Color(0xFF2C6E89), tertiaryContainer = Color(0xFFD8EEF5),
+    background = Color.White, onBackground = Color(0xFF151518),
+    surface = Color.White, onSurface = Color(0xFF151518),
+    surfaceVariant = Color(0xFFF2F2F7), onSurfaceVariant = Color(0xFF77777E),
     surfaceContainerLowest = Color.White, surfaceContainerLow = Color(0xFFFEFDFB),
-    surfaceContainer = Color(0xFFF8F6F2), surfaceContainerHigh = Color(0xFFF2EFE9),
-    surfaceContainerHighest = Color(0xFFECE8E1),
-    outline = Color(0xFF8A8278), outlineVariant = Color(0xFFD5CEC3),
+    surfaceContainer = Color(0xFFF4F4F7), surfaceContainerHigh = Color(0xFFECECF0),
+    surfaceContainerHighest = Color(0xFFE5E5EA),
+    outline = Color(0xFF8A8278), outlineVariant = Color(0xFFDEDEE3),
     error = Color(0xFFAB493B), errorContainer = Color(0xFFFFE6DF)
 )
 
 @Composable
 fun EPlayerTheme(content: @Composable () -> Unit) {
+    val dark = isSystemInDarkTheme()
+    val colors = if (dark) darkColorScheme(primary = Color(0xFF94CFE6), onPrimary = Color(0xFF123646), tertiary = Color(0xFF94CFE6),
+        background = Color(0xFF0C0C0F), surface = Color(0xFF18181C), surfaceContainerLow = Color(0xFF1C1C20),
+        surfaceContainerHigh = Color(0xFF28282E), onSurface = Color(0xFFF7F7FA), onSurfaceVariant = Color(0xFF9D9DA5),
+        primaryContainer = Color(0xFF173E4E), outlineVariant = Color(0xFF34343B)) else PaperColors
     val base = Typography()
     val type = remember {
         Typography(
@@ -56,14 +62,13 @@ fun EPlayerTheme(content: @Composable () -> Unit) {
     SideEffect {
         (view.context as? Activity)?.window?.let { window ->
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = true
-                isAppearanceLightNavigationBars = true
+                isAppearanceLightStatusBars = !dark
+                isAppearanceLightNavigationBars = !dark
             }
         }
     }
-    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-    MaterialExpressiveTheme(
-        colorScheme = PaperColors,
+    MaterialTheme(
+        colorScheme = colors,
         typography = type,
         shapes = Shapes(RoundedCornerShape(3.dp), RoundedCornerShape(5.dp),
             RoundedCornerShape(9.dp), RoundedCornerShape(12.dp), RoundedCornerShape(16.dp)),
