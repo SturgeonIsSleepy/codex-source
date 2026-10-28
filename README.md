@@ -5,7 +5,7 @@
 | 工具 | 用途 | 入口 |
 | --- | --- | --- |
 | [Android Cloud](tools/android-cloud/) | Android 16 一键配置、自动选择 KVM 或软件模拟、后台启动 | [说明](tools/android-cloud/README.md) · [Skill](tools/android-cloud/SKILL.md) · [部署脚本](tools/android-cloud/android-cloud) |
-| [ePlayer](projects/eplayer/) | 0.5.1 音乐核心与手绘交互重构、普通版/自用版隔离 | [交接与验收](docs/EPLAYER-HANDOFF.md) · [源码](projects/eplayer/) · [0.5.0 界面记录](projects/eplayer/docs/LIGHT-0.5.0.md) · [0.3.2 预览包](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.2) |
+| [ePlayer](projects/eplayer/) | 0.5.1 音乐核心与手绘交互重构、普通版/自用版隔离 | [交接与验收](docs/EPLAYER-HANDOFF.md) · [源码](projects/eplayer/) · [当前开发 PR #16](https://github.com/SturgeonIsSleepy/codex-source/pull/16) · [0.5.0 界面记录](projects/eplayer/docs/LIGHT-0.5.0.md) · [0.3.2 预览包](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.2) |
 | [Witch Player](projects/witch-player/) | 1.8 独立双曲播放器与角色动画参考 | [说明](projects/witch-player/README.md) · [历史产物](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/witch-player-v1.8.0) |
 
 ## Android 16：其他 cloud 会话直接用

@@ -4,7 +4,7 @@
 
 agent/eplayer-050-core-integration正常合并037f742与ab7a227（PR14含PR11），两父历史保留。0.3.3核心e86295b /CI40749734603的39项已通过（38通过/1登录跳过）；本集成未设备运行，不能沿用旧0.4/0.5或0.3.3的通过记录。0.3.2公开Release固定，0.4/0.5本地固定签名、既有登录/模块不操作。新页面取消硬编码红色，统一天空蓝主题主色并保留系统深色适配；人物素材、动作、原中日文字体保持。
 
-组合最新：9a55215 /CI40756489129仍为47项45通过/1失败/1登录跳过（100.501秒），系统日志明确Stop原始调用者com.android.systemui，未解决EQ启动。artifact12845774812摘要已核对。框架在快速交接中先收到人为PAUSED再BUFFERING；新增“播放请求中不得发布PAUSED”的三轮断言，产品未改。下一候选用临时交接快照先发布非空BUFFERING/播放请求，旧player解除发布后才pause/release，再启动实际新player；同步建立原生事件订阅。真实Stop不屏蔽，新候选未设备运行；导航/歌词分项通过不算整轮通过。
+组合最新：8dbc4d658dbe0643ec988d116120eee0ec57afd1 /CI40761643034为交接快照修复，构建中、未取得设备结果。修复前3c853ab /CI40761055147为47项45通过/1失败/1登录跳过（110.196秒），唯一“播放中交接不得发布PAUSED”失败，EQ本次通过；9a55215之前EQ系统Stop失败保留，不能推断间歇性根因已全部解决。修复先以非空BUFFERING/原播放请求交接，旧player解除发布后才pause/release，再启动并发布实际新player；同步订阅原生事件。28 JVM/构建与31仓库检查通过。真实Stop不屏蔽，R8/确切新包未执行，0.5.1未发布。
 
 [0.3.2预览与完整验证归档](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.2)已由CI40576719254发布（Release425943718，非draft）。源码113acb0d7c72f392aae754cb3c7cb65ea1be3df4，原始universal APK SHA25613c1401d2121e2cde477c2b3d08064366c65b34357e210253c641aa775f9a27c，versionCode106，证书c9ccdf76dd260a4cc48a595e21b940958580b3fe318b75ce3d3e482bbc7a37c0。五附件uploaded与摘要已对照发布收据逐项核对；21个历史artifact/6个原始job日志保留失败/跳过/未执行，不覆盖0.3.1附件。
 

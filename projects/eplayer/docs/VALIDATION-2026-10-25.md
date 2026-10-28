@@ -423,3 +423,10 @@ FlickPlayer去掉awaitingNativeStart附加标志，以已有用户意图统一�
 产品候选增加core/playback/PlaybackHandoverPlayer（短期ForwardingPlayer，无队列/解码器/服务）：新队列prepare后先以BUFFERING和原播放请求交接session，再暂停/释放旧player、恢复实际新player PWR，最后解除快照。旧player的pause已不在发布期间发生；真实暂停/失焦/Stop不被过滤，未启动新音频抢旧焦点。Flick的SharedFlow订阅改UNDISPATCHED，在构造的Main调用内立即建立，避免新Playing在订阅排队期间丢失；后续事件仍调度Main。28 JVM/主程序/设备包本地构建通过（16秒），31根脚本通过；强化47项设备尚未运行，不能称系统Stop已解决。
 
 新增只读CI诊断：记录qs_media_resumption原值，不修改；失败/超时/不完整时保存限定媒体相关的SystemUI与media_session dumpsys，帮助核对旧移除时序。只在本轮新建的隔离CI模拟器执行，不接用户设备。元数据不包含账户/音源凭据，根失败证据契约检查保留两份快照。
+
+
+## 交接PAUSED断言已红，保留EQ的间歇性事实
+
+3c853ab6d951722ac1e05b87c3ee8992db57f4a7 /CI40761055147：47项45通过/1失败/1登录条件跳过（110.196秒）。唯一失败currentFrameworkStopStillStopsRealNativeAudio的新交接断言，多次收到STATE_PAUSED=2；EQ三轮本次通过，不能将此前EQ失败改成通过或将该轮视为已确定所有Stop根因。真实竞争焦点/末尾Stop步骤在新断言后，因前置失败未执行。artifact12849106286 ZIP SHA2563aa644ae70f7912354669dc14a1f045f280fae64236b7ca3f385346803c8cb78已下载核对。与待测8dbc4d6使用同断言，保持原始失败和已有系统Stop正控制。
+
+主线21bd59574b4ab854d59bb52196eb329bb4e70896只更新恢复入口，应用仍0.3.2、Release不变；已正常合入本开发分支，仅处理README/交接/计划文档冲突，不重复应用构建。主线读者可发现PR16实际候选与失败，不再误续早期0.3.3断点。8dbc4d6的47项设备验证独立，文档合并不改变该应用源码或取消运行。
