@@ -306,3 +306,23 @@ CI40575569334 /job122440962811：prepare中的APK摘要/版本/签名校验通�
 artifact12766293038 ZIP SHA256a8f01e60bffd7d1bd3c5e97ed11ecff6a67396f21ab3f7839464c9f7ef42e044已下载核对，delivery.json为passed且source/CI/SHA与113acb0/40570928840/13c1401匹配。原始失败job和该安装证据加入交付索引（共21个artifact、6个job）；不覆盖或丢弃失败。
 
 捕获日志时使用CLI明确提供的原始响应选项，只由check_output获得bytes并写ZIP，不向终端渲染控制符；ANSI颜色字节加入既有归档回归，仍核对完整原始字节/摘要与failure结论。31项根脚本通过。未改应用、源CI、APK、证书或0.3.1附件，重跑只涉及交付流程，不重复Gradle/Rust/R8构建；最终发布结果仍待执行。
+
+## 0.3.2 已发布且五附件逐项核对
+
+CI40576719254成功发布Release425943718 /eplayer-v0.3.2（非draft、preview），target_commitish=113acb0d7c72f392aae754cb3c7cb65ea1be3df4。最终原始通用包安装/冷启动1749ms通过。Artifact12768185941 ZIP SHA25682ef5444d47c8fd5bc3a61b7d492512a875f471851384eb5ac83cb87861f5c1b已下载；四条SHA256SUMS与GitHub资产digest逐项一致，校验文件自身摘要也一致，五项state均uploaded：
+
+- ePlayer-v0.3.2-preview.apk：45,272,762字节，13c1401d2121e2cde477c2b3d08064366c65b34357e210253c641aa775f9a27c。
+- eplayer-v0.3.2-native-libs.tar.gz：c79833616e421baaa72eeb575809fceda9b4bf93aa2c74e3e221ede5d1d93648。
+- eplayer-v0.3.2-validation.zip：60,580,855字节，e19625d319bad557e9ae973af3c112d72c950631b93582a125c16122f6a00f2a。
+- eplayer-v0.3.2-notes.md：0563499e7292ca63cb4d659544585b053873b3936580338940ba64f7c86aefbe。
+- SHA256SUMS：1eb962bed58cdef58ec7332a762552161750421d43096b3964c6e493c76751bc。
+
+21个成功/失败artifact及6个原始job日志已归档，包含SDK准备失败未执行、取消/交接修复前失败与首次发布归档失败；最终安装证据也在ZIP中。无用户录音、密钥、SDK或AVD上传。0.3.1附件未修改。交付manifest回填ReleaseID便于稳定恢复，已发布匹配版本的流程只检查不重复下载/安装/覆盖。
+
+继续0.3.3：agent/eplayer-portrait-fit修复前回归161c63f17e0b9d0a74f0c02de7d52bfff019f655 /CI40577808745正在执行，产品布局未改；本地设备包编译通过，尚未设备红色或绿色。优先让长标题/2倍字体的竖屏首屏完整人物可见，随后跨曲下载所有权/依赖剥离，再考虑真实三ABI原生重编以降低Trace日志；不因0.3.2发布就停止，也不把尚未完成项写成已验收。
+
+## 2026-10-28续接：大字号修复前失败已取得
+
+重新实际读取远端main38692c9的README/AGENTS/catalog/交接/开发计划和上传约定，未发现他人主线新提交。0.3.2 Release425943718仍非draft、target113acb0且五附件digest/状态与此前收据一致；补齐此前已准备而尚未推送的发布记录。
+
+0.3.3修复前161c63f17e0b9d0a74f0c02de7d52bfff019f655 /CI40577808745：37项35通过/1失败/1登录跳过（98.997秒）。唯一失败是2倍字号首屏插画完整可见要求：未裁剪bounds bottom666dp，而transport top568dp，相差98dp；其余音频/插画及布局检查通过，产品布局尚未修复。artifact12769250606 ZIP SHA25615c5b8db039795fe3541cebf2bd0c983afc76e57bfcd71c01d93363fc159ef95已下载核对。保留layout-check/portrait-2.0.png作为修复前图，后续用同断言/同尺寸检查修复，不把自动滚动到图像后的状态冒充首屏完整显示。

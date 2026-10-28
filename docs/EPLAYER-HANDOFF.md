@@ -1,12 +1,24 @@
 # ePlayer 转移交接
 
-已发布的软件基线为 `331d31241159737aec196fe922431898764f6909`：已合入 PR #3/#5 的 JNI 顺序、取消过滤与公开 COMMAND_RELEASE 契约修复。主线 [CI 40379791181](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40379791181) 30 通过/1 登录跳过（76.436 秒），普通/自用 R8 构建与普通 R8 冷启动 1720ms 通过。a25a90b、fb48458 的历史失败保持原结论，不再作为当前待修断点。
+## 当前恢复入口：0.3.2已发布，继续0.3.3
+
+[0.3.2预览与完整验证归档](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.2)已由CI40576719254发布（Release425943718，非draft）。源码113acb0d7c72f392aae754cb3c7cb65ea1be3df4，原始universal APK SHA25613c1401d2121e2cde477c2b3d08064366c65b34357e210253c641aa775f9a27c，versionCode106，证书c9ccdf76dd260a4cc48a595e21b940958580b3fe318b75ce3d3e482bbc7a37c0。五附件uploaded与摘要已对照发布收据逐项核对；21个历史artifact/6个原始job日志保留失败/跳过/未执行，不覆盖0.3.1附件。
+
+主线37项36通过/1真实登录条件跳过（104.993秒），普通/自用R8构建通过；确切通用包系统/原生跨应用2项通过（55.117秒），文件选择器导入/暂停/12秒定位/后台/真实通知点击返回均走通；最终同一通用包冷启动1749ms。截图与无声短片索引见项目README及验证文档。当前2倍字体长标题的竖屏靠滚动才能看到完整人物，首屏空间分配仍待优化；不称全部视觉或实机验收完成。
+
+继续分支agent/eplayer-portrait-fit，修复前检查161c63f17e0b9d0a74f0c02de7d52bfff019f655 /CI40577808745已复现：37项35通过/1失败/1登录跳过（98.997秒），2倍字号插画底部666dp超出控制区顶部568dp；新增首屏完整插画bounds要求，本地设备包已编译，产品布局尚未修改。修复前证据已取得，接下来用剩余空间分配替换固定100dp标题预留，真实横竖屏/1倍2倍字号复核后继续跨曲下载所有权和UI依赖剥离。Rust Trace日志已审计但未重编，不声称节电。
+
+实机、普通系统路由/听感、固定本地签名与真实账号仍由本地agent独占；NCM PR11保持独立，不改既有登录。0.3.2临时CI证书不同于0.3.1，不保证覆盖升级。AndroidCloud固定入口/角色参考项目/无关项目均未更改。下方为保留的阶段历史，以本入口和开发计划开头的当前断点为准。
+
+## 既往交付与开发记录
+
+此前0.3.1软件基线为 `331d31241159737aec196fe922431898764f6909`：已合入 PR #3/#5 的 JNI 顺序、取消过滤与公开 COMMAND_RELEASE 契约修复。主线 [CI 40379791181](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40379791181) 30 通过/1 登录跳过（76.436 秒），普通/自用 R8 构建与普通 R8 冷启动 1720ms 通过。a25a90b、fb48458 的历史失败保持原结论，不再作为当前待修断点。
 
 **交付 0.3.1** 固定上述源码与原始 universal APK，SHA256 `92b6b3d1f28940db408b033646b9a77233a0d1cd749c7e6c8b1ab6d0623973b3`，versionCode52，证书 `c92db3ca59c4ec286cea2f2b54f085b38d676b8e956a34b17c103fc61e04680a`。确切 R8 两种引擎均通过系统文件选择器导入、播放/暂停/12 秒定位、后台与真实通知点击返回（CI 40383667514、40385418880）。加载截图和约 2.8 秒无声动作预览已查看抽帧。PR #6 已合入匹配源码/构建/APK 的交付门禁。
 
 [0.3.1 Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.1) 已由 [CI 40387722240](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40387722240) 发布（ID424674767），五个附件 uploaded/digest 已逐项核对。之前两次 prepare 因 SDK 验签文字前缀失败；第三次精确安装/冷启动 2511ms 及证据校验通过，但创建后列表延迟导致发布失败，均如实记入计划。已按实际公开验签摘要修复并保留草稿 ID。0.3.0 旧附件不改；临时 CI 证书不同，不能保证无缝升级，先备份导入/设置。
 
-**0.3.2 当前候选**：[PR #13](https://github.com/SturgeonIsSleepy/codex-source/pull/13) / `agent/eplayer-stream-cancellation` 接续 [PR #4](https://github.com/SturgeonIsSleepy/codex-source/pull/4) 的原生 DSP、预缓冲暂停、手动 EQ、缓存边界与 USB 独占桥接清理。20 JVM、28 根脚本及本地 debug 主程序/设备包构建通过；0.3.2 尚未发布。main已正常合入0.3.2候选113acb0，已发布包仍是0.3.1；主线CI40570928840已通过普通/自用R8、37项36通过/1登录跳过及普通x86_64 R8冷启动1378ms。确切通用包跨应用CI40573577516的系统/原生2项也已通过；Release发布的最终安装/归档门禁仍待执行。
+**0.3.2 开发过程记录（现已发布）**：[PR #13](https://github.com/SturgeonIsSleepy/codex-source/pull/13) / `agent/eplayer-stream-cancellation` 接续 [PR #4](https://github.com/SturgeonIsSleepy/codex-source/pull/4) 的原生 DSP、预缓冲暂停、手动 EQ、缓存边界与 USB 独占桥接清理。20 JVM、28 根脚本及本地 debug 主程序/设备包构建通过；0.3.2 尚未发布。main已正常合入0.3.2候选113acb0，已发布包仍是0.3.1；主线CI40570928840已通过普通/自用R8、37项36通过/1登录跳过及普通x86_64 R8冷启动1378ms。确切通用包跨应用CI40573577516的系统/原生2项也已通过；Release发布的最终安装/归档门禁仍待执行。
 
 引擎交接已有真实框架红绿：修复前2de55f3 /[CI40565941188](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40565941188) 36项34通过/1失败/1登录跳过，音频播放及两次引擎往返后框架多次收到STATE_NONE。修复6120be5 /[CI40567120983](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40567120983) 36项35通过/1登录跳过（95.368秒），先恢复替代播放器队列/位置/播放请求再交接，空/停止状态断言通过，合法framework Stop仍在2秒内停止真实原生音频。三轮EQ和其余回归同时通过。设备artifact12764217339 ZIP SHA256c2292ff6a0cac691acda242cd4dc702673649ded5820e73a1072975690c1f08d已下载核对。
 
@@ -185,3 +197,17 @@ PR #6 已合入发布防错配门禁；27 项根脚本通过，原始候选 prep
 31项根脚本通过。大字号/长标题的竖屏目前可滚动查看全身，但首屏人物脚部未显示；列为发布后首项适配优化。随后处理跨曲下载所有权和无调用UI依赖；Rust默认Trace级日志已确认，尚未修改原生.so或声称耗电改善。实机/真实账号、路由和固定签名仍由本地agent独占，PR11未合入。
 
 首次0.3.2发布CI40575569334已通过确切包安装/冷启动1677ms，日志归档因CLI默认拒绝ANSI控制符失败；artifact12766293038和原job122440962811已索引，未发布。只修正捕获原始日志为ZIP bytes，不渲染到终端；21个artifact/6个job的发布门禁将重跑，应用APK13c1401不变，不重编R8。
+
+## 0.3.2 已发布且五附件逐项核对
+
+CI40576719254成功发布Release425943718 /eplayer-v0.3.2（非draft、preview），target_commitish=113acb0d7c72f392aae754cb3c7cb65ea1be3df4。最终原始通用包安装/冷启动1749ms通过。Artifact12768185941 ZIP SHA25682ef5444d47c8fd5bc3a61b7d492512a875f471851384eb5ac83cb87861f5c1b已下载；四条SHA256SUMS与GitHub资产digest逐项一致，校验文件自身摘要也一致，五项state均uploaded：
+
+- ePlayer-v0.3.2-preview.apk：45,272,762字节，13c1401d2121e2cde477c2b3d08064366c65b34357e210253c641aa775f9a27c。
+- eplayer-v0.3.2-native-libs.tar.gz：c79833616e421baaa72eeb575809fceda9b4bf93aa2c74e3e221ede5d1d93648。
+- eplayer-v0.3.2-validation.zip：60,580,855字节，e19625d319bad557e9ae973af3c112d72c950631b93582a125c16122f6a00f2a。
+- eplayer-v0.3.2-notes.md：0563499e7292ca63cb4d659544585b053873b3936580338940ba64f7c86aefbe。
+- SHA256SUMS：1eb962bed58cdef58ec7332a762552161750421d43096b3964c6e493c76751bc。
+
+21个成功/失败artifact及6个原始job日志已归档，包含SDK准备失败未执行、取消/交接修复前失败与首次发布归档失败；最终安装证据也在ZIP中。无用户录音、密钥、SDK或AVD上传。0.3.1附件未修改。交付manifest回填ReleaseID便于稳定恢复，已发布匹配版本的流程只检查不重复下载/安装/覆盖。
+
+继续0.3.3：agent/eplayer-portrait-fit修复前回归161c63f17e0b9d0a74f0c02de7d52bfff019f655 /CI40577808745已复现大字号裁切，37项35通过/1失败/1登录跳过，产品布局仍未改，修复后绿色待执行。优先让长标题/2倍字体的竖屏首屏完整人物可见，随后跨曲下载所有权/依赖剥离，再考虑真实三ABI原生重编以降低Trace日志；不因0.3.2发布就停止，也不把尚未完成项写成已验收。
