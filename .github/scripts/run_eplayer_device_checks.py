@@ -11,6 +11,16 @@ import time
 root = Path('device-apks')
 output = Path('device-evidence')
 output.mkdir(exist_ok=True)
+RUNTIME_TAGS = ['AndroidRuntime', 'EPlayerTest', 'EPlayerSession', 'FlickPlayer', 'RustEngine',
+                'RustAudioEngine', 'CPPlayerDebug', 'AudioTrack', 'AAudio', 'AudioManager',
+                'MediaSessionService', 'MediaSessionRecord', 'MediaDataManager', 'MediaDataProcessor',
+                'MediaTimeoutListener', 'MediaResumeListener', 'NotificationService']
+
+
+def capture_runtime(name):
+    result = subprocess.run(['adb', 'logcat', '-d', '-s', *RUNTIME_TAGS],
+                            capture_output=True, text=True, check=False)
+    (output / name).write_text(result.stdout)
 
 
 def unique(pattern):
@@ -73,8 +83,7 @@ def main():
             metadata['checks']['instrumentation'] = 'failed'
             raise RuntimeError('Instrumentation did not report a complete passing run')
         metadata['checks']['instrumentation'] = 'passed'
-        runtime = subprocess.run(['adb', 'logcat', '-d', '-s', 'AndroidRuntime', 'EPlayerTest', 'EPlayerSession', 'FlickPlayer', 'RustEngine', 'RustAudioEngine', 'CPPlayerDebug', 'AudioTrack', 'AAudio', 'AudioManager'], capture_output=True, text=True, check=False)
-        (output / 'instrumentation-runtime.txt').write_text(runtime.stdout)
+        capture_runtime('instrumentation-runtime.txt')
         if release:
             metadata['checks']['release_start'] = 'running'
             verify_release_start(release)
@@ -100,8 +109,7 @@ def main():
         (output / 'build.json').write_text(json.dumps(metadata, indent=2))
         for folder in ['visual-check', 'art-check', 'layout-check']:
             subprocess.run(['adb', 'pull', f'/sdcard/Android/data/app.eplayer.music/files/{folder}', str(output / folder)], check=False)
-        logs = subprocess.run(['adb', 'logcat', '-d', '-s', 'AndroidRuntime', 'EPlayerTest', 'EPlayerSession', 'FlickPlayer', 'RustEngine', 'RustAudioEngine', 'CPPlayerDebug', 'AudioTrack', 'AAudio', 'AudioManager'], capture_output=True, text=True, check=False)
-        (output / 'runtime.txt').write_text(logs.stdout)
+        capture_runtime('runtime.txt')
         subprocess.run(['adb', 'shell', 'wm', 'size', 'reset'], check=False)
         subprocess.run(['adb', 'shell', 'wm', 'density', 'reset'], check=False)
 

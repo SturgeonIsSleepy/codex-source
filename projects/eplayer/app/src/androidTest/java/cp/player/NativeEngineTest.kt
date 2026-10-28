@@ -183,6 +183,11 @@ class NativeEngineTest {
                 main { idle = controller!!.playbackState == Player.STATE_IDLE && !controller!!.playWhenReady }
                 idle && native { RustEngine.getState().equals("stopped", true) }
             }
+            repeat(10) {
+                main { assertEquals(Player.STATE_IDLE, controller!!.playbackState); assertFalse(controller!!.playWhenReady) }
+                assertTrue("Late acknowledgements must not revive an explicit Stop", native { RustEngine.getState().equals("stopped", true) })
+                SystemClock.sleep(100)
+            }
             android.util.Log.i("EPlayerTest", "Current framework Stop stopped real native playback; legacy control remains available")
         } finally {
             try {

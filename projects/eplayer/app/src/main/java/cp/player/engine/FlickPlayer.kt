@@ -48,6 +48,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         private const val MAX_PRE_BUFFER_BYTES = 2600 * 1024L
         private const val UNDERRUN_POLL_MS = 1000L
         private const val SEEK_WATCHDOG_MS = 500L
+        private const val NATIVE_OUTPUT_TIMEOUT_MS = 15000L
     }
 
     private class PlaylistItem(val uid: java.util.UUID, val item: MediaItem)
@@ -55,7 +56,6 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     private var currentMediaItemIndex = 0
     @Volatile private var playWhenReady = false
     private var isPlaying = false
-    private var awaitingNativeStart = false
     @Volatile private var released = false
     private var playbackError: PlaybackException? = null
     @Volatile private var playerVolume = 1f
@@ -117,7 +117,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
      * 状态事件，导致 isPlaying 被错误地设为 true（UI 闪烁/状态不一致）。
      *
      * 设置时机：handleSetPlayWhenReady(false)
-     * 清除时机：收到 Rust 引擎的 "paused" 状态确认，或用户恢复播放
+     * 清除时机：用户恢复播放或显式停止；原生回执不能更改用户意图
      */
     @Volatile private var pauseRequested = false
 
@@ -284,13 +284,17 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
                     invalidateState()
                     startPositionPolling()
                 }
-                // 引擎已停止但 FlickPlayer 认为在播放 → 修正状态
-                else if (!engineIsPlaying && isPlaying && !pauseRequested &&
+                // An internal Stop acknowledgement must not revoke the current playback request.
+                else if (!engineIsPlaying && playWhenReady && !pauseRequested &&
                     !bufferingActive && engineState.equals("stopped", ignoreCase = true)) {
-                    Log.w(TAG, "State reconcile: engine is '$engineState' but isPlaying=$isPlaying, correcting")
-                    isPlaying = false
-                    playbackState = Player.STATE_IDLE
-                    invalidateState()
+                    if (!isDownloading && System.currentTimeMillis() - positionUpdateTimeMs.get() > NATIVE_OUTPUT_TIMEOUT_MS) {
+                        handleError("Native output stopped before playback completed")
+                        scope.launch(RustEngine.engineDispatcher) { RustEngine.stop("native-output-timeout") }
+                    } else if (isPlaying) {
+                        isPlaying = false
+                        playbackState = Player.STATE_BUFFERING
+                        invalidateState()
+                    }
                 }
             }
         }
@@ -304,17 +308,9 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
             return
         }
 
-        // Stop is queued asynchronously before Play. Its acknowledgement can arrive
-        // after startNativeItem has submitted the new command. Keep the new item
-        // buffering until Playing acknowledges startup instead of publishing IDLE.
-        // Explicit Player.stop() still changes state immediately in handleStop.
-        if (awaitingNativeStart && state.lowercase() in setOf("stopped", "idle", "paused")) {
-            Log.d(TAG, "Ignoring previous native command acknowledgement during startup: $state")
-            return
-        }
         when (state.lowercase()) {
             "playing" -> {
-                awaitingNativeStart = false
+                if (!playWhenReady || playbackState == Player.STATE_ENDED) return
                 // 流媒体 Seek 后：接受 "Playing" 状态，同时启动看门狗。
                 // 如果 Seek 目标超出已下载范围，解码器会阻塞在 I/O 上（ring buffer 为空，
                 // 音频回调输出静音），引擎不会发送 TrackEnded 也不会发送进度。
@@ -324,17 +320,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
                 bufferingActive = false
                 recoveryPlayIssued = false
 
-                // 暂停请求进行中时，忽略引擎的 "playing" 状态事件，
-                // 防止旧事件覆盖用户的暂停意图。但如果此时 playWhenReady 也是 true，
-                // 说明用户可能在短暂暂停后又立刻点击了播放，或者是底层的其他播放恢复动作。
-                // 这时我们需要清除 pauseRequested 并接受 playing 状态。
-                if (pauseRequested) {
-                    if (playWhenReady) {
-                        pauseRequested = false
-                    } else {
-                        return
-                    }
-                }
+                pauseRequested = false
                 isPlaying = true
                 playbackState = Player.STATE_READY
                 positionUpdateTimeMs.set(System.currentTimeMillis())
@@ -348,6 +334,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
                 }
             }
             "paused" -> {
+                if (!playWhenReady && !pauseRequested) return
                 // 流媒体缓冲期间引擎发出的 "paused" 事件不是用户主动暂停，
                 // 而是引擎因数据不足暂停输出。保持 STATE_BUFFERING 状态，
                 // 等待数据恢复后自动继续播放。
@@ -359,7 +346,6 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
                     return
                 }
 
-                pauseRequested = false
                 isPlaying = false
                 playbackState = Player.STATE_READY
                 stopPositionPolling()
@@ -368,9 +354,13 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
             "stopped", "idle" -> {
                 // EOF is a completed queue, not an explicit stop. Preserve replay semantics.
                 if (playbackState == Player.STATE_ENDED) return
-                // 流媒体缓冲期间的 stopped/idle 也可能是缓冲不足导致的
-                if (bufferingActive && isDownloading && !downloadComplete) {
-                    Log.d(TAG, "Ignoring engine '$state' during active buffering")
+                // A native Stop acknowledgement is not a new public Player.stop() intent.
+                // It can trail an old Playing even after the replacement has started.
+                if (playlist.isNotEmpty() && playbackError == null && (playWhenReady || pauseRequested)) {
+                    isPlaying = false
+                    playbackState = if (playWhenReady) Player.STATE_BUFFERING else Player.STATE_READY
+                    stopPositionPolling()
+                    invalidateState()
                     return
                 }
                 bufferingActive = false
@@ -497,7 +487,6 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     }
 
     private fun handleError(message: String) {
-        awaitingNativeStart = false
         Log.e(TAG, "Rust error: $message")
 
         if (isDownloading && !downloadComplete) {
@@ -997,7 +986,6 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     }
 
     override fun handleStop(): ListenableFuture<*> {
-        awaitingNativeStart = false
         val origin = Thread.currentThread().stackTrace.filter {
             it.className.startsWith("cp.player.") || it.className.startsWith("androidx.media3.")
         }.take(6).joinToString(" <- ") { "${it.className.substringAfterLast('.')}.${it.methodName}:${it.lineNumber}" }
@@ -1102,7 +1090,6 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         if (playlist.isEmpty()) return
 
         val item = playlist[currentMediaItemIndex].item
-        awaitingNativeStart = true
         playbackError = null
         pendingStartPositionMs = startPositionMs
         updatePosition(startPositionMs)

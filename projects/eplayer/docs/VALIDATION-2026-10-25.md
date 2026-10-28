@@ -393,3 +393,15 @@ agent/eplayer-050-core-integration把037f742（e86295b的39项已验收核心及
 LightNavigationTest在真实MainActivity保存首页、设置、音质弹层截图；新增曲库→歌曲分区的魔女双曲/导入可达和网易云二级返回流程，保存library/discovery。截图使用系统UiAutomation一次取图，不影响生产GPU玻璃渲染，也不把单个组件图冒充整页。现有首页不自动加载推荐、设置音质只读检查保留。
 
 LyricsFlowTest给UUID独占的离线歌词缓存与30秒合成WAV建立暂停会话，从真实迷你播放器→歌词页：检查日文/中文译文、开关译文、点12秒行使实际MediaController定位且保持暂停，再回播放器；保存lyrics-full-page.png。不发账号/音乐源请求、无录音，清理前以同引擎命令等待队列清空进入服务后才释放控制器，只删本次文件/历史。该测试是实际UI/会话定位，不声称有真实音源下载、PCM输出或实机听感；双引擎音频另由既有检查负责。本地设备包编译通过（21秒，收尾修正后的增量2秒）；预计整轮47项，设备尚未执行，ee69403的45项组合仍独立运行。
+
+
+## 0.5.1两轮组合失败与整页/歌词分项通过
+
+- ee694031db2224f7a119409af532b345e06c71b6 /CI40751820043：45项43通过/1失败/1登录条件跳过（111.564秒）；唯一失败LiveEqualizer，state=IDLE、native=stopped、position=0，19:19:03.894经过MediaSessionLegacyStub.onStop，随后回调身份被Media3映射到应用通知控制器。不因同UID推定原始调用者为应用，也不屏蔽它。artifact12845256790 ZIP SHA256c2a88f00e4b6ab205b4d3a17b94d351821f78b7357ef7c2ccf84308cb9e9e607已下载核对。
+- 75ce13ffec66a9c5bdea6500b1adccef9a468b04 /CI40753222782：47项45通过/1失败/1登录条件跳过（102.674秒），唯一仍是同一EQ启动Stop。新曲库双曲/导入、二级页返回、译文开关、从真实迷你播放器打开歌词、点12秒行/保持暂停/返回播放器均通过。artifact12844168763 ZIP SHA256f6d295fb652340a91920ebd8d2832c4ba5d453984bd302493bef08ec8867440e已下载核对；实际查看navigation-home/library/settings和lyrics-full-page，纸白天空蓝与完整新导航/歌词呈现通过该分项。没有将整轮写为通过。
+
+进一步审计：RustEngine命令已在单线程，但native事件原由IO轮询，取消旧轮询不清除共享原生事件队列；旧Playing可先清除awaitingNativeStart，之后旧Stopped仍能发布IDLE。jni_api/audio_api实际使用try_recv_event非阻塞读取，且状态事件没有曲目标识。候选把读取也放到同一JNI调度器，初始化/新Play前排空已积压回执；不重编原生库、不声称已得到原生代号或彻底根因证明。
+
+FlickPlayer去掉awaitingNativeStart附加标志，以已有用户意图统一处理：仍请求播放的内部Stopped保持BUFFERING，已请求暂停保持READY，显式Player.stop仍同步IDLE且不可被旧Playing/Paused复活；本地输出真实持续停止超过15秒报告错误并停止，不永久假装Playing。暂停意图只由恢复/显式Stop解除，旧Paused不能改变它。合法框架Stop检查继续保留，新增1秒稳定性窗口；未按来源过滤任何Stop。会话状态日志记录是否真正发布到session，设备采集补系统媒体/通知标签，帮助检验是否出现“暂时IDLE→通知移除→系统Stop”的链条，不把该链条预判为已证实。
+
+诊断字段首次把nullable session误作lateinit，导致本地编译失败，改为安全引用后28 JVM/主程序/设备包构建通过（6秒）；收尾源码28 JVM/主程序/设备包构建通过（5秒），设备结果待执行。31项根脚本通过，失败路径也保存系统媒体诊断的证据契约已补检查。下一项同47项整轮及实际截图，不盲重跑旧失败源码。

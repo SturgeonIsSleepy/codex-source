@@ -60,6 +60,8 @@ class DeviceEvidenceTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.run_checks()
         self.assertEqual('failed', self.metadata()['checks']['instrumentation'])
+        self.assertTrue(Path('device-evidence/runtime.txt').exists())
+        self.assertTrue(any('logcat' in call and 'MediaDataProcessor' in call for call in self.calls))
 
     def test_timeout_retains_partial_output_and_status(self):
         self.result = subprocess.TimeoutExpired(['adb'], 480, output=b'partial instrument output')

@@ -65,6 +65,10 @@ class MusicService : MediaSessionService() {
     }
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
+            if (events.containsAny(Player.EVENT_PLAYBACK_STATE_CHANGED, Player.EVENT_PLAY_WHEN_READY_CHANGED)) {
+                Log.i("EPlayerSession", "Playback engine=$engine published=${session?.player === player} " +
+                    "state=${player.playbackState} requested=${player.playWhenReady} items=${player.mediaItemCount}")
+            }
             if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION)) checkpointListening()
             if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION,
                     Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_POSITION_DISCONTINUITY)) {
