@@ -1,5 +1,15 @@
 # ePlayer 后续开发计划
 
+## 当前开发恢复入口（优先于下方历史）
+
+主线应用保持0.3.2，新0.5.1组合在[PR #16](https://github.com/SturgeonIsSleepy/codex-source/pull/16) /`agent/eplayer-050-core-integration`，固定候选8dbc4d658dbe0643ec988d116120eee0ec57afd1，尚未合入或发布。先读取该分支的[简短当前计划](https://github.com/SturgeonIsSleepy/codex-source/blob/8dbc4d658dbe0643ec988d116120eee0ec57afd1/projects/eplayer/docs/DEVELOPMENT-PLAN.md)及[验证索引](https://github.com/SturgeonIsSleepy/codex-source/blob/8dbc4d658dbe0643ec988d116120eee0ec57afd1/projects/eplayer/docs/VALIDATION-2026-10-25.md)，如PR有后续head则接续最新head，不从下方早期“待执行”推断状态。
+
+当前门槛：9a55215 /CI40756489129的47项为45通过/1失败/1登录跳过（100.501秒），EQ启动由SystemUI经legacy Stop停止。三轮交接新断言3c853ab /CI40761055147运行中，修复8dbc4d6 /CI40761643034排队；后者保持非空BUFFERING/原请求直到旧输出释放，再启动新输出，未过滤真实Stop。本地28 JVM/构建、31仓库检查通过，新设备绿色尚未取得。
+
+下一步取得这两轮设备结果，修真实原因，复核新全页/角色后才正常合入主线，并执行一次普通/自用R8、确切原始通用包系统/原生跨应用验收及0.5.1 Release。新导航/歌词点行12秒保持暂停/返回分项已通过，整轮未通过；0.3.2公开APK不改。实机/真实账号/固定签名由本地agent独占，不重复已有UI依赖清理、不附录音或上传凭据，未遇真正限额继续有价值工作。
+
+## 原0.3.3计划与阶段历史
+
 当前断点：0.3.2已发布，源码113acb0 /[Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.2)固定不变；0.3.3在独立分支agent/eplayer-portrait-fit继续。下方阶段记录保留历史，以本段当前断点和验证文档最后结果为准。
 
 | 范围 | 实际结果 |

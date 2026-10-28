@@ -1,6 +1,20 @@
 # ePlayer 转移交接
 
-## 当前恢复入口：0.3.2已发布，继续0.3.3
+## 当前恢复入口：PR16 / 0.5.1组合待验收
+
+主线应用仍为已发布的0.3.2；新功能/界面/核心修复在[PR #16](https://github.com/SturgeonIsSleepy/codex-source/pull/16)与`agent/eplayer-050-core-integration`，尚未合入主线。不要继续旧0.3.3断点，也不要把独立版本绿色算作新组合通过。
+
+- 固定候选：`8dbc4d658dbe0643ec988d116120eee0ec57afd1`。已正常汇合PR11的源/曲库、PR14的导航/歌词/音质/依赖清理与PR15的首屏/下载/焦点；人物、动作与字体资产保持。当前动态恢复入口看PR16最新head。
+- 0.3.3核心e86295b /CI40749734603已通过39项（38通过/1登录跳过，71.056秒），跨曲下载有真实红绿，首屏人物完整截图已查看。
+- 0.5.1组合ee69403（45项）、75ce13f与9a55215（47项）均唯一EQ启动经legacy Stop停止；9a最新为45通过/1失败/1登录跳过（100.501秒）。系统日志确认原始Stop来自com.android.systemui，未解决，不屏蔽任何系统Stop。
+- 修复前3c853ab /[CI40761055147](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40761055147)增加“播放中交接不得发布PAUSED”断言，设备运行中。修复8dbc4d6 /[CI40761643034](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40761643034)排队：短期ForwardingPlayer先保持BUFFERING/原请求，旧player解除发布后才pause/release，随后启动实际新player；原生事件订阅同步建立。本地28 JVM/构建和31仓库检查通过，尚无新设备绿色。
+- 已实际查看0.5.1首页、曲库、设置、全屏歌词；新导航/译文开关/实际会话点12秒行保持暂停/返回分项通过。整轮、R8与确切包仍未通过/未执行，不发布新APK。
+
+继续时先读开发分支[当前实施计划](https://github.com/SturgeonIsSleepy/codex-source/blob/8dbc4d658dbe0643ec988d116120eee0ec57afd1/projects/eplayer/docs/DEVELOPMENT-PLAN.md)和[完整验证/证据索引](https://github.com/SturgeonIsSleepy/codex-source/blob/8dbc4d658dbe0643ec988d116120eee0ec57afd1/projects/eplayer/docs/VALIDATION-2026-10-25.md)，取得上述两轮真实结果再推进。计划历史已在该分支项目docs/history归档，固定恢复入口不变；源码/索引已推送，APK/原生库/日志待最终门禁后进相应Release。
+
+0.3.2 Release固定不变；实机、真实账号写入、既有模块/登录及固定本地签名仍由本地agent独占，不用CI临时签名覆盖用户自用版。AndroidCloud固定入口和无关项目未改。没有限额时继续；遇真正限制先保存具体断点。
+
+## 0.3.2发布和0.3.3早期记录（历史）
 
 [0.3.2预览与完整验证归档](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.2)已由CI40576719254发布（Release425943718，非draft）。源码113acb0d7c72f392aae754cb3c7cb65ea1be3df4，原始universal APK SHA25613c1401d2121e2cde477c2b3d08064366c65b34357e210253c641aa775f9a27c，versionCode106，证书c9ccdf76dd260a4cc48a595e21b940958580b3fe318b75ce3d3e482bbc7a37c0。五附件uploaded与摘要已对照发布收据逐项核对；21个历史artifact/6个原始job日志保留失败/跳过/未执行，不覆盖0.3.1附件。
 
