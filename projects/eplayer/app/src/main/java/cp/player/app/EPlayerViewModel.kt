@@ -42,6 +42,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private val _library = MutableStateFlow<List<Track>>(emptyList())
     val library = _library.asStateFlow()
     val recent = MutableStateFlow<List<Track>>(emptyList())
+    val listeningStats = ListeningStatsStore.stats
     private var scanned = emptyList<Track>()
     private val _playback = MutableStateFlow(Playback())
     val playback = _playback.asStateFlow()
@@ -85,6 +86,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
     init {
+        ListeningStatsStore.refresh(app)
         viewModelScope.launch { reloadLibrary(); recent.value = withContext(Dispatchers.IO) { RecentStore.read(app) } }
         future.addListener({
             runCatching { future.get() }.onSuccess {

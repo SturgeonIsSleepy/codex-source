@@ -51,6 +51,8 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
     val position by model.position.collectAsState()
     DisposableEffect(model) { model.setProgressVisible(true); onDispose { model.setProgressVisible(false) } }
     var queue by remember { mutableStateOf(false) }
+    var qualitySheet by remember { mutableStateOf(false) }
+    val quality by model.quality.collectAsState()
     var lyrics by remember { mutableStateOf<LyricsText?>(null) }
     var showLyrics by remember { mutableStateOf(false) }
     var seeking by remember(state.song?.id) { mutableStateOf<Float?>(null) }
@@ -76,12 +78,17 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
                         view.setPlayback(state.playing, state.playRequested, position) })
             },
             controls = {
+                Column {
                 PlayerTransport(state, position, seeking, { seeking = it }, {
                     seeking?.let { model.seek(it.toLong()) }; seeking = null
                 }, model::playPause, model::previous, model::next, model::shuffle, model::repeat, liked) {
                     state.song?.let { song ->
                         if (state.source == null) model.favorite(song) else model.currentTrack()?.let(cloud::like)
                     }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    TextButton(onClick = { qualitySheet = true }) { Text(qualityName(quality), style = MaterialTheme.typography.labelMedium) }
+                }
                 }
             }
         )
@@ -103,7 +110,8 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
             }
         }
     }
-    if (showLyrics) LyricsSheet(lyrics, model) { showLyrics = false }
+    if (qualitySheet) QualitySheet(model) { qualitySheet = false }
+    if (showLyrics) LyricsScreen(lyrics, model) { showLyrics = false }
 }
 
 /** Portrait keeps transport visible. Wide screens reserve a separate, unclipped artwork pane.
@@ -213,7 +221,7 @@ internal fun PlayerTransport(state: Playback, position: Long, seeking: Float?, s
     }
 }
 
-private fun playerTime(milliseconds: Long): String {
+internal fun playerTime(milliseconds: Long): String {
     val seconds = milliseconds.coerceAtLeast(0) / 1000
     return String.format(Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60)
 }

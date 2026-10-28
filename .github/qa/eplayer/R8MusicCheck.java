@@ -54,11 +54,14 @@ public class R8MusicCheck extends InstrumentationTestCase {
             shell("am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n app.eplayer.music/cp.player.MainActivity");
             waitFor("home", () -> find("设置", true) != null);
             click(find("设置", true));
+            if (find("播放与声音", false) != null) click(find("播放与声音", false));
             waitFor("settings engine", () -> find(engine, false) != null);
             click(find(engine, false));
             waitFor("selected engine", () -> selected(engine));
             click(find("完成", false));
             waitFor("home after settings", () -> find("设置", true) != null);
+            if (find("曲库", true) != null) click(find("曲库", true));
+            waitFor("library import entry", () -> find(TITLE, false) != null);
             if (count("导入") > 1) {
                 String filename = "ePlayer-QA-" + UUID.randomUUID() + ".wav";
                 createFixture(filename);

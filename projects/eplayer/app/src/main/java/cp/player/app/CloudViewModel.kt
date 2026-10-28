@@ -30,20 +30,32 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
     private var refreshJob: Job? = null
     private var searchJob: Job? = null
     private var searchGeneration = 0
+    private var libraryEnabled = false
+    private var discoveryVisible = false
 
     init {
         viewModelScope.launch { ProviderManager.currentProviderFlow.collect { provider ->
             home.value = CloudHome(source = provider?.id)
             pages.value = emptyList(); clearSearch()
-            refresh()
+            if (libraryEnabled) refresh()
         } }
         viewModelScope.launch { SourceStore.accountChanges.collect { source -> if (source == home.value.source) {
             home.value = CloudHome(source = source); pages.value = emptyList(); clearSearch()
-            likes.update { it - source }; refresh()
+            likes.update { it - source }; if (libraryEnabled) refresh()
         } } }
     }
     private suspend fun <T> optional(action: suspend () -> T): T? = try { action() } catch (error: CancellationException) { throw error } catch (_: Exception) { null }
+    fun ensureLibrary() {
+        if (libraryEnabled) return
+        libraryEnabled = true
+        refresh()
+    }
+    fun setDiscoveryVisible(visible: Boolean) {
+        discoveryVisible = visible
+        if (visible) { libraryEnabled = true; refresh() }
+    }
     fun refresh() {
+        if (!libraryEnabled) return
         refreshJob?.cancel()
         val source = home.value.source ?: return
         refreshJob = viewModelScope.launch {
@@ -53,7 +65,7 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
                 val account = repo.account()
                 coroutineScope {
                     val playlists = async { if (account == null) emptyList() else repo.playlists(account.id) }
-                    val recommendations = async { optional { repo.recommendations(account != null) }.orEmpty() }
+                    val recommendations = async { if (discoveryVisible) optional { repo.recommendations(account != null) }.orEmpty() else home.value.recommendations }
                     val liked = async { if (account == null) emptySet() else optional { repo.liked(account.id) }.orEmpty() }
                     val result = CloudHome(source, account, playlists.await(), recommendations.await())
                     val likedIds = liked.await()

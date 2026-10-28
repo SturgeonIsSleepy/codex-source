@@ -47,7 +47,7 @@ jobs:
           bash tools/prepare-local-signing.sh
           bash gradlew testStandardFastReleaseUnitTest assembleStandardFastRelease assembleInternalFastRelease assembleStandardFastReleaseAndroidTest -PwithRust=false -PtestBuildType=fastRelease --console=plain
       - name: Build shrunk release candidates
-        if: github.ref == 'refs/heads/codex/ncm-basic-completion' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'workflow_dispatch'
+        if: github.ref == 'refs/heads/codex/eplayer-light' || github.ref == 'refs/heads/codex/ncm-basic-completion' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'workflow_dispatch'
         run: bash gradlew assembleStandardRelease assembleInternalRelease -PwithRust=false --console=plain
       - name: Upload preview and device tests
         uses: actions/upload-artifact@v4
@@ -86,7 +86,7 @@ jobs:
       - name: Verify standard playback and responsive layout on Android 16
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          EPLAYER_CHECK_RELEASE: ${{ (github.ref == 'refs/heads/codex/ncm-basic-completion' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'workflow_dispatch') && '1' || '0' }}
+          EPLAYER_CHECK_RELEASE: ${{ (github.ref == 'refs/heads/codex/eplayer-light' || github.ref == 'refs/heads/codex/ncm-basic-completion' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'workflow_dispatch') && '1' || '0' }}
         with:
           api-level: 36
           target: google_apis
