@@ -1,7 +1,6 @@
 package cp.player.app
 
 import android.content.Context
-import android.os.SystemClock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.time.LocalDate

@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -41,6 +42,7 @@ internal fun LiquidGlass(scene: GraphicsLayer, modifier: Modifier = Modifier, da
         if (dimensions.width > 0) createOptics(dimensions.width.toFloat(), dimensions.height.toFloat(), density, dark) else null
     } else null
     Box(modifier.onGloballyPositioned { origin = it.positionInRoot(); dimensions = it.size }
+        .shadow(6.dp, RoundedCornerShape(100.dp), ambientColor = Color.Black.copy(alpha = .12f), spotColor = Color.Black.copy(alpha = .12f))
         .clip(RoundedCornerShape(100.dp))) {
         if (effect != null) Box(Modifier.matchParentSize().graphicsLayer { renderEffect = effect }
             .drawWithContent { translate(-origin.x, -origin.y) { drawLayer(scene) } })

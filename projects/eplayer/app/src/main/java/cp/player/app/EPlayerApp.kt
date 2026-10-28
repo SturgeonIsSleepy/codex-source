@@ -20,7 +20,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.rememberGraphicsLayer
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,7 +28,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import coil3.compose.AsyncImage
 import cp.player.BuildConfig
 import cp.player.manager.WitchPlaylist
 import cp.player.provider.BackendProvider
@@ -70,7 +68,6 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     var playbackSettings by remember { mutableStateOf(false) }
     var witchTarget by rememberSaveable { mutableIntStateOf(0) }
     val snackbar = remember { SnackbarHostState() }
-    val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val scene = rememberGraphicsLayer()
     val lists = remember { List(3) { LazyListState() } }
@@ -235,7 +232,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                 Row(Modifier.fillMaxSize().padding(5.dp), verticalAlignment = Alignment.CenterVertically) {
                     listOf("首页" to Icons.Default.Home, "曲库" to Icons.Default.LibraryMusic, "设置" to Icons.Default.Settings).forEachIndexed { index, (label, icon) ->
                         Column(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(40.dp))
-                            .background(if (page == index && !discovery) MaterialTheme.colorScheme.surface.copy(alpha = .65f) else Color.Transparent)
+                            .background(if (page == index && !discovery) MusicRed.copy(alpha = .08f) else Color.Transparent)
                             .clickable { page = index; discovery = false }
                             .semantics { contentDescription = label; role = Role.Tab; selected = page == index && !discovery },
                             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
