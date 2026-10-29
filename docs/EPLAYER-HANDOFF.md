@@ -1,5 +1,7 @@
 # ePlayer 转移交接
 
+0.5.4 歌词增强源码已保存于 `20871dd7bb559f0837ab834ceb1ca7b304eaf791` / `codex/eplayer-power`：真实逐词扫色、TTML 对话左右、间奏浮动点、封面缓存磨砂取色。17 项本地 JVM、24 项脚本和目录检查通过；Compose/Coil/22 项设备检查及最终包待 CI。仅做自用通用包，未完成的 APK 不交付。主 agent 编写了全部代码与测试，Terra high 只执行检查/资料读取；详细范围见 [0.5.4 记录](../projects/eplayer/docs/LYRICS-0.5.4.md)。
+
 0.5.3 已在 `codex/eplayer-power` / [PR #17](https://github.com/SturgeonIsSleepy/codex-source/pull/17) 完成。应用源码 `9f8e22311a866172ad2e2a072eee54e5024afa2a` / [CI 40881431196](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40881431196)：灰紫魔女主题、播放栏与导航共用连续底板，歌曲封面只替代人物后的蓝天，伊蕾娜在前景且腿脚伸出封面；全屏页、确认框与底部面板接入预见式返回。18 项检查（56.383 秒）、R8 冷启动、最终同签名覆盖、匿名云真实封面/歌词/进度暂停和实际系统返回手势均按范围通过。只交付自用通用包，人物/动作/字体/音质保留。首轮参考图虚影和状态栏问题已修，首轮证据仍保留；恢复未准备队列的临时时长显示另有记录。完整来源、摘要和测试边界见 [0.5.3 记录](../projects/eplayer/docs/TRAVEL-0.5.3.md)。
 
 最新交付约定：用户未特别要求时，只制作一个内置音源的自用通用 APK，不另做普通版或 ARM64 派生包。通用包本身包含 ARM64，用户只需安装一份。`codex/eplayer-power` 的 CI 默认只构建 internal、收集 universal，并用同一内部包名验收；其他开发分支接续时沿用此约定。下方四包记录是既有 0.5.2 首轮历史，不代表今后的默认交付。
