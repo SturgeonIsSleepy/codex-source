@@ -250,10 +250,11 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private fun sourceAction(action: suspend () -> Unit) = viewModelScope.launch {
         try { action() } catch (error: Exception) { message.value = error.message ?: "音源操作失败" }
     }
-    suspend fun lyrics(): LyricsText {
+    fun lyricPosition(): Long = controller?.currentPosition?.coerceAtLeast(0) ?: position.value
+    suspend fun lyrics(update: (LyricsText) -> Unit = {}): LyricsText {
         val source = playback.value.source ?: return LyricsText("暂无歌词")
         val song = playback.value.song ?: return LyricsText("暂无歌词")
-        return try { LyricsRepository(app).get(source, playback.value.remoteId ?: song.id) }
+        return try { LyricsRepository(app).get(source, playback.value.remoteId ?: song.id, update) }
         catch (error: kotlinx.coroutines.CancellationException) { throw error }
         catch (error: Exception) { LyricsText(error.message ?: "歌词加载失败") }
     }

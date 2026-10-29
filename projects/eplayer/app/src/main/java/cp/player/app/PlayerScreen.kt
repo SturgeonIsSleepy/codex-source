@@ -64,7 +64,8 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
         if (state.source == null) song.id in favorites else (state.remoteId ?: song.id) in likes[state.source].orEmpty()
     } ?: false
     LaunchedEffect(showLyrics, state.source, state.remoteId, state.song?.id) {
-        lyrics = if (showLyrics) model.lyrics() else null
+        lyrics = null
+        if (showLyrics) lyrics = model.lyrics { lyrics = it }
     }
     val openLyrics = { showLyrics = true }
     TravelDialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
