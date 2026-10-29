@@ -5,6 +5,7 @@ import hashlib
 import fnmatch
 import json
 import os
+import re
 import subprocess
 import time
 
@@ -52,7 +53,11 @@ def main():
         raise RuntimeError('EPLAYER_CHECK_RELEASE must be 0 or 1')
     release = unique('*standard*x86_64*release.apk') if release_mode == '1' else None
     tests = unique('*standard*fastRelease*androidTest*.apk')
+    selected = [item.strip() for item in os.environ.get('EPLAYER_TEST_CLASSES', '').split(',') if item.strip()]
+    if any(not re.fullmatch(r'cp\.player\.[A-Za-z0-9_.$]+(?:#[A-Za-z0-9_]+)?', item) for item in selected):
+        raise RuntimeError('Invalid focused instrumentation selection')
     metadata = {'source_commit': os.environ.get('GITHUB_SHA'), 'kind': 'Android emulator; fastRelease instrumentation, not physical-device acceptance',
+                'test_scope': {'kind': 'focused' if selected else 'full', 'classes': selected},
                 'checks': {'instrumentation': 'not_run', 'release_start': 'not_run' if release else 'not_requested'},
                 'app': {'name': app.name, 'sha256': hashlib.sha256(app.read_bytes()).hexdigest()},
                 'release': {'name': release.name, 'sha256': hashlib.sha256(release.read_bytes()).hexdigest()} if release else None,
@@ -64,11 +69,12 @@ def main():
         adb('install', '-r', app)
         adb('install', '-r', '-t', tests)
         metadata['checks']['instrumentation'] = 'running'
-        result = adb('shell', 'am', 'instrument', '-w', '-r', '-e', 'timeout_msec', '120000',
-                     'app.eplayer.music.test/androidx.test.runner.AndroidJUnitRunner',
+        arguments = ['shell', 'am', 'instrument', '-w', '-r', '-e', 'timeout_msec', '120000']
+        if selected: arguments += ['-e', 'class', ','.join(selected)]
+        result = adb(*arguments, 'app.eplayer.music.test/androidx.test.runner.AndroidJUnitRunner',
                      capture_output=True, text=True, timeout=480)
         (output / 'instrumentation.txt').write_text(result.stdout + result.stderr)
-        print(result.stdout)
+        print("\n".join(result.stdout.splitlines()[-16:]))
         if 'FAILURES!!!' in result.stdout or 'INSTRUMENTATION_CODE: -1' not in result.stdout or 'OK (' not in result.stdout:
             metadata['checks']['instrumentation'] = 'failed'
             raise RuntimeError('Instrumentation did not report a complete passing run')
