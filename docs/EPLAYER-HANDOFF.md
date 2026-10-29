@@ -1,5 +1,7 @@
 # ePlayer 转移交接
 
+0.5.3 已在 `codex/eplayer-power` / [PR #17](https://github.com/SturgeonIsSleepy/codex-source/pull/17) 完成。应用源码 `9f8e22311a866172ad2e2a072eee54e5024afa2a` / [CI 40881431196](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40881431196)：灰紫魔女主题、播放栏与导航共用连续底板，歌曲封面只替代人物后的蓝天，伊蕾娜在前景且腿脚伸出封面；全屏页、确认框与底部面板接入预见式返回。18 项检查（56.383 秒）、R8 冷启动、最终同签名覆盖、匿名云真实封面/歌词/进度暂停和实际系统返回手势均按范围通过。只交付自用通用包，人物/动作/字体/音质保留。首轮参考图虚影和状态栏问题已修，首轮证据仍保留；恢复未准备队列的临时时长显示另有记录。完整来源、摘要和测试边界见 [0.5.3 记录](../projects/eplayer/docs/TRAVEL-0.5.3.md)。
+
 最新交付约定：用户未特别要求时，只制作一个内置音源的自用通用 APK，不另做普通版或 ARM64 派生包。通用包本身包含 ARM64，用户只需安装一份。`codex/eplayer-power` 的 CI 默认只构建 internal、收集 universal，并用同一内部包名验收；其他开发分支接续时沿用此约定。下方四包记录是既有 0.5.2 首轮历史，不代表今后的默认交付。
 
 0.5.2 功耗与深色模式改动位于 `codex/eplayer-power` / [PR #17](https://github.com/SturgeonIsSleepy/codex-source/pull/17)，以 0.5.0 为基线，独立于每日 agent 的 0.5.1 核心整合候选。按用户最新要求完全移除液态玻璃，保留人物、动效、字体和音质；停止隐藏画面的帧循环、按需采样能量并降低暂停空轮询。首轮源码 `e1c0bcf42f477b2adf12a678fda1ecf05720389a` 自动检查通过但夜间截图不可读；修复源码 `3565e405dbf7ea0a750567a0b6c4d67554243f5b` 已通过补强的实际控件像素检查和截图确认，最终 CI 13 项定向检查及普通 R8 冷启动成功，固定签名普通/自用通用包各通过深色冷启动和播放暂停检查；4 个 APK 的签名、16 KiB 对齐、模块边界与派生内容一致性已验核。针对本轮变更精简验证，状态见 [0.5.2 记录](../projects/eplayer/docs/POWER-DARK-0.5.2.md)。后续测试、Computer Use 和网页信息读取统一由 GPT-6.1 Terra high 执行，主 agent 负责实现与整合；手机功耗由用户测量。
