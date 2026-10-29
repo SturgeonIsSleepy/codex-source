@@ -89,6 +89,9 @@ fun EPlayerTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composabl
         typography = type,
         shapes = Shapes(RoundedCornerShape(3.dp), RoundedCornerShape(5.dp),
             RoundedCornerShape(9.dp), RoundedCornerShape(12.dp), RoundedCornerShape(16.dp)),
-        content = content
+        content = {
+            // Dialogs and layouts that draw their own background still need themed ink.
+            CompositionLocalProvider(LocalContentColor provides colors.onBackground, content = content)
+        }
     )
 }
