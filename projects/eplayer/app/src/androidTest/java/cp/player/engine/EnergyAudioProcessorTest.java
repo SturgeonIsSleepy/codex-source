@@ -11,11 +11,11 @@ import static org.junit.Assert.*;
 @RunWith(AndroidJUnit4.class)
 public class EnergyAudioProcessorTest {
     @Test public void metersWithoutChangingAnyAudioByte()throws Exception {
-        for(int encoding:new int[]{C.ENCODING_PCM_8BIT,C.ENCODING_PCM_16BIT,C.ENCODING_PCM_24BIT,C.ENCODING_PCM_32BIT,C.ENCODING_PCM_FLOAT}) {
+        for(boolean enabled:new boolean[]{false,true}) for(int encoding:new int[]{C.ENCODING_PCM_8BIT,C.ENCODING_PCM_16BIT,C.ENCODING_PCM_24BIT,C.ENCODING_PCM_32BIT,C.ENCODING_PCM_FLOAT}) {
             int width=encoding==C.ENCODING_PCM_8BIT?1:encoding==C.ENCODING_PCM_16BIT?2:encoding==C.ENCODING_PCM_24BIT?3:4;
             byte[] bytes=new byte[width*2*64];
             for(int i=0;i<bytes.length;i++)bytes[i]=(byte)(i*17+9);
-            EnergyAudioProcessor meter=new EnergyAudioProcessor();
+            EnergyAudioProcessor meter=new EnergyAudioProcessor(()->enabled);
             meter.configure(new AudioProcessor.AudioFormat(48000,2,encoding));meter.flush();
             ByteBuffer input=ByteBuffer.allocateDirect(bytes.length).put(bytes);input.flip();
             meter.queueInput(input);ByteBuffer output=meter.getOutput();byte[] actual=new byte[output.remaining()];output.get(actual);
@@ -39,12 +39,23 @@ public class EnergyAudioProcessorTest {
         meter.reset();
     }
     @Test public void hearsTheRightChannelToo()throws Exception {
-        EnergyAudioProcessor meter=new EnergyAudioProcessor();
+        EnergyAudioProcessor meter=new EnergyAudioProcessor(()->true);
         meter.configure(new AudioProcessor.AudioFormat(48000,2,C.ENCODING_PCM_16BIT));meter.flush();
         ByteBuffer input=ByteBuffer.allocateDirect(32768).order(ByteOrder.LITTLE_ENDIAN);
         while(input.remaining()>=4){input.putShort((short)0);input.putShort((short)12000);}input.flip();
         meter.queueInput(input);
         assertTrue("A song panned to the right must still animate the character",MusicPulse.sample()>.3f);
+        meter.reset();
+    }
+    @Test public void absentVisualDemandBypassesMeteringWithoutTouchingAudio()throws Exception {
+        EnergyAudioProcessor meter=new EnergyAudioProcessor(()->false);
+        meter.configure(new AudioProcessor.AudioFormat(48000,2,C.ENCODING_PCM_16BIT));meter.flush();
+        MusicPulse.publish(.01f);float before=MusicPulse.sample();
+        byte[] bytes={0,127,0,127,0,127,0,127};
+        ByteBuffer input=ByteBuffer.allocateDirect(bytes.length).put(bytes);input.flip();
+        meter.queueInput(input);byte[] actual=new byte[bytes.length];meter.getOutput().get(actual);
+        assertArrayEquals(bytes,actual);
+        assertEquals("No RMS update when the artwork is not requesting it",before,MusicPulse.sample(),0f);
         meter.reset();
     }
 }

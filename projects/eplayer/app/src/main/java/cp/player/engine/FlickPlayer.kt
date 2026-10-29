@@ -184,7 +184,6 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         // 监听设置变化
         UserPreferences.getPrefs(context).registerOnSharedPreferenceChangeListener(prefsListener)
         observeRustEvents()
-        startStateReconcile()
     }
 
     fun getFormatInfo(): Pair<Int, Int> = lastSampleRate to lastBitrate
@@ -258,9 +257,9 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
      * 并修正 FlickPlayer 的状态，确保 MediaSession 报告正确的播放状态。
      */
     private fun startStateReconcile() {
-        stateReconcileJob?.cancel()
+        if (stateReconcileJob?.isActive == true) return
         stateReconcileJob = scope.launch {
-            while (isActive) {
+            while (isActive && playWhenReady) {
                 delay(3000)
                 if (playlist.isEmpty() || currentPlayingPath == null || pendingStartPositionMs != null || playbackError != null) continue
 
@@ -489,6 +488,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
             Log.i(TAG, "Track ended, no more tracks")
             isPlaying = false
             playbackState = Player.STATE_ENDED
+            stateReconcileJob?.cancel(); stateReconcileJob = null
             if (durationMs > 0) currentPositionMs.set(durationMs)
             stopPositionPolling()
             invalidateState()
@@ -805,6 +805,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
         this.playWhenReady = playWhenReady
         if (playWhenReady) {
+            startStateReconcile()
             pauseRequested = false
             if (pendingStartPositionMs != null || playbackState == Player.STATE_IDLE || playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_ENDED) {
                 if (playlist.isNotEmpty()) playCurrentItem(pendingStartPositionMs ?: 0)
@@ -819,6 +820,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
             underrunWatchJob?.cancel()
             seekWatchdogJob?.cancel()
             pauseRequested = true
+            stateReconcileJob?.cancel(); stateReconcileJob = null
             stopPositionPolling()
             scope.launch(RustEngine.engineDispatcher) { RustEngine.pause() }
         }
@@ -994,6 +996,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     }
 
     override fun handleStop(): ListenableFuture<*> {
+        stateReconcileJob?.cancel(); stateReconcileJob = null
         awaitingNativeStart = false
         val origin = Thread.currentThread().stackTrace.filter {
             it.className.startsWith("cp.player.") || it.className.startsWith("androidx.media3.")

@@ -37,7 +37,8 @@ data class Playback(val song: Song? = null, val playing: Boolean = false, val bu
     val shuffle: Boolean = false, val repeat: Int = Player.REPEAT_MODE_OFF, val error: String? = null, val source: String? = null, val remoteId: String? = null, val playRequested: Boolean = playing)
 
 class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
-    internal val soundSettings = SoundSettingsStore(app, viewModelScope)
+    private val soundSettingsDelegate = lazy { SoundSettingsStore(app, viewModelScope) }
+    internal val soundSettings by soundSettingsDelegate
     private val catalog by lazy { LibraryStore(app) }
     private val _library = MutableStateFlow<List<Track>>(emptyList())
     val library = _library.asStateFlow()
@@ -60,6 +61,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     val quality = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getString("quality", "standard") ?: "standard")
     val animate = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getBoolean("animate", true))
     val sleepDeadline = MutableStateFlow(0L)
+    private var queueSnapshot = emptyList<Song>()
     private var controller: MediaController? = null
     private var pendingPlay: (() -> Unit)? = null
     private var visible = false
@@ -74,7 +76,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     }).buildAsync()
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
-            publish()
+            publish(queueChanged = events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_METADATA_CHANGED))
             if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) {
                 viewModelScope.launch { recent.value = withContext(Dispatchers.IO) { RecentStore.read(app) } }
                 refillRadio()
@@ -90,23 +92,26 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { reloadLibrary(); recent.value = withContext(Dispatchers.IO) { RecentStore.read(app) } }
         future.addListener({
             runCatching { future.get() }.onSuccess {
-                controller = it; sleepDeadline.value = it.sessionExtras.getLong(PlaybackSleepTimer.DEADLINE); it.addListener(listener); publish()
+                controller = it; sleepDeadline.value = it.sessionExtras.getLong(PlaybackSleepTimer.DEADLINE); it.addListener(listener); publish(queueChanged = true, snapshotPosition = true)
                 pendingPlay?.invoke(); pendingPlay = null
             }.onFailure { message.value = "播放服务连接失败：${it.cause?.message ?: it.message}" }
         }, MoreExecutors.directExecutor())
     }
-    fun refreshPlaybackSnapshot() { publish() }
+    fun refreshPlaybackSnapshot() { publish(snapshotPosition = true) }
     fun setVisible(value: Boolean) { visible = value; restartTicker(); if (value) observeDownloads() else { downloadObserver?.cancel(); downloadObserver = null } }
-    fun setProgressVisible(value: Boolean) { progressVisible = value; if (value) publish() else restartTicker() }
-    private fun publish() {
+    fun setProgressVisible(value: Boolean) { progressVisible = value; if (value) publish(snapshotPosition = true) else restartTicker() }
+    private fun publish(queueChanged: Boolean = false, snapshotPosition: Boolean = false) {
         val player = controller ?: return
+        if (queueChanged) queueSnapshot = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).toSong() }
+        val currentPosition = player.currentPosition.coerceAtLeast(0)
+        val displayedPosition = if (snapshotPosition || !player.isPlaying) currentPosition else _playback.value.position
         _playback.value = Playback(player.currentMediaItem?.toSong(), player.isPlaying,
-            player.playbackState == Player.STATE_BUFFERING, player.currentPosition.coerceAtLeast(0),
+            player.playbackState == Player.STATE_BUFFERING, displayedPosition,
             player.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0,
-            (0 until player.mediaItemCount).map { player.getMediaItemAt(it).toSong() },
+            queueSnapshot,
             player.shuffleModeEnabled, player.repeatMode, player.playerError?.message, player.currentMediaItem?.mediaMetadata?.extras?.getString("source"), player.currentMediaItem?.mediaMetadata?.extras?.getString("remoteId"),
             playRequested = player.playWhenReady && player.playbackState != Player.STATE_ENDED && player.playerError == null)
-        position.value = player.currentPosition.coerceAtLeast(0)
+        position.value = currentPosition
         restartTicker()
     }
     private fun restartTicker() {
@@ -195,7 +200,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     fun playPause() { controller?.togglePlayback() }
     fun previous() { controller?.seekToPreviousMediaItem() }
     fun next() { controller?.seekToNextMediaItem() }
-    fun seek(position: Long) { controller?.seekTo(position); publish() }
+    fun seek(position: Long) { controller?.seekTo(position); publish(snapshotPosition = true) }
     fun setQuality(value: String) {
         if (value == quality.value) return
         quality.value = value
@@ -293,7 +298,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
     override fun onCleared() {
-        soundSettings.close()
+        if (soundSettingsDelegate.isInitialized()) soundSettings.close()
         ticker?.cancel(); downloadObserver?.cancel()
         controller?.removeListener(listener)
         MediaController.releaseFuture(future)

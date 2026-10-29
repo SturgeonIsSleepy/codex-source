@@ -12,6 +12,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
@@ -95,6 +96,7 @@ class LyricsRepository(private val context: Context) {
 /** Full-screen lyric reading: one active line, translations and seek by tapping. */
 @Composable
 internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, close: () -> Unit) {
+    val night = MaterialTheme.colorScheme.background.luminance() < .3f
     val position by model.position.collectAsState()
     val playback by model.playback.collectAsState()
     val quality by model.quality.collectAsState()
@@ -115,10 +117,10 @@ internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, close: () 
         }
     }
     Dialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Box(Modifier.fillMaxSize().background(Color(0xFF173044))) {
+        Box(Modifier.fillMaxSize().background(if (night) Color(0xFF07090D) else Color(0xFF173044))) {
             AsyncImage(playback.song?.albumArtUrl ?: "file:///android_asset/travel-sky.png", null,
-                Modifier.matchParentSize().blur(48.dp), contentScale = ContentScale.Crop, alpha = .42f)
-            Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color(0x77101924), Color(0xCC101923)))))
+                Modifier.matchParentSize().blur(48.dp), contentScale = ContentScale.Crop, alpha = if (night) .20f else .42f)
+            Box(Modifier.matchParentSize().background(Brush.verticalGradient(if (night) listOf(Color(0xB307090D), Color(0xE607090D)) else listOf(Color(0x77101924), Color(0xCC101923)))))
             Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 24.dp)) {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = close) { Icon(Icons.Default.KeyboardArrowDown, "关闭歌词", tint = Color.White) }
@@ -135,7 +137,7 @@ internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, close: () 
                     if (text == null) CircularProgressIndicator(Modifier.align(Alignment.Center).size(28.dp), color = Color.White, strokeWidth = 2.dp)
                     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(top = 80.dp, bottom = 160.dp)) {
                         itemsIndexed(lines) { index, line ->
-                            val color by animateColorAsState(if (!timed || index == active) Color.White else Color.White.copy(alpha = .33f), tween(240), label = "lyric-emphasis")
+                            val color by animateColorAsState(if (!timed || index == active) Color.White else Color.White.copy(alpha = .46f), tween(240), label = "lyric-emphasis")
                             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                                 .then(if (timed) Modifier.clickable { model.seek(line.time); follow = true } else Modifier)
                                 .padding(horizontal = 6.dp, vertical = 15.dp)) {

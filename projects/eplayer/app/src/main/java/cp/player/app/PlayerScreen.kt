@@ -15,6 +15,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
@@ -42,9 +44,11 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
                           more: () -> Unit, comments: () -> Unit, close: () -> Unit) {
     val animate by model.animate.collectAsState()
     val context = LocalContext.current.applicationContext
-    val artworkReady by produceState(initialValue = false, key1 = context) {
-        withContext(Dispatchers.IO) { WitchPlayerView.prepareAssets(context) }
-        value = true
+    val backdrop = MaterialTheme.colorScheme.background
+    val night = backdrop.luminance() < .3f
+    val artworkGeneration by produceState(initialValue = 0, key1 = context, key2 = night) {
+        withContext(Dispatchers.IO) { WitchPlayerView.prepareAssets(context, night) }
+        value += 1
     }
     val favorites by model.favorites.collectAsState()
     val likes by cloud.likes.collectAsState()
@@ -69,10 +73,11 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
             state.song, state.buffering,
             header = { PlayerHeader(close, openLyrics, if (state.source != null) comments else null, more) { queue = true } },
             artwork = { modifier ->
-                if (!artworkReady) Box(modifier, contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                if (artworkGeneration == 0) Box(modifier, contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 else AndroidView(
                     factory = { WitchPlayerView(it) }, modifier = modifier,
                     update = { view ->
+                        view.setAppearance(night, backdrop.toArgb(), artworkGeneration)
                         view.setMotionEnabled(animate)
                         view.setArtworkActive(!showLyrics && !queue)
                         view.setPlayback(state.playing, state.playRequested, position) })

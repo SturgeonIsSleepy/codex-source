@@ -1,5 +1,6 @@
 package cp.player.app
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -23,13 +25,14 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import cp.player.model.Song
 
-internal val MusicRed = Color(0xFFFA233B)
+internal val MusicRed: Color
+    @Composable get() = MaterialTheme.colorScheme.primary
 internal val QualityChoices = listOf("标准" to "standard", "较高" to "higher", "极高" to "exhigh", "无损" to "lossless", "Hi-Res" to "hires")
 internal fun qualityName(value: String) = QualityChoices.firstOrNull { it.second == value }?.first ?: "标准"
 
 @Composable
 internal fun MusicCover(song: Song?, modifier: Modifier = Modifier) {
-    Box(modifier.clip(RoundedCornerShape(12.dp)).background(Color(0xFFDCEBF2))) {
+    Box(modifier.clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest)) {
         AsyncImage(song?.albumArtUrl ?: "file:///android_asset/elaina-layer.png", null,
             Modifier.fillMaxSize(), contentScale = if (song?.albumArtUrl != null) ContentScale.Crop else ContentScale.Fit)
     }
@@ -105,4 +108,13 @@ internal fun QualitySetting(model: EPlayerViewModel) {
     var open by remember { mutableStateOf(false) }
     SettingsRow("音质", qualityName(value)) { open = true }
     if (open) QualitySheet(model) { open = false }
+}
+
+/** Opaque floating controls: no blur, optical shader or captured backdrop. */
+@Composable
+internal fun FloatingBar(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
+    val shape = RoundedCornerShape(100.dp)
+    Box(modifier.shadow(4.dp, shape, ambientColor = Color.Black.copy(alpha = .12f), spotColor = Color.Black.copy(alpha = .12f))
+        .clip(shape).background(MaterialTheme.colorScheme.surfaceContainerLow)
+        .border(.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f), shape), content = content)
 }

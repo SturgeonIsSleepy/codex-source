@@ -31,13 +31,30 @@ val PaperColors = lightColorScheme(
     error = Color(0xFFAB493B), errorContainer = Color(0xFFFFE6DF)
 )
 
+val NightColors = darkColorScheme(
+    primary = Color(0xFFFF375F), onPrimary = Color.White,
+    primaryContainer = Color(0xFF40202B), onPrimaryContainer = Color(0xFFFFCED8),
+    secondary = Color(0xFFD4D4DC), onSecondary = Color(0xFF151518),
+    secondaryContainer = Color(0xFF2A2A31), onSecondaryContainer = Color(0xFFF3F3F7),
+    tertiary = Color(0xFFFF5C79), onTertiary = Color.White,
+    tertiaryContainer = Color(0xFF40202B), onTertiaryContainer = Color(0xFFFFCED8),
+    background = Color(0xFF08080A), onBackground = Color(0xFFF5F5F8),
+    surface = Color(0xFF141417), onSurface = Color(0xFFF5F5F8),
+    surfaceVariant = Color(0xFF242429), onSurfaceVariant = Color(0xFFB5B5BF),
+    surfaceContainerLowest = Color(0xFF0C0C0F), surfaceContainerLow = Color(0xFF1B1B20),
+    surfaceContainer = Color(0xFF212127), surfaceContainerHigh = Color(0xFF292930),
+    surfaceContainerHighest = Color(0xFF34343D),
+    outline = Color(0xFF93939F), outlineVariant = Color(0xFF3B3B43),
+    error = Color(0xFFFFB4AB), onError = Color(0xFF690005),
+    errorContainer = Color(0xFF5C1B1B), onErrorContainer = Color(0xFFFFDAD6),
+    inverseSurface = Color(0xFFE8E8ED), inverseOnSurface = Color(0xFF242429),
+    inversePrimary = Color(0xFFBF1739), surfaceTint = Color.Transparent
+)
+
 @Composable
-fun EPlayerTheme(content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
-    val colors = if (dark) darkColorScheme(primary = Color(0xFFFF375F), tertiary = Color(0xFFFF375F),
-        background = Color(0xFF0C0C0F), surface = Color(0xFF18181C), surfaceContainerLow = Color(0xFF1C1C20),
-        surfaceContainerHigh = Color(0xFF28282E), onSurface = Color(0xFFF7F7FA), onSurfaceVariant = Color(0xFF9D9DA5),
-        primaryContainer = Color(0xFF421C27), outlineVariant = Color(0xFF34343B)) else PaperColors
+fun EPlayerTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+    val dark = darkTheme
+    val colors = if (dark) NightColors else PaperColors
     val base = Typography()
     val type = remember {
         Typography(

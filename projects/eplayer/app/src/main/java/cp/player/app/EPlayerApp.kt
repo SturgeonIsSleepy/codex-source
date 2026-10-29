@@ -18,8 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -31,8 +30,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import cp.player.BuildConfig
 import cp.player.manager.WitchPlaylist
 import cp.player.provider.BackendProvider
-import cp.player.ui.glass.LiquidGlass
-import cp.player.ui.glass.recordGlassScene
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,6 +39,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     val recent by model.recent.collectAsState()
     val stats by model.listeningStats.collectAsState()
     val home by cloud.home.collectAsState()
+    val detailPages by cloud.pages.collectAsState()
     val found by cloud.searchResult.collectAsState()
     val searched by cloud.searched.collectAsState()
     val searching by cloud.searching.collectAsState()
@@ -69,9 +67,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     var witchTarget by rememberSaveable { mutableIntStateOf(0) }
     val snackbar = remember { SnackbarHostState() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val scene = rememberGraphicsLayer()
     val lists = remember { List(3) { LazyListState() } }
-    val dark = MaterialTheme.colorScheme.background.luminance() < .3f
     val importAudio = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments(), model::importAudio)
     val importSource = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let(model::importSource) }
     val importWitch = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { model.importWitch(witchTarget, it) } }
@@ -99,8 +95,9 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     BackHandler(enabled = !discovery && page != 0 && !showPlayer && !searched) { page = 0 }
     BackHandler(enabled = searched && !showPlayer) { query = ""; cloud.clearSearch() }
 
+    val chromeVisible = !showPlayer && detailPages.isEmpty() && !playbackSettings
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Box(Modifier.fillMaxSize().recordGlassScene(scene).background(MaterialTheme.colorScheme.background)) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), state = if (discovery) rememberLazyListState() else lists[page],
                 contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = if (state.song != null) 192.dp else 112.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -222,8 +219,8 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                 }
             }
         }
-        Column(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 18.dp).padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (state.song != null) LiquidGlass(scene, Modifier.fillMaxWidth().height(62.dp), dark) {
+        Column(Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (chromeVisible) 1f else 0f }.navigationBarsPadding().padding(horizontal = 18.dp).padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (state.song != null) FloatingBar(Modifier.fillMaxWidth().height(62.dp)) {
                 Row(Modifier.fillMaxSize().clickable { onShowPlayer(true) }.padding(start = 10.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     MusicCover(state.song, Modifier.size(42.dp))
                     Text(state.song!!.name, Modifier.weight(1f).padding(horizontal = 12.dp), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
@@ -231,7 +228,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                     IconButton(onClick = model::next) { Icon(Icons.Default.SkipNext, "下一首") }
                 }
             }
-            LiquidGlass(scene, Modifier.fillMaxWidth().height(66.dp), dark) {
+            FloatingBar(Modifier.fillMaxWidth().height(66.dp)) {
                 Row(Modifier.fillMaxSize().padding(5.dp), verticalAlignment = Alignment.CenterVertically) {
                     listOf("首页" to Icons.Default.Home, "曲库" to Icons.Default.LibraryMusic, "设置" to Icons.Default.Settings).forEachIndexed { index, (label, icon) ->
                         Column(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(40.dp))
