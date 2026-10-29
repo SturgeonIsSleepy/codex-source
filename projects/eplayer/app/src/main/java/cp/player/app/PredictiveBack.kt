@@ -9,6 +9,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
+import androidx.core.view.WindowCompat
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
@@ -113,7 +115,17 @@ private fun PreviewWindow(preview: BackPreview) {
         reveal?.invoke(active)
         onDispose { if (active) reveal?.invoke(false) }
     }
-    val window = (LocalView.current.parent as? DialogWindowProvider)?.window
+    val view = LocalView.current
+    val window = (view.parent as? DialogWindowProvider)?.window
+    val light = MaterialTheme.colorScheme.background.luminance() >= .3f
     val dim = .20f * (1f - preview.progress.value)
-    SideEffect { window?.setDimAmount(dim) }
+    SideEffect {
+        window?.let {
+            it.setDimAmount(dim)
+            WindowCompat.getInsetsController(it, view).apply {
+                isAppearanceLightStatusBars = light
+                isAppearanceLightNavigationBars = light
+            }
+        }
+    }
 }

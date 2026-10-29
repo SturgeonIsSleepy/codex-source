@@ -103,14 +103,15 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     var revealingBack by remember { mutableStateOf(false) }
     val revealBack: (Boolean) -> Unit = remember { { revealingBack = it } }
     val chromeVisible = (!showPlayer && detailPages.isEmpty() && !playbackSettings) || revealingBack
-    CompositionLocalProvider(LocalBackPreviewVisibility provides revealBack) {
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        if (backPreview.progress.value > 0f) RootReturnPreview(stats, state, searched)
-        Box(Modifier.fillMaxSize().backPreview(backPreview).background(MaterialTheme.colorScheme.background)) {
-            LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), state = if (discovery) rememberLazyListState() else lists[page],
+    @Composable
+    fun RootContents(destination: Boolean) {
+        val screenPage = if (destination && !searched) 0 else page
+        val screenDiscovery = discovery && !destination
+        val screenSearched = searched && !destination
+            LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), state = if (destination) rememberLazyListState(lists[screenPage].firstVisibleItemIndex, lists[screenPage].firstVisibleItemScrollOffset) else if (discovery) rememberLazyListState() else lists[page],
                 contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = if (state.song != null) 164.dp else 108.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (discovery) {
+                if (screenDiscovery) {
                     item { Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { discovery = false }) { Icon(Icons.Default.ChevronLeft, "返回首页", tint = MusicRed) }
                         Text("网易云", style = MaterialTheme.typography.headlineLarge)
@@ -122,7 +123,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                         home.error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
                         items(home.recommendations.chunked(2)) { entries -> RecommendationRow(entries, cloud::open) }
                     }
-                } else when (page) {
+                } else when (screenPage) {
                     0 -> {
                         item { MusicHeading("首页") }
                         item { ListeningSummary(stats) }
@@ -151,8 +152,8 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                         item { MusicHeading("曲库") {
                             IconButton(onClick = { importAudio.launch(arrayOf("audio/*")) }) { Icon(Icons.Default.Add, "导入音乐", tint = MusicRed) }
                         } }
-                        item { MusicSearch(query, { query = it }, { cloud.search(query) }, { query = ""; cloud.clearSearch() }) }
-                        if (searched) {
+                        item { MusicSearch(if (destination) "" else query, { query = it }, { cloud.search(query) }, { query = ""; cloud.clearSearch() }) }
+                        if (screenSearched) {
                             item { MusicSegments(listOf("歌曲", "歌单", "专辑", "歌手"), listOf(1,1000,10,100).indexOf(searchType).coerceAtLeast(0)) {
                                 cloud.search(query, listOf(1,1000,10,100)[it])
                             } }
@@ -227,6 +228,12 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                     }
                 }
             }
+    }
+    CompositionLocalProvider(LocalBackPreviewVisibility provides revealBack) {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        if (backPreview.progress.value > 0f) RootContents(true)
+        Box(Modifier.fillMaxSize().backPreview(backPreview).background(MaterialTheme.colorScheme.background)) {
+            RootContents(false)
         }
         Box(Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (chromeVisible) 1f else 0f }.navigationBarsPadding().padding(horizontal = 18.dp).padding(bottom = 8.dp)) {
             MusicDock(state, page, discovery, { page = it; discovery = false },
@@ -284,24 +291,5 @@ internal fun SongRow(track: Track, selected: Boolean, play: () -> Unit, trailing
             if (track.song.artist.isNotBlank()) Text(track.song.artist, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         trailing()
-    }
-}
-
-@Composable
-private fun RootReturnPreview(stats: ListeningStats, state: Playback, library: Boolean) {
-    Surface(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().statusBarsPadding().padding(24.dp)) {
-            MusicHeading(if (library) "曲库" else "首页")
-            if (library) {
-                MusicSegments(listOf("歌单", "歌曲", "最近"), 1) {}
-                Text("魔女の旅々", Modifier.padding(vertical = 24.dp), style = MaterialTheme.typography.titleLarge)
-                WitchPlaylist.songs.forEach { SongRow(Track(it), false, {}) }
-            } else {
-                ListeningSummary(stats)
-                Text("继续播放", Modifier.padding(top = 30.dp, bottom = 12.dp), style = MaterialTheme.typography.headlineSmall)
-                state.song?.let { SongRow(Track(it), false, {}) }
-                SettingsRow("网易云") {}
-            }
-        }
     }
 }

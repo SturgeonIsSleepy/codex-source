@@ -36,11 +36,17 @@ internal val MusicRed: Color
 internal val QualityChoices = listOf("标准" to "standard", "较高" to "higher", "极高" to "exhigh", "无损" to "lossless", "Hi-Res" to "hires")
 internal fun qualityName(value: String) = QualityChoices.firstOrNull { it.second == value }?.first ?: "标准"
 
+/** Older saved queues used a UI reference image as a placeholder, never an album cover. */
+internal fun songArtwork(song: Song?) = song?.albumArtUrl?.takeUnless {
+    it.substringBefore('?') == "file:///android_asset/player-reference.jpg"
+}
+
 @Composable
 internal fun MusicCover(song: Song?, modifier: Modifier = Modifier) {
+    val artwork = songArtwork(song)
     Box(modifier.clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest)) {
-        AsyncImage(song?.albumArtUrl ?: "file:///android_asset/elaina-layer.png", null,
-            Modifier.fillMaxSize(), contentScale = if (song?.albumArtUrl != null) ContentScale.Crop else ContentScale.Fit)
+        AsyncImage(artwork ?: "file:///android_asset/elaina-layer.png", null,
+            Modifier.fillMaxSize(), contentScale = if (artwork != null) ContentScale.Crop else ContentScale.Fit)
     }
 }
 
@@ -131,8 +137,9 @@ internal fun FloatingBar(modifier: Modifier = Modifier, content: @Composable Box
 internal fun AlbumBackdrop(song: Song?, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val base = MaterialTheme.colorScheme.background
-    val request = remember(context, song?.albumArtUrl) {
-        ImageRequest.Builder(context).data(song?.albumArtUrl ?: "file:///android_asset/travel-sky.png")
+    val artwork = songArtwork(song)
+    val request = remember(context, artwork) {
+        ImageRequest.Builder(context).data(artwork)
             .size(320).build()
     }
     Box(modifier.background(base).testTag("album-backdrop")) {
@@ -171,4 +178,25 @@ internal fun MusicDock(state: Playback, page: Int, discovery: Boolean, choose: (
                 }
             }
         }
+}
+
+/** The album replaces only the old sky panel; the full character stays in front of it. */
+@Composable
+internal fun CharacterStage(song: Song?, modifier: Modifier = Modifier, portrait: @Composable (Modifier) -> Unit) {
+    val context = LocalContext.current
+    val artwork = songArtwork(song)
+    val request = remember(context, artwork) { ImageRequest.Builder(context).data(artwork).size(512).build() }
+    BoxWithConstraints(modifier) {
+        val scale = minOf(maxWidth.value / 865f, maxHeight.value / 1280f)
+        val left = (maxWidth.value - 865f * scale) / 2f
+        val top = (maxHeight.value - 1280f * scale) / 2f
+        Box(Modifier.fillMaxSize().testTag("character-stage")) {
+        Box(Modifier.offset(x = (left + 80f * scale).dp, y = (top + 100f * scale).dp)
+            .size((705f * scale).dp).clip(RoundedCornerShape((24f * scale).dp))
+            .background(MaterialTheme.colorScheme.primaryContainer).testTag("stage-cover")) {
+            AsyncImage(request, null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
+        }
+        portrait(Modifier.fillMaxSize())
+        }
+    }
 }

@@ -10,8 +10,8 @@ import java.io.File
 /** The original playlist remains available without a provider, alongside the full CPPlayer library. */
 object WitchPlaylist {
     val songs = listOf(
-        Song("witch_0", "灰色のサーガ", "ChouCho", album = "魔女の旅々", albumArtUrl = "file:///android_asset/player-reference.jpg"),
-        Song("witch_1", "リテラチュア", "上田麗奈", album = "魔女の旅々", albumArtUrl = "file:///android_asset/player-reference.jpg")
+        Song("witch_0", "灰色のサーガ", "ChouCho", album = "魔女の旅々"),
+        Song("witch_1", "リテラチュア", "上田麗奈", album = "魔女の旅々")
     )
     private fun file(context: Context, index: Int) = File(context.filesDir, "witch/audio-$index")
     fun isImported(context: Context, index: Int) = file(context, index).isFile

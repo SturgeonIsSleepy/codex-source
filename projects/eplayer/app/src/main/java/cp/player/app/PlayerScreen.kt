@@ -73,16 +73,15 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
             header = { PlayerHeader(close, openLyrics, if (state.source != null) comments else null, more) { queue = true } },
             artwork = { modifier ->
                 if (artworkGeneration == 0) Box(modifier, contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                else AndroidView(
-                    factory = { WitchPlayerView(it) }, modifier = modifier,
+                else CharacterStage(state.song, modifier) { characterModifier -> AndroidView(
+                    factory = { WitchPlayerView(it) }, modifier = characterModifier,
                     update = { view ->
                         view.setAppearance(night, backdrop.toArgb(), artworkGeneration)
                         view.setCoverBackdropEnabled(true)
                         view.setMotionEnabled(animate)
                         view.setArtworkActive(!showLyrics && !queue)
-                        view.setPlayback(state.playing, state.playRequested, position) })
+                        view.setPlayback(state.playing, state.playRequested, position) }) }
             },
-            backdrop = { AlbumBackdrop(state.song, Modifier.matchParentSize()) },
             controls = {
                 Column {
                 PlayerTransport(state, position, seeking, { seeking = it }, {
@@ -125,10 +124,8 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
  */
 @Composable
 internal fun PlayerLayout(song: Song?, buffering: Boolean, header: @Composable () -> Unit,
-                          artwork: @Composable (Modifier) -> Unit, backdrop: @Composable BoxScope.() -> Unit = {}, controls: @Composable () -> Unit) {
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-    backdrop()
-    BoxWithConstraints(Modifier.fillMaxSize().systemBarsPadding()) {
+                          artwork: @Composable (Modifier) -> Unit, controls: @Composable () -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
         if (maxWidth >= 600.dp && maxWidth > maxHeight) {
             Row(Modifier.fillMaxSize().padding(horizontal = 16.dp).testTag("player-wide")) {
                 artwork(Modifier.weight(.45f).fillMaxHeight().testTag("player-artwork"))
@@ -153,7 +150,6 @@ internal fun PlayerLayout(song: Song?, buffering: Boolean, header: @Composable (
                 controls()
             }
         }
-    }
     }
 }
 

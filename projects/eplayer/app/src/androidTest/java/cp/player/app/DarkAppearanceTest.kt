@@ -26,17 +26,39 @@ class DarkAppearanceTest {
     @Test fun nightPlayerKeepsLegibleControlsOverTheCoverAndPortrait() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         WitchPlayerView.prepareAssets(context, true)
-        val song = Song("dark-fixture", "灰色のサーガ", "ChouCho", album = "")
+        val coverFile = File(context.cacheDir, "cover-contrast-fixture.png")
+        val cover = android.graphics.Bitmap.createBitmap(120, 120, android.graphics.Bitmap.Config.ARGB_8888)
+        for (y in 0 until cover.height) for (x in 0 until cover.width) {
+            cover.setPixel(x, y, if (x < 60) android.graphics.Color.rgb(0, 190, 210) else android.graphics.Color.rgb(220, 0, 150))
+        }
+        coverFile.outputStream().use { cover.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        cover.recycle()
+        val song = Song("dark-fixture", "灰色のサーガ", "ChouCho", album = "", albumArtUrl = coverFile.toURI().toString())
+        assertNull(songArtwork(song.copy(albumArtUrl = "file:///android_asset/player-reference.jpg")))
+        assertEquals(song.albumArtUrl, songArtwork(song))
         val state = Playback(song = song, duration = 60000, queue = listOf(song, song.copy(id = "second")))
         compose.runOnUiThread { compose.activity.setContent { EPlayerTheme(darkTheme = true) {
             val background = MaterialTheme.colorScheme.background.toArgb()
             PlayerLayout(song, false, header = { PlayerHeader({}, {}, null, {}, {}) },
-                artwork = { modifier -> AndroidView(factory = { WitchPlayerView(it).apply { setMotionEnabled(false) } },
-                    modifier = modifier, update = { it.setAppearance(true, background, 1); it.setCoverBackdropEnabled(true) }) },
-                backdrop = { AlbumBackdrop(song, Modifier.matchParentSize()) },
+                artwork = { modifier -> CharacterStage(song, modifier) { child ->
+                    AndroidView(factory = { WitchPlayerView(it).apply { setMotionEnabled(false) } },
+                        modifier = child, update = { it.setAppearance(true, background, 1); it.setCoverBackdropEnabled(true) })
+                } },
                 controls = { PlayerTransport(state, 0, null, {}, {}, {}, {}, {}, {}, {}, false, {}) })
         } } }
-        compose.onNodeWithTag("album-backdrop").assertIsDisplayed()
+        val stage = compose.onNodeWithTag("character-stage").fetchSemanticsNode().boundsInRoot
+        val coverBounds = compose.onNodeWithTag("stage-cover").fetchSemanticsNode().boundsInRoot
+        assertTrue("cover is square", kotlin.math.abs(coverBounds.width - coverBounds.height) <= 2f)
+        assertTrue("portrait pane extends below cover", stage.bottom > coverBounds.bottom)
+        // Sample inside the cover, away from the character, after Coil has loaded it.
+        compose.waitUntil(timeoutMillis = 10_000) {
+            val frame = compose.onRoot().captureToImage().asAndroidBitmap()
+            val y = (coverBounds.top + coverBounds.height * .20f).toInt().coerceIn(0, frame.height - 1)
+            val left = frame.getPixel((coverBounds.left + coverBounds.width * .08f).toInt().coerceIn(0, frame.width - 1), y)
+            val right = frame.getPixel((coverBounds.right - coverBounds.width * .08f).toInt().coerceIn(0, frame.width - 1), y)
+            android.graphics.Color.red(right) - android.graphics.Color.red(left) > 12 &&
+                android.graphics.Color.green(left) - android.graphics.Color.green(right) > 12
+        }
         compose.onNodeWithTag("player-transport").assertIsDisplayed()
         compose.onNodeWithContentDescription("播放").assertIsDisplayed()
         assertTrue(ColorUtils.calculateContrast(NightColors.onSurface.toArgb(), NightColors.surface.toArgb()) >= 7)
