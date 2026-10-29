@@ -23,7 +23,7 @@ public final class WitchPlayerView extends View {
     private boolean artworkActive = true;
     private boolean hierarchyVisible = true, frameScheduled;
     private long position, lastFrame;
-    private boolean night;
+    private boolean night, coverBackdrop;
     private int backdrop = Color.WHITE, assetGeneration;
     private float scale, left, top;
     private final Runnable nextFrame = () -> {
@@ -76,7 +76,14 @@ public final class WitchPlayerView extends View {
     public void setAppearance(boolean night, int background, int generation) {
         if (this.night == night && backdrop == background && assetGeneration == generation) return;
         this.night = night; backdrop = background; assetGeneration = generation;
-        setBackgroundColor(background);
+        setBackgroundColor(coverBackdrop ? Color.TRANSPARENT : background);
+        invalidate();
+    }
+    /** Keep the original character over Compose's song-cover background. */
+    public void setCoverBackdropEnabled(boolean enabled) {
+        if (coverBackdrop == enabled) return;
+        coverBackdrop = enabled;
+        setBackgroundColor(enabled ? Color.TRANSPARENT : backdrop);
         invalidate();
     }
     public void setArtworkActive(boolean active) {
@@ -142,7 +149,7 @@ public final class WitchPlayerView extends View {
         canvas.translate(left, top);
         canvas.scale(scale, scale);
         Bitmap sky = night ? assets.nightSky : assets.sky;
-        if (sky != null) canvas.drawBitmap(sky, null, artBounds, paint);
+        if (!coverBackdrop && sky != null) canvas.drawBitmap(sky, null, artBounds, paint);
         assets.rig.draw(canvas, paint, motion);
         canvas.restore();
         if (canAnimate() && !frameScheduled) {

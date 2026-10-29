@@ -14,7 +14,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.platform.testTag
 import kotlinx.coroutines.delay
@@ -32,8 +31,16 @@ internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
     val back: () -> Unit = {
         if (showSound) { store.dismissImport(); showSound = false } else close()
     }
-    Dialog(onDismissRequest = back,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+    TravelDialog(onDismissRequest = back,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        destination = {
+            if (showSound) Surface(Modifier.fillMaxSize()) {
+                Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+                    Text("设置", Modifier.padding(24.dp), style = MaterialTheme.typography.headlineSmall)
+                    PlaybackSettings(model, sound.engine) {}
+                }
+            }
+        }) {
         Surface(Modifier.fillMaxSize().testTag("settings-panel")) {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -49,7 +56,7 @@ internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
         }
     }
     profile?.let { imported ->
-        AlertDialog(onDismissRequest = store::dismissImport, modifier = Modifier.testTag("eq-import-preview"), title = { Text("导入均衡器") }, text = {
+        TravelAlertDialog(onDismissRequest = store::dismissImport, modifier = Modifier.testTag("eq-import-preview"), title = { Text("导入均衡器") }, text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("将替换当前 ${sound.bands.size} 段，应用文件中的 ${imported.bands.size} 段滤波器并启用均衡器。")
                 imported.preamp?.takeIf { it != 0f }?.let { Text("文件的前置增益 $it dB 尚未支持，不会应用。") }
@@ -59,7 +66,7 @@ internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
             dismissButton = { TextButton(store::dismissImport) { Text("取消") } })
     }
     importIssue?.let { issue ->
-        AlertDialog(onDismissRequest = store::dismissImport, title = { Text("导入未完成") }, text = { Text(issue) },
+        TravelAlertDialog(onDismissRequest = store::dismissImport, title = { Text("导入未完成") }, text = { Text(issue) },
             confirmButton = { TextButton(store::dismissImport) { Text("知道了") } })
     }
 
@@ -111,7 +118,7 @@ internal fun SleepTimerControl(remainingMinutes: Long, setMinutes: (Int) -> Unit
         }
         Box {
             TextButton(onClick = { menu = true }) { Text(if (remainingMinutes > 0) "调整" else "设置") }
-            DropdownMenu(menu, { menu = false }) {
+            TravelMenu(menu, { menu = false }) {
                 for (minutes in listOf(15, 30, 45, 60, 90, 120)) {
                     DropdownMenuItem(text = { Text("$minutes 分钟") }, onClick = { setMinutes(minutes); menu = false })
                 }

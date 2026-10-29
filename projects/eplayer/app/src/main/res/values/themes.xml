@@ -2,7 +2,7 @@
 <resources>
     <style name="Theme.CPPlayer" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:forceDarkAllowed">false</item>
-        <item name="android:windowBackground">#FFFFFF</item>
-        <item name="android:colorAccent">#FA233B</item>
+        <item name="android:windowBackground">#F6F2F8</item>
+        <item name="android:colorAccent">#74538F</item>
     </style>
 </resources>

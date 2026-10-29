@@ -23,7 +23,7 @@ import org.junit.Test
 
 class DarkAppearanceTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
-    @Test fun nightPlayerUsesDarkPaperWithLegibleControlsAndTheSamePortrait() {
+    @Test fun nightPlayerKeepsLegibleControlsOverTheCoverAndPortrait() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         WitchPlayerView.prepareAssets(context, true)
         val song = Song("dark-fixture", "灰色のサーガ", "ChouCho", album = "")
@@ -32,9 +32,11 @@ class DarkAppearanceTest {
             val background = MaterialTheme.colorScheme.background.toArgb()
             PlayerLayout(song, false, header = { PlayerHeader({}, {}, null, {}, {}) },
                 artwork = { modifier -> AndroidView(factory = { WitchPlayerView(it).apply { setMotionEnabled(false) } },
-                    modifier = modifier, update = { it.setAppearance(true, background, 1) }) },
+                    modifier = modifier, update = { it.setAppearance(true, background, 1); it.setCoverBackdropEnabled(true) }) },
+                backdrop = { AlbumBackdrop(song, Modifier.matchParentSize()) },
                 controls = { PlayerTransport(state, 0, null, {}, {}, {}, {}, {}, {}, {}, false, {}) })
         } } }
+        compose.onNodeWithTag("album-backdrop").assertIsDisplayed()
         compose.onNodeWithTag("player-transport").assertIsDisplayed()
         compose.onNodeWithContentDescription("播放").assertIsDisplayed()
         assertTrue(ColorUtils.calculateContrast(NightColors.onSurface.toArgb(), NightColors.surface.toArgb()) >= 7)
@@ -46,7 +48,7 @@ class DarkAppearanceTest {
         assertVisibleInk("elapsed time", compose.onNodeWithText("0:00"))
         assertVisibleInk("lyrics icon", compose.onNodeWithContentDescription("歌词"))
         val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
-        assertEquals(NightColors.background.toArgb(), bitmap.getPixel(2, 2))
+        assertTrue("night background should not be black", ColorUtils.calculateLuminance(bitmap.getPixel(2, 2)) > 0.01)
         val directory = File(context.getExternalFilesDir(null), "layout-check").apply { mkdirs() }
         File(directory, "night-player.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
     }

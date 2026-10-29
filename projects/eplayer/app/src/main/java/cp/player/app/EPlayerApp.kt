@@ -2,7 +2,6 @@ package cp.player.app
 
 import android.Manifest
 import android.os.Build
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
@@ -24,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -91,15 +91,24 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     }
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); model.message.value = null } }
     LaunchedEffect(cloudMessage) { cloudMessage?.let { snackbar.showSnackbar(it); cloud.message.value = null } }
-    BackHandler(enabled = discovery && !showPlayer) { discovery = false }
-    BackHandler(enabled = !discovery && page != 0 && !showPlayer && !searched) { page = 0 }
-    BackHandler(enabled = searched && !showPlayer) { query = ""; cloud.clearSearch() }
+    val backPreview = rememberBackPreview()
+    PreviewBackHandler(backPreview, enabled = (discovery || page != 0 || searched) && !showPlayer) {
+        when {
+            searched -> { query = ""; cloud.clearSearch() }
+            discovery -> discovery = false
+            else -> page = 0
+        }
+    }
 
-    val chromeVisible = !showPlayer && detailPages.isEmpty() && !playbackSettings
+    var revealingBack by remember { mutableStateOf(false) }
+    val revealBack: (Boolean) -> Unit = remember { { revealingBack = it } }
+    val chromeVisible = (!showPlayer && detailPages.isEmpty() && !playbackSettings) || revealingBack
+    CompositionLocalProvider(LocalBackPreviewVisibility provides revealBack) {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        if (backPreview.progress.value > 0f) RootReturnPreview(stats, state, searched)
+        Box(Modifier.fillMaxSize().backPreview(backPreview).background(MaterialTheme.colorScheme.background)) {
             LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), state = if (discovery) rememberLazyListState() else lists[page],
-                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = if (state.song != null) 192.dp else 112.dp),
+                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = if (state.song != null) 164.dp else 108.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (discovery) {
                     item { Row(verticalAlignment = Alignment.CenterVertically) {
@@ -219,46 +228,27 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                 }
             }
         }
-        Column(Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (chromeVisible) 1f else 0f }.navigationBarsPadding().padding(horizontal = 18.dp).padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (state.song != null) FloatingBar(Modifier.fillMaxWidth().height(62.dp)) {
-                Row(Modifier.fillMaxSize().clickable { onShowPlayer(true) }.padding(start = 10.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    MusicCover(state.song, Modifier.size(42.dp))
-                    Text(state.song!!.name, Modifier.weight(1f).padding(horizontal = 12.dp), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
-                    IconButton(onClick = model::playPause) { Icon(if (state.playRequested) Icons.Default.Pause else Icons.Default.PlayArrow, if (state.playRequested) "暂停" else "播放") }
-                    IconButton(onClick = model::next) { Icon(Icons.Default.SkipNext, "下一首") }
-                }
-            }
-            FloatingBar(Modifier.fillMaxWidth().height(66.dp)) {
-                Row(Modifier.fillMaxSize().padding(5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    listOf("首页" to Icons.Default.Home, "曲库" to Icons.Default.LibraryMusic, "设置" to Icons.Default.Settings).forEachIndexed { index, (label, icon) ->
-                        Column(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(40.dp))
-                            .background(if (page == index && !discovery) MusicRed.copy(alpha = .08f) else Color.Transparent)
-                            .clickable { page = index; discovery = false }
-                            .semantics { contentDescription = label; role = Role.Tab; selected = page == index && !discovery },
-                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                            Icon(icon, null, Modifier.size(24.dp), tint = if (page == index && !discovery) MusicRed else MaterialTheme.colorScheme.onSurface)
-                            Text(label, fontSize = 11.sp, color = if (page == index && !discovery) MusicRed else MaterialTheme.colorScheme.onSurface)
-                        }
-                    }
-                }
-            }
+        Box(Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (chromeVisible) 1f else 0f }.navigationBarsPadding().padding(horizontal = 18.dp).padding(bottom = 8.dp)) {
+            MusicDock(state, page, discovery, { page = it; discovery = false },
+                { onShowPlayer(true) }, model::playPause, model::next)
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 180.dp))
     }
     if (playbackSettings) Settings(model) { playbackSettings = false }
-    pendingDelete?.let { source -> AlertDialog(onDismissRequest = { pendingDelete = null }, title = { Text("移除 ${source.name}？") },
+    pendingDelete?.let { source -> TravelAlertDialog(onDismissRequest = { pendingDelete = null }, title = { Text("移除 ${source.name}？") },
         confirmButton = { TextButton(onClick = { model.removeSource(source); pendingDelete = null }) { Text("移除") } }, dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("取消") } }) }
-    pendingTrackDelete?.let { track -> AlertDialog(onDismissRequest = { pendingTrackDelete = null }, title = { Text("删除 ${track.song.name}？") },
+    pendingTrackDelete?.let { track -> TravelAlertDialog(onDismissRequest = { pendingTrackDelete = null }, title = { Text("删除 ${track.song.name}？") },
         confirmButton = { TextButton(onClick = { model.removeImported(track); pendingTrackDelete = null }) { Text("删除") } }, dismissButton = { TextButton(onClick = { pendingTrackDelete = null }) { Text("取消") } }) }
-    if (createPlaylist) AlertDialog(onDismissRequest = { createPlaylist = false }, title = { Text("创建歌单") }, text = { Column {
+    if (createPlaylist) TravelAlertDialog(onDismissRequest = { createPlaylist = false }, title = { Text("创建歌单") }, text = { Column {
         OutlinedTextField(playlistName, { playlistName = it }, singleLine = true, placeholder = { Text("歌单名称") })
         Row(verticalAlignment = Alignment.CenterVertically) { Text("私密", Modifier.weight(1f)); Switch(privatePlaylist, { privatePlaylist = it }) }
     } }, confirmButton = { TextButton(enabled = playlistName.isNotBlank(), onClick = { cloud.create(playlistName, privatePlaylist); createPlaylist = false; playlistName = "" }) { Text("创建") } }, dismissButton = { TextButton(onClick = { createPlaylist = false }) { Text("取消") } })
-    if (logout) AlertDialog(onDismissRequest = { logout = false }, title = { Text("退出当前账号？") }, confirmButton = { TextButton(onClick = { cloud.logout(); logout = false }) { Text("退出登录") } }, dismissButton = { TextButton(onClick = { logout = false }) { Text("取消") } })
+    if (logout) TravelAlertDialog(onDismissRequest = { logout = false }, title = { Text("退出当前账号？") }, confirmButton = { TextButton(onClick = { cloud.logout(); logout = false }) { Text("退出登录") } }, dismissButton = { TextButton(onClick = { logout = false }) { Text("取消") } })
     CloudDetailScreen(cloud, model, { onShowPlayer(true) }) { track, playlist -> selectedTrack = track to playlist }
     if (showPlayer) PlayerScreen(model, cloud, state, { selectedTrack = model.currentTrack()?.let { it to null } }, { commentTrack = model.currentTrack() }) { onShowPlayer(false) }
     selectedTrack?.let { (track, playlist) -> SongOptions(track, playlist, cloud, model, { commentTrack = it }, { entry -> onShowPlayer(false); cloud.open(entry) }) { selectedTrack = null } }
     commentTrack?.let { track -> CommentsSheet(track) { commentTrack = null } }
+    }
 }
 
 @Composable
@@ -294,5 +284,24 @@ internal fun SongRow(track: Track, selected: Boolean, play: () -> Unit, trailing
             if (track.song.artist.isNotBlank()) Text(track.song.artist, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         trailing()
+    }
+}
+
+@Composable
+private fun RootReturnPreview(stats: ListeningStats, state: Playback, library: Boolean) {
+    Surface(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().statusBarsPadding().padding(24.dp)) {
+            MusicHeading(if (library) "曲库" else "首页")
+            if (library) {
+                MusicSegments(listOf("歌单", "歌曲", "最近"), 1) {}
+                Text("魔女の旅々", Modifier.padding(vertical = 24.dp), style = MaterialTheme.typography.titleLarge)
+                WitchPlaylist.songs.forEach { SongRow(Track(it), false, {}) }
+            } else {
+                ListeningSummary(stats)
+                Text("继续播放", Modifier.padding(top = 30.dp, bottom = 12.dp), style = MaterialTheme.typography.headlineSmall)
+                state.song?.let { SongRow(Track(it), false, {}) }
+                SettingsRow("网易云") {}
+            }
+        }
     }
 }

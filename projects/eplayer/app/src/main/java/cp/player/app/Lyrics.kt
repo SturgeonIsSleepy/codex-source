@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import androidx.compose.foundation.clickable
@@ -116,53 +115,52 @@ internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, close: () 
             list.animateScrollToItem(active, offset)
         }
     }
-    Dialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Box(Modifier.fillMaxSize().background(if (night) Color(0xFF07090D) else Color(0xFF173044))) {
-            AsyncImage(playback.song?.albumArtUrl ?: "file:///android_asset/travel-sky.png", null,
-                Modifier.matchParentSize().blur(48.dp), contentScale = ContentScale.Crop, alpha = if (night) .20f else .42f)
-            Box(Modifier.matchParentSize().background(Brush.verticalGradient(if (night) listOf(Color(0xB307090D), Color(0xE607090D)) else listOf(Color(0x77101924), Color(0xCC101923)))))
+    TravelDialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            AlbumBackdrop(playback.song, Modifier.matchParentSize())
+            val ink = MaterialTheme.colorScheme.onBackground
             Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 24.dp)) {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = close) { Icon(Icons.Default.KeyboardArrowDown, "关闭歌词", tint = Color.White) }
+                    IconButton(onClick = close) { Icon(Icons.Default.KeyboardArrowDown, "关闭歌词", tint = ink) }
                     MusicCover(playback.song, Modifier.size(42.dp))
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                        Text(playback.song?.name.orEmpty(), color = Color.White, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(playback.song?.artist.orEmpty(), color = Color.White.copy(alpha = .55f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(playback.song?.name.orEmpty(), color = ink, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(playback.song?.artist.orEmpty(), color = ink.copy(alpha = .55f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     if (translations.isNotEmpty()) TextButton(onClick = { translate = !translate }) {
-                        Text("译", color = Color.White.copy(alpha = if (translate) 1f else .4f))
+                        Text("译", color = ink.copy(alpha = if (translate) 1f else .4f))
                     }
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) {
-                    if (text == null) CircularProgressIndicator(Modifier.align(Alignment.Center).size(28.dp), color = Color.White, strokeWidth = 2.dp)
+                    if (text == null) CircularProgressIndicator(Modifier.align(Alignment.Center).size(28.dp), color = ink, strokeWidth = 2.dp)
                     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(top = 80.dp, bottom = 160.dp)) {
                         itemsIndexed(lines) { index, line ->
-                            val color by animateColorAsState(if (!timed || index == active) Color.White else Color.White.copy(alpha = .46f), tween(240), label = "lyric-emphasis")
+                            val color by animateColorAsState(if (!timed || index == active) ink else ink.copy(alpha = .64f), tween(240), label = "lyric-emphasis")
                             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                                 .then(if (timed) Modifier.clickable { model.seek(line.time); follow = true } else Modifier)
                                 .padding(horizontal = 6.dp, vertical = 15.dp)) {
                                 Text(line.text.ifBlank { "•••" }, color = color, fontSize = 31.sp, lineHeight = 43.sp,
                                     fontWeight = if (!timed || index == active) FontWeight.SemiBold else FontWeight.Medium)
                                 if (translate) translations[line.time]?.takeIf(String::isNotBlank)?.let {
-                                    Text(it, color = color.copy(alpha = if (!timed || index == active) .8f else .35f), fontSize = 18.sp,
+                                    Text(it, color = color.copy(alpha = if (!timed || index == active) .8f else .50f), fontSize = 18.sp,
                                         lineHeight = 28.sp, modifier = Modifier.padding(top = 7.dp))
                                 }
                             }
                         }
                     }
                     if (!follow && timed) TextButton(onClick = { follow = true }, modifier = Modifier.align(Alignment.BottomEnd)) {
-                        Icon(Icons.Default.ArrowDownward, null, tint = Color.White, modifier = Modifier.size(16.dp)); Text("回到当前", color = Color.White)
+                        Icon(Icons.Default.ArrowDownward, null, tint = ink, modifier = Modifier.size(16.dp)); Text("回到当前", color = ink)
                     }
                 }
                 Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(playerTime(position), color = Color.White.copy(alpha = .55f), style = MaterialTheme.typography.labelMedium)
+                    Text(playerTime(position), color = ink.copy(alpha = .55f), style = MaterialTheme.typography.labelMedium)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = model::previous) { Icon(Icons.Default.SkipPrevious, "上一首", tint = Color.White, modifier = Modifier.size(28.dp)) }
+                        IconButton(onClick = model::previous) { Icon(Icons.Default.SkipPrevious, "上一首", tint = ink, modifier = Modifier.size(28.dp)) }
                         IconButton(onClick = model::playPause, modifier = Modifier.size(60.dp)) { Icon(if (playback.playRequested) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            if (playback.playRequested) "暂停" else "播放", tint = Color.White, modifier = Modifier.size(38.dp)) }
-                        IconButton(onClick = model::next) { Icon(Icons.Default.SkipNext, "下一首", tint = Color.White, modifier = Modifier.size(28.dp)) }
+                            if (playback.playRequested) "暂停" else "播放", tint = ink, modifier = Modifier.size(38.dp)) }
+                        IconButton(onClick = model::next) { Icon(Icons.Default.SkipNext, "下一首", tint = ink, modifier = Modifier.size(28.dp)) }
                     }
-                    TextButton(onClick = { qualityOpen = true }) { Text(qualityName(quality), color = Color.White.copy(alpha = .75f), style = MaterialTheme.typography.labelMedium) }
+                    TextButton(onClick = { qualityOpen = true }) { Text(qualityName(quality), color = ink.copy(alpha = .75f), style = MaterialTheme.typography.labelMedium) }
                 }
             }
         }

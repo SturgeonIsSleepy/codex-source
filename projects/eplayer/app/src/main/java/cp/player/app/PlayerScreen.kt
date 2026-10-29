@@ -28,7 +28,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import cp.player.model.Song
 import cp.player.ui.artwork.WitchPlayerView
@@ -46,8 +45,8 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
     val context = LocalContext.current.applicationContext
     val backdrop = MaterialTheme.colorScheme.background
     val night = backdrop.luminance() < .3f
-    val artworkGeneration by produceState(initialValue = 0, key1 = context, key2 = night) {
-        withContext(Dispatchers.IO) { WitchPlayerView.prepareAssets(context, night) }
+    val artworkGeneration by produceState(initialValue = 0, key1 = context) {
+        withContext(Dispatchers.IO) { WitchPlayerView.prepareAssets(context) }
         value += 1
     }
     val favorites by model.favorites.collectAsState()
@@ -68,7 +67,7 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
         lyrics = if (showLyrics) model.lyrics() else null
     }
     val openLyrics = { showLyrics = true }
-    Dialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+    TravelDialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         PlayerLayout(
             state.song, state.buffering,
             header = { PlayerHeader(close, openLyrics, if (state.source != null) comments else null, more) { queue = true } },
@@ -78,10 +77,12 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
                     factory = { WitchPlayerView(it) }, modifier = modifier,
                     update = { view ->
                         view.setAppearance(night, backdrop.toArgb(), artworkGeneration)
+                        view.setCoverBackdropEnabled(true)
                         view.setMotionEnabled(animate)
                         view.setArtworkActive(!showLyrics && !queue)
                         view.setPlayback(state.playing, state.playRequested, position) })
             },
+            backdrop = { AlbumBackdrop(state.song, Modifier.matchParentSize()) },
             controls = {
                 Column {
                 PlayerTransport(state, position, seeking, { seeking = it }, {
@@ -105,7 +106,7 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
                 SongRow(Track(state.queue[index]), state.queue[index].id == state.song?.id, { model.queueIndex(index); queue = false }) {
                     Box {
                         IconButton(onClick = { options = true }) { Icon(Icons.Default.MoreVert, "队列操作") }
-                        DropdownMenu(options, { options = false }) {
+                        TravelMenu(options, { options = false }) {
                             if (index > 0) DropdownMenuItem(text = { Text("上移") }, onClick = { options = false; model.moveQueue(index, index - 1) })
                             if (index < state.queue.lastIndex) DropdownMenuItem(text = { Text("下移") }, onClick = { options = false; model.moveQueue(index, index + 1) })
                             DropdownMenuItem(text = { Text("移除") }, onClick = { options = false; model.removeQueue(index) })
@@ -124,8 +125,10 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
  */
 @Composable
 internal fun PlayerLayout(song: Song?, buffering: Boolean, header: @Composable () -> Unit,
-                          artwork: @Composable (Modifier) -> Unit, controls: @Composable () -> Unit) {
-    BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
+                          artwork: @Composable (Modifier) -> Unit, backdrop: @Composable BoxScope.() -> Unit = {}, controls: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    backdrop()
+    BoxWithConstraints(Modifier.fillMaxSize().systemBarsPadding()) {
         if (maxWidth >= 600.dp && maxWidth > maxHeight) {
             Row(Modifier.fillMaxSize().padding(horizontal = 16.dp).testTag("player-wide")) {
                 artwork(Modifier.weight(.45f).fillMaxHeight().testTag("player-artwork"))
@@ -150,6 +153,7 @@ internal fun PlayerLayout(song: Song?, buffering: Boolean, header: @Composable (
                 controls()
             }
         }
+    }
     }
 }
 
