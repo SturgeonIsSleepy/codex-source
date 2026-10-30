@@ -42,6 +42,18 @@ class QueueResumeTest {
         }
     }
 
+    @Test fun unavailableTailFallsBackToLastSurvivingSongAtBeginning() = withQueue { context, prefs ->
+        val tracks = listOf(Track(Song("previous", "Previous", "", album = ""), "file:///fixture-previous.wav"),
+            Track(Song("missing-tail", "Missing", "", album = "")))
+        prefs.edit().putString("items", Gson().toJson(tracks)).putInt("index", 1).putLong("position", 12000).commit()
+        withPlayer(context) { player ->
+            QueueStore.restore(context, player)
+            assertEquals("previous", player.currentMediaItem?.mediaId)
+            assertEquals(0L, player.currentPosition)
+            assertFalse(player.playWhenReady)
+        }
+    }
+
     private fun withQueue(block: (Context, SharedPreferences) -> Unit) {
         val target = InstrumentationRegistry.getInstrumentation().targetContext
         val name = "queue-resume-${UUID.randomUUID()}"

@@ -460,3 +460,13 @@ build.json明确instrumentation=passed、release_start=not_requested；媒体续
 agent/eplayer-queue-resume基于0.5.2歌词候选9b76ed3，产品QueueStore未修改。新增两项真实ExoPlayer检查（不prepare、不发网络、不打开音频输出）：过滤当前曲之前的无URI项后，应保留当前曲和12秒位置；当前曲不可用时，下一有效曲不得继承旧12秒位置。现实现直接对过滤后列表clamp旧index，代码审计有错曲/错位置风险，但设备失败尚未取得。
 
 测试只将eplayer_queue重定向到UUID专用SharedPreferences，使用虚构file URI且不准备解码；finally释放播放器并删除该UUID偏好，不覆盖用户队列/历史或导入。首轮设备包编译失败（夹具Song漏填album），设备未执行；此前误记编译通过在此更正。补齐字段后本地设备包编译15秒通过，设备仍未执行。预计整轮50项，设备待执行，不能提前称红绿。0.5.1主线R8交付与0.5.2歌词验收独立继续。
+
+
+## 队列恢复修复前：两个真实断言失败；候选保持原始索引
+
+3b9641e6ba9c0b8978a50061e95556ad1ccb6959 /CI41106489854，build124238698775成功/device124240444820失败。50项46通过/3失败/1真实登录跳过（103.480秒）。新增两项分别expected saved-current却得到next、expected position0却12000；第三项是已知LiveEqualizer Stop，并未把整轮红色归为只有队列问题。artifact13001388977 ZIP SHA2568c00ad5e72160b3735543d790940cbfa937d95c30a7e7cbfbee5f7d60bed94a4已下载核对。更早9b75503 /CI41106319134为测试夹具album缺失导致构建失败、设备未执行，不计为功能红色。
+
+产品QueueStore.restore改为过滤时保留原始索引；当前曲仍有效则恢复原曲/位置，当前无效则后继有效曲从零开始，末尾缺失回最后有效曲从零开始。使用已有唯一Player/队列，不改源标识/质量/序列化格式，不启动prepare或联网。原两个断言不改，新增尾部缺失分支检查，预计完整51项。仅UUID专用偏好/虚构URI，无用户队列或导入变更；候选32 JVM/应用及设备包本地构建27秒通过；失败时快照增量设备包另已编译通过，整轮51项设备待执行。
+
+
+队列候选同时沿用149c5227e的只读SystemUI缓冲，并在LiveEqualizer失败截止点（固定原断言结果后）抓取MediaCarouselCtlrLog/MediaTimeout/MediaLog，避免整轮结束前100条缓冲覆盖故障时间。仅明确CI参数eplayer.mediaDiagnostics=1且ranchu/goldfish模拟器启用，输出到本轮UUID文件；不变更系统设置、不延长等待或重试失败条件，不影响通过/失败判定。script拉取system-media-check，正常绿色基线149c5227e /CI41107199704为47项46通过/1登录跳过（79.036秒），其完整缓冲已核对artifact13002716783 /SHA25645ac7deac7ac76876494409531d5cf74a4d32b4b3d59dd2477dee3423b16def4；该轮并未复现Stop，不能作修复证明。
