@@ -17,9 +17,9 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class QueueResumeTest {
     @Test fun removingUnavailableEarlierEntryKeepsCurrentSongAndPosition() = withQueue { context, prefs ->
-        val tracks = listOf(Track(Song("unavailable", "Missing", "")),
-            Track(Song("saved-current", "Current", ""), "file:///fixture-current.wav"),
-            Track(Song("next", "Next", ""), "file:///fixture-next.wav"))
+        val tracks = listOf(Track(Song("unavailable", "Missing", "", album = "")),
+            Track(Song("saved-current", "Current", "", album = ""), "file:///fixture-current.wav"),
+            Track(Song("next", "Next", "", album = ""), "file:///fixture-next.wav"))
         prefs.edit().putString("items", Gson().toJson(tracks)).putInt("index", 1).putLong("position", 12000).commit()
         withPlayer(context) { player ->
             QueueStore.restore(context, player)
@@ -30,9 +30,9 @@ class QueueResumeTest {
     }
 
     @Test fun unavailableCurrentMovesToNextWithoutItsOldPosition() = withQueue { context, prefs ->
-        val tracks = listOf(Track(Song("previous", "Previous", ""), "file:///fixture-previous.wav"),
-            Track(Song("unavailable-current", "Missing", "")),
-            Track(Song("next", "Next", ""), "file:///fixture-next.wav"))
+        val tracks = listOf(Track(Song("previous", "Previous", "", album = ""), "file:///fixture-previous.wav"),
+            Track(Song("unavailable-current", "Missing", "", album = "")),
+            Track(Song("next", "Next", "", album = ""), "file:///fixture-next.wav"))
         prefs.edit().putString("items", Gson().toJson(tracks)).putInt("index", 1).putLong("position", 12000).commit()
         withPlayer(context) { player ->
             QueueStore.restore(context, player)
