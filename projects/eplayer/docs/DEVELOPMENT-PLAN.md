@@ -1,5 +1,12 @@
 # ePlayer 当前实施计划
 
+## 最新候选以PR24为准
+
+agent/eplayer-media-resumption /PR24，最新14ee342c6e1846c1e0813a1910f1d40c6c62da07（产品3914ba6），33 JVM/主程序/设备包通过，最终53项设备待结果。修复前098e2501 /CI41116950332已52项50通过/1传统浏览服务发现失败/1登录跳过（109.592秒）；唯一新失败真实复现，不能拿该轮EQ未复现当修复证据。
+
+已接标准MediaLibraryService/MediaLibrarySession最近浏览与显式恢复，原服务组件/旧action/唯一SessionPlayer/正常失焦Stop保留；恢复夹具先实际播放再清空并显式恢复，浏览检查要求不prepare/不启动音频。具体源码/规划/证据在PR24分支本文件，当前main仍是失败0.5.2，未发布；最终53项/SysUI恢复Action/正常Stop均通过后才对最终组合R8/确切包/Release。
+
+
 ## 当前真实阻断与下一项
 
 main c17dc4a /CI41112575118两版R8构建通过，独立51项49通过/1 EQ失败/1登录跳过（106.585秒）；冷启动/确切包/Release未执行，不能发布。记录19:24:26.078非用户移除→26.084 SystemUI Stop→26.088原生停止，position1100ms。MediaData已检查恢复但resumeAction=null，MusicService未声明传统MediaBrowserService且exported=false。
