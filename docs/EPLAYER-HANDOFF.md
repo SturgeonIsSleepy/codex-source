@@ -1,10 +1,18 @@
 # ePlayer 转移交接
 
-## 当前恢复入口：0.5.1独立集成，尚未设备验收
+## 当前恢复入口：0.5.1组合设备通过，主线R8待执行
 
-agent/eplayer-050-core-integration正常合并037f742与ab7a227（PR14含PR11），两父历史保留。0.3.3核心e86295b /CI40749734603的39项已通过（38通过/1登录跳过）；本集成未设备运行，不能沿用旧0.4/0.5或0.3.3的通过记录。0.3.2公开Release固定，0.4/0.5本地固定签名、既有登录/模块不操作。新页面取消硬编码红色，统一天空蓝主题主色并保留系统深色适配；人物素材、动作、原中日文字体保持。
+[PR #16](https://github.com/SturgeonIsSleepy/codex-source/pull/16)正常汇合PR11/PR14/PR15，保留完整父历史。固定应用候选`8dbc4d658dbe0643ec988d116120eee0ec57afd1`；1070706仅合并主线文档，应用不变。下一步正常合入main，再执行普通/自用R8、独立47项和确切原始包跨应用验收。
 
-组合最新：8dbc4d658dbe0643ec988d116120eee0ec57afd1 /CI40761643034为交接快照修复，构建中、未取得设备结果。修复前3c853ab /CI40761055147为47项45通过/1失败/1登录跳过（110.196秒），唯一“播放中交接不得发布PAUSED”失败，EQ本次通过；9a55215之前EQ系统Stop失败保留，不能推断间歇性根因已全部解决。修复先以非空BUFFERING/原播放请求交接，旧player解除发布后才pause/release，再启动并发布实际新player；同步订阅原生事件。28 JVM/构建与31仓库检查通过。真实Stop不屏蔽，R8/确切新包未执行，0.5.1未发布。
+[CI40761643034](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40761643034)完成47项：46通过/1真实登录条件跳过，94.027秒。三轮交接不发布NONE/STOPPED/PAUSED，真实EQ幅度、正常外部失焦暂停、合法framework Stop及之后1秒不复活、延迟旧下载不得抢占、缓冲暂停与新导航/歌词流程通过。28 JVM/31仓库检查通过；R8/确切新包未执行，0.5.1未发布。
+
+修复前3c853ab /CI40761055147为45通过/1失败/1跳过，人工PAUSED断言失败，EQ该轮通过；此前9a55215等轮的SystemUI Stop失败保留。短期PlaybackHandoverPlayer保持BUFFERING/原请求，旧player解除发布后才pause/release，再激活实际新player；原生事件同步订阅。不屏蔽真实Stop、不改系统媒体设置；设置读取null不证明关闭，不宣称穷尽所有历史间歇停止根因。
+
+设备artifact12849017358已下载核对SHA256166c59466afc2ceabca47b02b2b68bc64d7f5e121cfa0f0f7737fae17308d1ab。已查看首页、歌词、2倍字体完整人物、原生闭眼播放/睁眼暂停截图；素材/Medium字体未改。静态图不代表逐帧或实机听感验收。
+
+接续[当前计划](../projects/eplayer/docs/DEVELOPMENT-PLAN.md)、[能力边界](../projects/eplayer/docs/CORE-BOUNDARIES.md)和[完整验证索引](../projects/eplayer/docs/VALIDATION-2026-10-25.md)。主线R8→确切原始universal APK双引擎导入/暂停/拖动/后台/通知返回→0.5.1 Release。淡入淡出、安全缓存入口、长时稳定性、真实账号写入和物理路由仍有缺口；固定本地签名/模块/登录不触碰，Android Cloud固定入口与无关项目不改。
+
+## 既往0.3.2至0.5.0记录（历史）
 
 [0.3.2预览与完整验证归档](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.2)已由CI40576719254发布（Release425943718，非draft）。源码113acb0d7c72f392aae754cb3c7cb65ea1be3df4，原始universal APK SHA25613c1401d2121e2cde477c2b3d08064366c65b34357e210253c641aa775f9a27c，versionCode106，证书c9ccdf76dd260a4cc48a595e21b940958580b3fe318b75ce3d3e482bbc7a37c0。五附件uploaded与摘要已对照发布收据逐项核对；21个历史artifact/6个原始job日志保留失败/跳过/未执行，不覆盖0.3.1附件。
 

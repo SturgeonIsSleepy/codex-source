@@ -1,6 +1,6 @@
 # ePlayer 当前实施计划
 
-当前分支 `agent/eplayer-050-core-integration` / [PR #16](https://github.com/SturgeonIsSleepy/codex-source/pull/16)，开发版 **0.5.1，未发布**。主线仍为20cd8c5，公开[0.3.2 Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.2)及原始APK保持固定。本文是恢复入口；不从历史“待执行”段落判断当前状态。
+当前分支 `agent/eplayer-050-core-integration` / [PR #16](https://github.com/SturgeonIsSleepy/codex-source/pull/16)，开发版 **0.5.1，未发布**。主线合入前为21bd595，公开[0.3.2 Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.2)及原始APK保持固定。本文是恢复入口；不从历史“待执行”段落判断当前状态。
 
 ## 已接续的功能与依赖
 
@@ -18,14 +18,14 @@
 | 75ce13f / CI40753222782 | 47项：45通过/1失败/1跳过，102.674秒；同一EQ失败，新导航/译文/12秒行定位保持暂停/返回通过 |
 | 9a5521578ce7b43752fa4d83c8e2ad2c6614eb39 / [CI40756489129](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40756489129) | 47项45通过/1失败/1登录跳过（100.501秒），仍EQ启动系统Stop；28 JVM/31仓库/本地构建通过，R8/确切包未执行 |
 
-9a55215的事件/用户意图候选未解决本次系统Stop。最新修复前3c853ab /CI40761055147增加播放中不得发布PAUSED的同一框架断言；47项45通过/1失败/1登录跳过（110.196秒），唯一新PAUSED断言失败，EQ本轮通过；不是EQ稳定根因已解决。产品候选8dbc4d6 /CI40761643034已排队并开始构建，新增无队列/无输出的PlaybackHandoverPlayer，先发布BUFFERING/原请求，旧player解除发布后才pause/release，随后启动实际新player并解除快照；SharedFlow订阅同步建立。28 JVM/构建通过（16秒），强化47项设备待执行。未过滤真实Stop，未改系统媒体续播设置。
+8dbc4d6 /[CI40761643034](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40761643034)已通过47项：46通过/1登录跳过，94.027秒。修复前3c853ab /CI40761055147为45通过/1失败/1跳过（110.196秒），人工PAUSED断言失败、EQ本轮通过。短期PlaybackHandoverPlayer先保持BUFFERING/原请求，旧player解除发布后才pause/release，再激活实际新player；原生SharedFlow同步订阅。三轮交接、真实EQ幅度、正常失焦暂停及合法Stop/1秒不复活均通过。28 JVM/构建和31仓库检查通过；未过滤Stop、未改系统设置，R8/确切包待执行。
 
 证据摘要、原始失败/未执行记录及截图索引见[验证文档](VALIDATION-2026-10-25.md)。已实际查看新首页/曲库/设置/歌词、2倍字号全身及原生播放闭眼/暂停睁眼图；截图分项通过不等于整轮通过。
 
 ## 接下来的实施顺序
 
-1. 9a55215已失败且原始调用者证实为SystemUI。先用三轮框架断言复现交接中人为PAUSED，再用短期交接快照保持用户播放请求；旧player解除发布后才pause/release，最后启动实际新player。同步建立原生事件订阅。失败时继续分析系统媒体/通知日志；不删断言、不重试同代码凑绿色，不全局屏蔽legacy Stop。SDK准备问题只重跑对应失败设备任务并保留首次未执行记录。
-2. 核心组合通过后，复核全页截图与角色，更新本计划/交接。以预期head正常合入主线，再只做一次对应源码的普通/自用R8构建、设备回归和普通R8冷启动。
+1. 已完成3c853ab人工PAUSED红色与8dbc4d6同一强化47项绿色，保留历史SystemUI Stop失败和SDK准备未执行记录。设置null不证明媒体续播关闭，不宣称所有历史根因穷尽。
+2. 保存截图索引/能力边界/绿色证据，以预期head正常合入main，再只执行一次普通/自用R8、独立47项与普通R8冷启动；失败继续分析，不重跑同代码凑绿色。
 3. 从成功主线CI读取未经重打包的universal APK，实际核对SHA/版本号/证书/ABI；用同一字节执行系统/原生两项跨应用检查，覆盖文件选择器导入、播放/暂停/12秒拖动、后台进度与真实通知点击返回。
 4. 上述通过后发布0.5.1预览。源码、规划、变更和证据索引进Git；原始APK/原生库/日志与历史失败归档进GitHub Release。先核对最终安装与归档摘要，不覆盖旧版、不重签冒充CI原件；不上传用户模块、固定签名或账号数据。
 5. 继续有价值阶段：原生Trace日志及热路径成本（须真正重编/验证三ABI并更新库校验，不能只改源码声称节电）；再精简QueueStore/SourceStore数据边界、恢复单会话淡入淡出及安全缓存管理。角色动作仍以共同底图和真实能量驱动，不逐脸换帧，不堆贴图。

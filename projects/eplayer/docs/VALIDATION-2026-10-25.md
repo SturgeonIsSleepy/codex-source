@@ -430,3 +430,14 @@ FlickPlayer去掉awaitingNativeStart附加标志，以已有用户意图统一�
 3c853ab6d951722ac1e05b87c3ee8992db57f4a7 /CI40761055147：47项45通过/1失败/1登录条件跳过（110.196秒）。唯一失败currentFrameworkStopStillStopsRealNativeAudio的新交接断言，多次收到STATE_PAUSED=2；EQ三轮本次通过，不能将此前EQ失败改成通过或将该轮视为已确定所有Stop根因。真实竞争焦点/末尾Stop步骤在新断言后，因前置失败未执行。artifact12849106286 ZIP SHA2563aa644ae70f7912354669dc14a1f045f280fae64236b7ca3f385346803c8cb78已下载核对。与待测8dbc4d6使用同断言，保持原始失败和已有系统Stop正控制。
 
 主线21bd59574b4ab854d59bb52196eb329bb4e70896只更新恢复入口，应用仍0.3.2、Release不变；已正常合入本开发分支，仅处理README/交接/计划文档冲突，不重复应用构建。主线读者可发现PR16实际候选与失败，不再误续早期0.3.3断点。8dbc4d6的47项设备验证独立，文档合并不改变该应用源码或取消运行。
+
+
+## 2026-10-30恢复：0.5.1交接快照通过完整47项
+
+固定源码8dbc4d658dbe0643ec988d116120eee0ec57afd1，[CI40761643034](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40761643034)，build job123078518334、device job123081681602均success。47项46通过/1 SourceLoginLiveTest真实登录条件跳过，94.027秒。修复前3c853ab /CI40761055147的人工PAUSED失败保留，此前EQ失败不改成通过。
+
+三轮引擎交接不发布NONE/STOPPED/PAUSED；三轮EQ真实幅度0.13085723→0.18598484→0.13141343、0.13044979→0.18598488→0.1309964、0.1304184→0.18503658→0.1309964。44.1/48kHz保存参数、外部永久失焦暂停/显式恢复、合法framework Stop及1秒不复活通过。延迟旧HTTP不得抢占30秒本地PCM、缓冲Stop、下载完成仍暂停及新导航/译文/12秒行定位保持暂停/返回通过。
+
+设备artifact12849017358 ZIP SHA256166c59466afc2ceabca47b02b2b68bc64d7f5e121cfa0f0f7737fae17308d1ab已下载核对。实际查看layout-check/navigation-home.png、lyrics-full-page.png、portrait-2.0.png和visual-check/player-rust-playing.png、player-rust-paused.png，完整人物/闭眼播放/睁眼暂停在静态图中无明显头帽/手错位；素材/字体未改。构建artifact12849616973 ZIP SHA25633f7deb7627e2b3c7e6b60a5451e5973103f2677e0e960f38490fb891c55a6a8未下载，不计为确切R8交付。
+
+build.json明确instrumentation=passed、release_start=not_requested；媒体续播设置为字符串null，未改OS设置，不能解释为关闭。不宣称所有历史SystemUI Stop根因穷尽，真实Stop未过滤。1070706仅合主线交接文档，应用与8dbc4d6相同。28 JVM、本地构建16秒和31根检查通过；主线普通/自用R8及独立47项、确切通用包跨应用、Release待执行。无新增实机/真实账号写入/声学听感结果。
