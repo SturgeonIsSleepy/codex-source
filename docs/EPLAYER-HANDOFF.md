@@ -1,5 +1,16 @@
 # ePlayer 转移交接
 
+## 最新恢复入口：PR22 / 0.5.2核心组合验收中
+
+[PR22](https://github.com/SturgeonIsSleepy/codex-source/pull/22) / agent/eplayer-052-core-integration，固定候选`e4ea4cb1a4da92fb0c495c4a28986c4282189f4d`，[CI41110662240](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41110662240)正在构建并将执行51项。四父正常汇合队列b012298e、会话/强化通知2c3f77d、歌词记录e364f5c及本主线d9dc2dad，无强推。32 JVM、应用/设备包24秒、31根检查通过；源码/规划/变更/阶段计划已推送。
+
+0.5.1主线失败包不发布；待最终组合通过后按0.5.2做一次main普通/自用R8+51项+冷启动→原始universal确切包系统/原生跨应用→Release归档。此组合尚未绿色/R8/确切包通过，不能以独立结果代替。
+
+补充：会话eadde4bc /CI41108013086已有47项46通过/1跳过（92.607秒）；旧应用强化通知e1eb7fe /CI41109753203也47项46通过/1跳过（88.435秒），未复现通知消失，不是触发原因红绿。会话强化2c3f77d /CI41110061129仍待结果。队列修复b012298e /CI41108850985为51项49通过/1 EQ失败/1跳过（110.748秒），三个队列检查通过；即时媒体快照对齐18:46:17.265非用户移除→17.275 SystemUI Stop→17.288实际Stop，具体先前触发状态尚未穷尽。所有失败保留。
+
+优先读PR22分支[最新计划](https://github.com/SturgeonIsSleepy/codex-source/blob/e4ea4cb1a4da92fb0c495c4a28986c4282189f4d/projects/eplayer/docs/DEVELOPMENT-PLAN.md)及[证据索引](https://github.com/SturgeonIsSleepy/codex-source/blob/e4ea4cb1a4da92fb0c495c4a28986c4282189f4d/projects/eplayer/docs/VALIDATION-2026-10-25.md)，再取得真实新结果。PR17本地界面/固定签名/模块/登录与Android Cloud入口不动。下方为既往阶段断点，不能从其旧“待执行”恢复。
+
+
 ## 当前恢复入口：主线失败阻断发布，PR20/PR21候选继续
 
 - 主线应用493a9a0 /CI41104525573仍45通过/1 EQ系统Stop失败/1登录跳过，93.272秒；R8两版构建通过，但冷启动/确切包未执行，未发布0.5.1。
