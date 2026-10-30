@@ -219,13 +219,13 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     }
     fun removeQueue(index: Int) { controller?.let {
         if (index in 0 until it.mediaItemCount) {
-            if (it.mediaItemCount == 1) radioSource = null
+            if (it.mediaItemCount == 1) { radioSource = null; it.pause() }
             it.removeMediaItem(index)
         }
     } }
     fun clearQueue() {
         radioSource = null; pendingPlay = null
-        controller?.let { it.stop(); it.clearMediaItems() }
+        controller?.let { it.pause(); it.stop(); it.clearMediaItems() }
     }
     fun moveQueue(from: Int, to: Int) { controller?.let { if (from in 0 until it.mediaItemCount && to in 0 until it.mediaItemCount) it.moveMediaItem(from, to) } }
     fun addNext(track: Track) { controller?.let { it.addMediaItem((it.currentMediaItemIndex + 1).coerceIn(0, it.mediaItemCount), track.mediaItem(quality.value)) } }
