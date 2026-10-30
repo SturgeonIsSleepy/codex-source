@@ -20,6 +20,7 @@ public final class WitchPlayerView extends View {
     private final CharacterMotion motion = new CharacterMotion();
     private final RectF artBounds = new RectF(0, 0, 865, 1280);
     private boolean playing, playRequested, visible = true, motionEnabled = true;
+    private boolean artworkActive = true;
     private long position, lastFrame;
     private float scale, left, top;
 
@@ -53,6 +54,10 @@ public final class WitchPlayerView extends View {
         assets = assets(context);
         setBackgroundColor(Color.WHITE);
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+    }
+    public void setArtworkActive(boolean active) {
+        if (artworkActive == active) return;
+        artworkActive = active; lastFrame = 0; invalidate();
     }
     public void setMotionEnabled(boolean enabled) {
         if (motionEnabled == enabled) return;
@@ -91,6 +96,6 @@ public final class WitchPlayerView extends View {
         canvas.drawBitmap(assets.sky, null, artBounds, paint);
         assets.rig.draw(canvas, paint, motion);
         canvas.restore();
-        if (visible && motionEnabled && (playing || motion.transitioning(playRequested))) postInvalidateDelayed(33);
+        if (visible && artworkActive && motionEnabled && (playing || motion.transitioning(playRequested))) postInvalidateDelayed(33);
     }
 }

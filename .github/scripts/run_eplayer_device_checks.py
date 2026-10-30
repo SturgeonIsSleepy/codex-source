@@ -2,6 +2,7 @@
 """Verify non-debuggable playback; explicitly record optional R8 candidate checks."""
 from pathlib import Path
 import hashlib
+import fnmatch
 import json
 import os
 import subprocess
@@ -10,10 +11,32 @@ import time
 root = Path('device-apks')
 output = Path('device-evidence')
 output.mkdir(exist_ok=True)
+RUNTIME_TAGS = ['AndroidRuntime', 'EPlayerTest', 'EPlayerSession', 'FlickPlayer', 'RustEngine',
+                'RustAudioEngine', 'CPPlayerDebug', 'AudioTrack', 'AAudio', 'AudioManager',
+                'MediaSessionService', 'MediaSessionRecord', 'MediaDataManager', 'MediaDataProcessor',
+                'MediaTimeoutListener', 'MediaResumeListener', 'NotificationService']
+
+
+def capture_runtime(name):
+    result = subprocess.run(['adb', 'logcat', '-d', '-s', *RUNTIME_TAGS],
+                            capture_output=True, text=True, check=False)
+    (output / name).write_text(result.stdout)
+
+
+def capture_system_media():
+    # Fresh CI emulator only; inspect media state without changing system settings.
+    for name, arguments in [
+        ('system-media.txt', ['activity', 'service', 'com.android.systemui/.SystemUIService',
+                              'MediaCarouselController', 'MediaDataManager', 'MediaTimeoutListener']),
+        ('system-sessions.txt', ['media_session']),
+    ]:
+        result = subprocess.run(['adb', 'shell', 'dumpsys', *arguments],
+                                capture_output=True, text=True, check=False)
+        (output / name).write_text(result.stdout + result.stderr)
 
 
 def unique(pattern):
-    matches = list(root.rglob(pattern))
+    matches = [path for path in root.rglob("*") if path.is_file() and fnmatch.fnmatchcase(path.name, pattern)]
     if len(matches) != 1:
         raise RuntimeError(f'Expected one {pattern}, found {len(matches)}')
     return matches[0]
@@ -58,6 +81,8 @@ def main():
                 'tests': {'name': tests.name, 'sha256': hashlib.sha256(tests.read_bytes()).hexdigest()},
                 'device': {key: adb('shell', 'getprop', key, capture_output=True, text=True).stdout.strip()
                            for key in ['ro.product.model', 'ro.build.version.sdk', 'ro.product.cpu.abi']}}
+    metadata['device']['media_resumption'] = adb('shell', 'settings', 'get', 'secure',
+        'qs_media_resumption', capture_output=True, text=True).stdout.strip()
     (output / 'build.json').write_text(json.dumps(metadata, indent=2))
     try:
         adb('install', '-r', app)
@@ -72,8 +97,7 @@ def main():
             metadata['checks']['instrumentation'] = 'failed'
             raise RuntimeError('Instrumentation did not report a complete passing run')
         metadata['checks']['instrumentation'] = 'passed'
-        runtime = subprocess.run(['adb', 'logcat', '-d', '-s', 'AndroidRuntime', 'EPlayerTest', 'EPlayerSession', 'FlickPlayer', 'RustEngine', 'RustAudioEngine', 'CPPlayerDebug', 'AudioTrack', 'AAudio', 'AudioManager'], capture_output=True, text=True, check=False)
-        (output / 'instrumentation-runtime.txt').write_text(runtime.stdout)
+        capture_runtime('instrumentation-runtime.txt')
         if release:
             metadata['checks']['release_start'] = 'running'
             verify_release_start(release)
@@ -99,8 +123,9 @@ def main():
         (output / 'build.json').write_text(json.dumps(metadata, indent=2))
         for folder in ['visual-check', 'art-check', 'layout-check']:
             subprocess.run(['adb', 'pull', f'/sdcard/Android/data/app.eplayer.music/files/{folder}', str(output / folder)], check=False)
-        logs = subprocess.run(['adb', 'logcat', '-d', '-s', 'AndroidRuntime', 'EPlayerTest', 'EPlayerSession', 'FlickPlayer', 'RustEngine', 'RustAudioEngine', 'CPPlayerDebug', 'AudioTrack', 'AAudio', 'AudioManager'], capture_output=True, text=True, check=False)
-        (output / 'runtime.txt').write_text(logs.stdout)
+        capture_runtime('runtime.txt')
+        if any(status in {'failed', 'timed_out', 'incomplete'} for status in metadata['checks'].values()):
+            capture_system_media()
         subprocess.run(['adb', 'shell', 'wm', 'size', 'reset'], check=False)
         subprocess.run(['adb', 'shell', 'wm', 'density', 'reset'], check=False)
 

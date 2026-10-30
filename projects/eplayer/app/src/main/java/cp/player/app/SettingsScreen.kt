@@ -74,18 +74,7 @@ private fun PlaybackSettings(model: EPlayerViewModel, engine: Int, openSound: ()
         SleepTimerSetting(model)
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) { Text("角色动画", Modifier.weight(1f)); Switch(animate, model::setAnimate) }
-        val quality by model.quality.collectAsState()
-        var qualityMenu by remember { mutableStateOf(false) }
-        val qualities = listOf("标准" to "standard", "极高" to "exhigh", "无损" to "lossless", "Hi-Res" to "hires")
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("音质", Modifier.weight(1f))
-            Box {
-                TextButton(onClick = { qualityMenu = true }) { Text(qualities.firstOrNull { it.second == quality }?.first ?: "标准") }
-                DropdownMenu(qualityMenu, { qualityMenu = false }) { qualities.forEach { choice ->
-                    DropdownMenuItem(text = { Text(choice.first) }, onClick = { model.setQuality(choice.second); qualityMenu = false })
-                } }
-            }
-        }
+        QualitySetting(model)
         listOf("系统音频", "Rust 音频").forEachIndexed { index, label ->
             Row(Modifier.fillMaxWidth().testTag("audio-engine-$index").clickable { model.setEngine(index) }, verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(engine == index, { model.setEngine(index) }); Text(label)

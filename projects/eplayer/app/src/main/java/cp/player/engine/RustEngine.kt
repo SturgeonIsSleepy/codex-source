@@ -6,7 +6,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -66,7 +65,9 @@ object RustEngine {
     val audioEvents: SharedFlow<AudioEvent> = _audioEvents.asSharedFlow()
 
     private var pollJob: Job? = null
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    // Read events on the command dispatcher too. A replaced IO poller must not
+    // consume or publish acknowledgements belonging to the next native owner.
+    private val scope = CoroutineScope(SupervisorJob() + engineDispatcher)
 
     init {
         try {
@@ -89,6 +90,7 @@ object RustEngine {
         val success = nativeInit()
         DebugLog.i("RustEngine: nativeInit() returned: $success")
         if (success) {
+            discardPendingEvents()
             startPolling()
         }
         return success
@@ -100,6 +102,9 @@ object RustEngine {
             DebugLog.e("RustEngine: Cannot play, RustEngine is not initialized")
             return false
         }
+        // A new item supersedes queued acknowledgements from the previous output.
+        // In particular, its old Playing must not acknowledge this item's startup.
+        discardPendingEvents()
         val result = nativePlay(path)
         DebugLog.i("RustEngine: nativePlay result: $result")
         return result
@@ -205,6 +210,13 @@ object RustEngine {
 
     /** suspend 版 [stopEngine]，在引擎专用线程执行 */
     suspend fun stopEngineAsync() = withContext(engineDispatcher) { stopEngine() }
+
+    private fun discardPendingEvents() {
+        while (true) {
+            val event = nativePollEvent()
+            if (event == null || event == "null") return
+        }
+    }
 
     private fun startPolling() {
         if (pollJob?.isActive == true) return

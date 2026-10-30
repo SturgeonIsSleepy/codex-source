@@ -69,7 +69,7 @@ android {
         minSdk 28
         targetSdk 36
         versionCode resolvedVersionCode
-        versionName "0.3.2"
+        versionName "0.5.1"
         buildConfigField "String", "GIT_SHA", "\"${resolvedSha}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -163,19 +163,15 @@ dependencies {
     implementation libs.androidx.compose.ui.graphics
     implementation libs.androidx.compose.ui.tooling.preview
     implementation libs.androidx.compose.material3
-    implementation libs.androidx.compose.material3.window.size.class1
     implementation libs.androidx.compose.material.icons.extended
-    implementation libs.androidx.navigation.compose
 
     // Media3 (ExoPlayer)
     implementation libs.androidx.media3.exoplayer
-    implementation libs.androidx.media3.ui
     implementation libs.androidx.media3.session
     implementation libs.androidx.media3.datasource
     implementation libs.androidx.media3.database
 
     // Networking
-    implementation libs.androidx.palette.ktx
     implementation "com.google.zxing:core:3.5.3"
     implementation libs.gson
     implementation libs.okhttp
@@ -186,12 +182,8 @@ dependencies {
     // Coroutines
     implementation libs.kotlinx.coroutines.android
 
-    // Lyricon
-    implementation(libs.provider)
 
-    // Accompanist Lyrics UI (Apple Music-like karaoke lyrics)
 
-    // Material Color Utilities for Monet-like extraction
 
 
     testImplementation libs.junit
@@ -202,8 +194,6 @@ dependencies {
     debugImplementation libs.androidx.compose.ui.tooling
     debugImplementation libs.androidx.compose.ui.test.manifest
 
-    // For Sentry ASM instrumentation to resolve window classes on some devices
-    compileOnly libs.androidx.window
 }
 
 def rustEnabled = providers.gradleProperty('withRust').getOrElse('true').toBoolean()

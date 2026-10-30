@@ -326,3 +326,118 @@ CI40576719254成功发布Release425943718 /eplayer-v0.3.2（非draft、preview�
 重新实际读取远端main38692c9的README/AGENTS/catalog/交接/开发计划和上传约定，未发现他人主线新提交。0.3.2 Release425943718仍非draft、target113acb0且五附件digest/状态与此前收据一致；补齐此前已准备而尚未推送的发布记录。
 
 0.3.3修复前161c63f17e0b9d0a74f0c02de7d52bfff019f655 /CI40577808745：37项35通过/1失败/1登录跳过（98.997秒）。唯一失败是2倍字号首屏插画完整可见要求：未裁剪bounds bottom666dp，而transport top568dp，相差98dp；其余音频/插画及布局检查通过，产品布局尚未修复。artifact12769250606 ZIP SHA25615c5b8db039795fe3541cebf2bd0c983afc76e57bfcd71c01d93363fc159ef95已下载核对。保留layout-check/portrait-2.0.png作为修复前图，后续用同断言/同尺寸检查修复，不把自动滚动到图像后的状态冒充首屏完整显示。
+
+## 0.3.3 独立首项：大字号首屏完整人物回归
+
+从已保存的main38692c9分支agent/eplayer-portrait-fit继续，不改正在发布的0.3.2源码113acb0或原始APK。新检查使用原有横竖屏/1倍与2倍字号真实Compose+AndroidView夹具，要求竖屏未裁剪插画bounds完全位于控制区上方且高度非零；失败前先保存截图。当前产品PlayerLayout尚未修改，新增只是回归与0.3.3版本登记，设备尚未执行。现有布局会在长标题/2倍字体时把插画放入可滚动区域，首屏人物脚部未显示；下一步改为按标题实测占位分配剩余插画空间，复用已有按宽高等比绘制，不增加素材补丁或测量状态循环。
+
+0.3.2发布仍优先跟进，归档修复38692c9只改变原始日志捕获选项，未重编应用。后续0.3.3先完成这项视觉红绿，再处理跨曲下载所有权与UI依赖；真实账号、实机、固定签名仍留给本地agent，AndroidCloud入口/角色参考项目不改。
+
+0.3.3布局回归本地编译：首次因DpRect.height访问不适用失败，改为bottom>top后设备测试包构建通过（2秒），设备尚未执行。0.3.2已由CI40576719254发布（Release425943718，tag eplayer-v0.3.2），五附件uploaded/摘要已读取核对；后续先保存本分支修复前检查，再同步主线正式发布记录，保持不可变113acb0/13c1401交付。
+
+## 0.3.3 首屏人物适配候选修复
+
+PlayerLayout竖屏移除固定100dp元数据预留与内部滚动容器，元数据先按实际内容测量，AndroidView用剩余高度；WitchPlayerView原有min(width/865,height/1280)等比绘制无需变化。减少一层BoxWithConstraints/滚动状态，没有增加测量回调、补丁图、表情帧或新的播放状态。横屏独立插画/可滚动操作区不变。
+
+本地20 JVM、debug主程序/设备包构建通过（53秒），31项根脚本通过。修复前161c63f /CI40577808745的35通过/1失败/1登录跳过和98dp越界证据保留，当前候选设备绿色尚未执行。同步main20cd8c5发布说明时保留双方文档与独立0.3.3登记，不覆盖0.3.2原始APK或无关项目。下一步同一37项真实检查，查看portrait-2.0首屏全身，再继续核心边界工作；不以编译通过替代视觉通过。
+
+
+## 2026-10-28：首屏边界通过，组合暴露旧引擎焦点竞态
+
+候选7c991a000afc8bafef11ab0a0d72af403ecb6fc2 /[CI40743065174](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40743065174)：37项35通过/1失败/1登录跳过（69.822秒）。横竖屏/1倍2倍字号及新增首屏人物边界通过，已实际查看layout-check/portrait-2.0.png，人物全身和控制区同屏。未改角色素材、皮肤、眼睛或骨架。唯一失败LiveEqualizerTest.savedEqualizerChangesApplyWhilePlayingAndDisableCleanly：READY、PWR=false、position=0、duration=12000、native=paused、level=0，无错误；不是STATE_IDLE或UI假进度。artifact12840673407 ZIP SHA25685dc83175484aa290dd1e3bb3509ecec99d600eb0e8ada032a4530330c841d26已下载核对，保留失败截图/原始日志，不冒充绿色。
+
+日志18:21:00.175原生开始playing，.176当前RustAudioFocus收到永久LOSS(-1)，.226原生paused。审计实际Media3 1.10字节码：ExoPlayerImplInternal在播放Looper管理AudioFocusManager，release等待ConditionVariable，releaseInternal释放焦点后才open；原顺序在释放旧Exo之前恢复新Rust PWR，旧线程可能晚请求焦点。修复只把播放请求移到session.setPlayer和旧播放器release之后；已准备的非空队列先交接，保留上一轮避免NONE/STOPPED的修复。未全局屏蔽失焦、改变外部路由或自动播放策略。
+
+现有真实框架Stop检查增为三轮快速双引擎往返，并用另一个Android AudioFocusRequest验证永久失焦确实暂停原生，明确恢复后再验证合法framework Stop。原LiveEqualizer三轮真实幅度检查保留，不删不跳过。本地20项JVM、debug主程序/设备包构建通过（32秒），根脚本31项与目录检查通过；设备新结果待执行，不因视觉单项通过称完整通过。PR11/PR14独立0.4/0.5已读最新规划，保留对方固定签名、真实源、导航/歌词和依赖清理成果；后续跨曲下载所有权仍是共同未完成核心边界。
+
+
+## 跨曲下载所有权：先补真实失败夹具，产品尚未修复
+
+新增switchingFromPrebufferToLocalTrackCannotBeOverwrittenByOldDownload：loopback先发送96KiB（低于240KiB阈值），服务切到30秒本地合成WAV，要求实际原生时长/进度/有限非零幅度与MediaController队列/PWR/READY一致；再释放旧12秒HTTP，并在服务端确认客户端响应消费/关闭后连续检查2秒，不能让旧下载覆盖新曲或置IDLE。尚未运行设备，未预判为失败或通过。
+
+提取DelayedAudioServer复用原预缓冲暂停检查与新检查，连接/线程/等待均有上限，支持取消时服务端遇到预期SocketException（不吞SocketTimeout）。共有withNativePlayer只在确认空队列后接管，恢复音量/引擎并释放控制器，不删用户媒体/账号。每个URI使用UUID，缓存清理只涉及该URI与字节完全匹配的新夹具临时文件。初次本地设备包编译因Song.album缺参失败，补齐Test专辑后构建通过（4秒）。产品FlickPlayer尚未改动，焦点修复cfb1ec4的CI40747846822独立运行中，不重复大构建或本地慢模拟器。
+
+
+## 焦点候选回归与原生回执边界
+
+cfb1ec419d2587082c6b82af8c24fa2b64227911 /[CI40747846822](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40747846822)：37项35通过/1失败/1登录跳过（87.333秒）。LiveEqualizer三轮通过，原先永久失焦停0秒未复现；新增三轮框架交接检查失败，状态含STATE_NONE=0。后续竞争焦点/合法Stop步骤因前置断言失败未执行，不标通过。artifact12842787502 ZIP SHA256b797e86266a1f2093fe5992ae36c1ee642a8581d20e809803aa3f9cf79cd4ea2已下载核对；portrait-2.0首屏全身图再次查看通过。
+
+runtime.txt在18:51:03.044至.097记录连续stopped/buffering/playing/paused/stop回执，显式测试清理Stop在.438才到。沿用独立PR11的24873a8485a9d1ecc2903a9d6ce5563d0cbfde95启动回执边界（该分支最终1d74691c36e17a519d4bacea087c79e3f9d38b0e已有设备回归）：等待Playing确认时保留BUFFERING，忽略前一个原生命令的stopped/idle/paused，handleStop和错误仍立即结束等待。只移植此核心小修，不覆盖PR11账号/歌词/本地签名等内容；本分支尚待组合验证，不能直接挪用其绿色结果。
+
+同时实现下载所有权：park/换曲/空队列/Stop统一cancelStreaming，取消旧下载与seek/underrun恢复并集中重置下载状态；ready和progress子任务归属下载协程，所有路径/预缓存决策回主线程，JNI仍串行引擎线程。取消显式重抛，不改新曲IDLE；无新增曲目代号、整脸素材或状态补丁。新增缓冲期Stop的真实HTTP完成检查，Stop后保持IDLE而非被旧下载转READY。原暂停后离线续播检查继续保留。e39becf /CI40748464795为仅新跨曲检查、未改产品的独立修复前运行，当前尚未取得结果。最新组合本地20 JVM/主程序/设备包构建通过（6秒），设备待执行；Rust原生库不重编，未声明性能或物理设备通过。
+
+
+修复前下载检查e39becf /CI40748464795 attempt1：build成功，设备job123032345846在安装system-images;android-36;google_apis;x86_64时报Error on ZipFile unknown archive，未启动应用测试，无device artifact。不是已复现产品失败。已仅重跑该设备job，保留第一次原始job日志；e86295b组合CI40749734603单独运行，不重复成功构建。后续依实际attempt2记录红/绿，不能因SDK失败声称下载缺陷有红色设备证据。
+
+
+## 0.3.3核心组合已通过，继续独立0.5.1集成
+
+源码e86295be40881de16e8e5c15794474a65847e281 /[CI40749734603](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40749734603)：39项38通过/1真实登录条件跳过（71.056秒）。原三轮EQ、三轮双引擎往返无NONE/STOPPED、另一个AudioFocusRequest造成正常永久失焦暂停、显式恢复及实际framework Stop均执行通过；跨曲旧下载不能替换30秒本地真实进度/时长/非零幅度，缓冲Stop保持IDLE，预缓冲暂停后关闭上游再恢复亦通过。不是物理外设/电话/听感验证。
+
+artifact12843119440 ZIP SHA25631c82ec07ccd43aa1d3c4232e1a0b2813026b9a47a97dad067a01225de0e5822已下载核对；实际查看layout-check/portrait-2.0.png首屏全身及visual-check/player-rust-playing.png、player-rust-paused.png，闭眼/睁眼与头帽对齐保持。新代码未改任何人物/字体资产，没有逐脸换帧。开发分支本轮没有R8/确切发布APK验证；不挪用0.3.2发布结果。修复前e39becf attempt2仍在运行，SDK首次失败不算产品红色。
+
+独立0.5.0基线916f4e1 /CI40699053291证据12822860756 ZIP SHA256c73796d7c5d33e1aa5db2eeb5b9e0e3260ccbe0b66001a33357c305d8c298b3c已下载核对，实际查看release-home、portrait-2.0、settings-full-page：新导航/首页已经存在，大字号裁切仍存在。准备agent/eplayer-050-core-integration，以e86295b与ab7a227两父普通合并，不重写PR11/14历史；0.5.1未发布，组合验收不能继承旧绿色。去掉页面硬编码MusicRed，采用主题主色统一天空蓝，并保留深色模式、共同人物/字体、完整音乐源与新歌词流程。用户自用签名/模块/账号不操作。
+
+
+修复前e39becf /CI40748464795 attempt2已实际执行：38项36通过/1失败/1登录条件跳过（102.660秒），唯一失败switchingFromPrebufferToLocalTrackCannotBeOverwrittenByOldDownload，旧响应完成后本地30秒原生输出被改变。artifact12844910325 ZIP SHA25699b1c4474c563e88bd445a58446568344bfc680fabaafe114e84bda2fca6c079已下载核对，runtime保留本地nativePlay之后旧stream_cache再次nativePlay。与e86295b/CI40749734603相同检查通过形成红绿；首次SDK ZIP失败未执行仍保留，未撤销任何失败结果。
+
+## 0.5.1正常两父集成准备
+
+agent/eplayer-050-core-integration把037f742（e86295b的39项已验收核心及文档）与ab7a227（PR14、含PR11）正常合并，保留双方历史。冲突限于版本/入口说明与相同启动回执注释，实际保留源/账号/歌词、低频断点、导航、新增音乐源回归及本轮下载/焦点/布局修复；未改任何AndroidCloud入口、其他项目、图片或字体资产。统一MaterialTheme主色供首页/曲库/搜索/音质/底栏使用，移除MusicRed硬编码，纸白天空蓝与夜间蓝色容器并保留深色功能。原PR14的12个无调用旧文件/依赖清理保留，不能把从未接入的新会话淡入淡出功能称为已恢复。
+
+本地全新独立工作区构建通过（4分1秒），28项JVM全部通过，debug主程序/测试包已构建；本地临时debug密钥仅用于编译，不复制本地agent固定签名，也不安装到用户设备。只复用已校验Release原生库、SDK缓存；尚未运行本集成45项设备检查/R8/确切包和全页视觉。不挪用旧绿色结果；下一项就是组合验收，不在未完成前发布APK。
+
+
+## 新导航与歌词实际页面验收补充（未运行设备）
+
+LightNavigationTest在真实MainActivity保存首页、设置、音质弹层截图；新增曲库→歌曲分区的魔女双曲/导入可达和网易云二级返回流程，保存library/discovery。截图使用系统UiAutomation一次取图，不影响生产GPU玻璃渲染，也不把单个组件图冒充整页。现有首页不自动加载推荐、设置音质只读检查保留。
+
+LyricsFlowTest给UUID独占的离线歌词缓存与30秒合成WAV建立暂停会话，从真实迷你播放器→歌词页：检查日文/中文译文、开关译文、点12秒行使实际MediaController定位且保持暂停，再回播放器；保存lyrics-full-page.png。不发账号/音乐源请求、无录音，清理前以同引擎命令等待队列清空进入服务后才释放控制器，只删本次文件/历史。该测试是实际UI/会话定位，不声称有真实音源下载、PCM输出或实机听感；双引擎音频另由既有检查负责。本地设备包编译通过（21秒，收尾修正后的增量2秒）；预计整轮47项，设备尚未执行，ee69403的45项组合仍独立运行。
+
+
+## 0.5.1两轮组合失败与整页/歌词分项通过
+
+- ee694031db2224f7a119409af532b345e06c71b6 /CI40751820043：45项43通过/1失败/1登录条件跳过（111.564秒）；唯一失败LiveEqualizer，state=IDLE、native=stopped、position=0，19:19:03.894经过MediaSessionLegacyStub.onStop，随后回调身份被Media3映射到应用通知控制器。不因同UID推定原始调用者为应用，也不屏蔽它。artifact12845256790 ZIP SHA256c2a88f00e4b6ab205b4d3a17b94d351821f78b7357ef7c2ccf84308cb9e9e607已下载核对。
+- 75ce13ffec66a9c5bdea6500b1adccef9a468b04 /CI40753222782：47项45通过/1失败/1登录条件跳过（102.674秒），唯一仍是同一EQ启动Stop。新曲库双曲/导入、二级页返回、译文开关、从真实迷你播放器打开歌词、点12秒行/保持暂停/返回播放器均通过。artifact12844168763 ZIP SHA256f6d295fb652340a91920ebd8d2832c4ba5d453984bd302493bef08ec8867440e已下载核对；实际查看navigation-home/library/settings和lyrics-full-page，纸白天空蓝与完整新导航/歌词呈现通过该分项。没有将整轮写为通过。
+
+进一步审计：RustEngine命令已在单线程，但native事件原由IO轮询，取消旧轮询不清除共享原生事件队列；旧Playing可先清除awaitingNativeStart，之后旧Stopped仍能发布IDLE。jni_api/audio_api实际使用try_recv_event非阻塞读取，且状态事件没有曲目标识。候选把读取也放到同一JNI调度器，初始化/新Play前排空已积压回执；不重编原生库、不声称已得到原生代号或彻底根因证明。
+
+FlickPlayer去掉awaitingNativeStart附加标志，以已有用户意图统一处理：仍请求播放的内部Stopped保持BUFFERING，已请求暂停保持READY，显式Player.stop仍同步IDLE且不可被旧Playing/Paused复活；本地输出真实持续停止超过15秒报告错误并停止，不永久假装Playing。暂停意图只由恢复/显式Stop解除，旧Paused不能改变它。合法框架Stop检查继续保留，新增1秒稳定性窗口；未按来源过滤任何Stop。会话状态日志记录是否真正发布到session，设备采集补系统媒体/通知标签，帮助检验是否出现“暂时IDLE→通知移除→系统Stop”的链条，不把该链条预判为已证实。
+
+诊断字段首次把nullable session误作lateinit，导致本地编译失败，改为安全引用后28 JVM/主程序/设备包构建通过（6秒）；收尾源码28 JVM/主程序/设备包构建通过（5秒），设备结果待执行。31项根脚本通过，失败路径也保存系统媒体诊断的证据契约已补检查。下一项同47项整轮及实际截图，不盲重跑旧失败源码。
+
+
+## 9a55215未修复系统Stop；交接中人为PAUSED的进一步审计
+
+9a5521578ce7b43752fa4d83c8e2ad2c6614eb39 /CI40756489129：47项45通过/1失败/1登录跳过（100.501秒），仍是EQ启动state=IDLE/native=stopped，未解决。artifact12845774812 ZIP SHA256eed1c0f5611cfa82661a65c2d46819dc381209f3e3a8aa053277171bf58c5517已下载核对。系统MediaSessionService日志明确19:50:07.095 callingPackage=com.android.systemui，随后legacy Stop；此前当前会话BUFFERING，不可再声称“临时IDLE→通知撤销”已证实或已修复。新事件/意图边界保留其独立价值，但不当作这次Stop根因已解决。
+
+进一步实际读Android16 AOSP LegacyMediaDataManagerImpl/MediaCarouselController：关闭媒体续播时，paused媒体数据可经removePlayer→dismissMediaData→transportControls.stop；异步回调可能晚到。当前MusicService在仍发布旧player时previous.pause，并将PWR=false的新player交接后才恢复true，真实框架日志19:50:05.038/.066/.068连续PAUSED后再BUFFERING。这个人为暂停不属于用户暂停，新增同一三轮真实框架检查，禁止播放请求中的交接发布PAUSED（既有NONE/STOPPED与真实失焦暂停/合法Stop检查保留）。当前只加断言，产品未改；本地/设备结果待执行。
+
+下一候选用短期ForwardingPlayer交接快照，已恢复非空新队列对外保持BUFFERING/PWR=true，旧player在解除发布后再pause/release，最后启动并发布实际新player。不是过滤任何系统Stop，也不把新音频提前启动来抢焦点；需要同检查红绿和EQ真实幅度组合通过。另审计快速原生Playing可能在Main订阅排队期间丢失，待用UNDISPATCHED同步建立事件订阅，不增加整脸贴图/新用户状态标志。
+
+
+## 交接快照候选已构建，等待强化框架红绿
+
+3c853ab6d951722ac1e05b87c3ee8992db57f4a7 /CI40761055147只增加“请求播放的三轮往返不得出现PAUSED”断言，设备结果待取得；未改产品。本地设备包构建通过（17秒）。
+
+产品候选增加core/playback/PlaybackHandoverPlayer（短期ForwardingPlayer，无队列/解码器/服务）：新队列prepare后先以BUFFERING和原播放请求交接session，再暂停/释放旧player、恢复实际新player PWR，最后解除快照。旧player的pause已不在发布期间发生；真实暂停/失焦/Stop不被过滤，未启动新音频抢旧焦点。Flick的SharedFlow订阅改UNDISPATCHED，在构造的Main调用内立即建立，避免新Playing在订阅排队期间丢失；后续事件仍调度Main。28 JVM/主程序/设备包本地构建通过（16秒），31根脚本通过；强化47项设备尚未运行，不能称系统Stop已解决。
+
+新增只读CI诊断：记录qs_media_resumption原值，不修改；失败/超时/不完整时保存限定媒体相关的SystemUI与media_session dumpsys，帮助核对旧移除时序。只在本轮新建的隔离CI模拟器执行，不接用户设备。元数据不包含账户/音源凭据，根失败证据契约检查保留两份快照。
+
+
+## 交接PAUSED断言已红，保留EQ的间歇性事实
+
+3c853ab6d951722ac1e05b87c3ee8992db57f4a7 /CI40761055147：47项45通过/1失败/1登录条件跳过（110.196秒）。唯一失败currentFrameworkStopStillStopsRealNativeAudio的新交接断言，多次收到STATE_PAUSED=2；EQ三轮本次通过，不能将此前EQ失败改成通过或将该轮视为已确定所有Stop根因。真实竞争焦点/末尾Stop步骤在新断言后，因前置失败未执行。artifact12849106286 ZIP SHA2563aa644ae70f7912354669dc14a1f045f280fae64236b7ca3f385346803c8cb78已下载核对。与待测8dbc4d6使用同断言，保持原始失败和已有系统Stop正控制。
+
+主线21bd59574b4ab854d59bb52196eb329bb4e70896只更新恢复入口，应用仍0.3.2、Release不变；已正常合入本开发分支，仅处理README/交接/计划文档冲突，不重复应用构建。主线读者可发现PR16实际候选与失败，不再误续早期0.3.3断点。8dbc4d6的47项设备验证独立，文档合并不改变该应用源码或取消运行。
+
+
+## 2026-10-30恢复：0.5.1交接快照通过完整47项
+
+固定源码8dbc4d658dbe0643ec988d116120eee0ec57afd1，[CI40761643034](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40761643034)，build job123078518334、device job123081681602均success。47项46通过/1 SourceLoginLiveTest真实登录条件跳过，94.027秒。修复前3c853ab /CI40761055147的人工PAUSED失败保留，此前EQ失败不改成通过。
+
+三轮引擎交接不发布NONE/STOPPED/PAUSED；三轮EQ真实幅度0.13085723→0.18598484→0.13141343、0.13044979→0.18598488→0.1309964、0.1304184→0.18503658→0.1309964。44.1/48kHz保存参数、外部永久失焦暂停/显式恢复、合法framework Stop及1秒不复活通过。延迟旧HTTP不得抢占30秒本地PCM、缓冲Stop、下载完成仍暂停及新导航/译文/12秒行定位保持暂停/返回通过。
+
+设备artifact12849017358 ZIP SHA256166c59466afc2ceabca47b02b2b68bc64d7f5e121cfa0f0f7737fae17308d1ab已下载核对。实际查看layout-check/navigation-home.png、lyrics-full-page.png、portrait-2.0.png和visual-check/player-rust-playing.png、player-rust-paused.png，完整人物/闭眼播放/睁眼暂停在静态图中无明显头帽/手错位；素材/字体未改。构建artifact12849616973 ZIP SHA25633f7deb7627e2b3c7e6b60a5451e5973103f2677e0e960f38490fb891c55a6a8未下载，不计为确切R8交付。
+
+build.json明确instrumentation=passed、release_start=not_requested；媒体续播设置为字符串null，未改OS设置，不能解释为关闭。不宣称所有历史SystemUI Stop根因穷尽，真实Stop未过滤。1070706仅合主线交接文档，应用与8dbc4d6相同。28 JVM、本地构建16秒和31根检查通过；主线普通/自用R8及独立47项、确切通用包跨应用、Release待执行。无新增实机/真实账号写入/声学听感结果。

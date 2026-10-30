@@ -147,20 +147,46 @@ class NativeEngineTest {
             legacy!!.registerCallback(observer, Handler(Looper.getMainLooper()))
             instrumentation.waitForIdleSync()
             handoverStates.clear()
-            repeat(2) { engine(0); engine(1) }
+            repeat(3) { engine(0); engine(1) }
             await(15000) {
                 var playing = false
                 main { playing = controller!!.isPlaying }
                 playing && (native { RustEngine.getProgress()?.positionSecs } ?: 0.0) > .5
             }
             instrumentation.waitForIdleSync()
-            assertFalse("Engine handover published an empty/stopped framework session: $handoverStates",
-                handoverStates.any { it == PlaybackState.STATE_NONE || it == PlaybackState.STATE_STOPPED })
+            assertFalse("Playing engine handover published an empty/stopped/paused framework session: $handoverStates",
+                handoverStates.any { it == PlaybackState.STATE_NONE || it == PlaybackState.STATE_STOPPED || it == PlaybackState.STATE_PAUSED })
+            // The handover fix must not ignore a genuine permanent loss to another focus owner.
+            val audio = context.getSystemService(android.media.AudioManager::class.java)
+            val competingFocus = android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC).build())
+                .setOnAudioFocusChangeListener({}, Handler(Looper.getMainLooper())).build()
+            try {
+                assertEquals(android.media.AudioManager.AUDIOFOCUS_REQUEST_GRANTED, audio.requestAudioFocus(competingFocus))
+                await(2000) {
+                    var paused = false
+                    main { paused = !controller!!.playWhenReady }
+                    paused && native { RustEngine.getState().equals("paused", true) }
+                }
+            } finally { audio.abandonAudioFocusRequest(competingFocus) }
+            main { assertFalse("Permanent focus loss must require explicit resume", controller!!.playWhenReady); controller!!.play() }
+            await(5000) {
+                var playing = false
+                main { playing = controller!!.isPlaying }
+                playing && native { RustEngine.getState().equals("playing", true) }
+            }
             legacy!!.transportControls.stop()
             await(2000) {
                 var idle = false
                 main { idle = controller!!.playbackState == Player.STATE_IDLE && !controller!!.playWhenReady }
                 idle && native { RustEngine.getState().equals("stopped", true) }
+            }
+            repeat(10) {
+                main { assertEquals(Player.STATE_IDLE, controller!!.playbackState); assertFalse(controller!!.playWhenReady) }
+                assertTrue("Late acknowledgements must not revive an explicit Stop", native { RustEngine.getState().equals("stopped", true) })
+                SystemClock.sleep(100)
             }
             android.util.Log.i("EPlayerTest", "Current framework Stop stopped real native playback; legacy control remains available")
         } finally {

@@ -30,7 +30,12 @@ object SourceStore {
     val issue = _issue.asStateFlow()
     private val _accountChanges = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
     val accountChanges = _accountChanges.asSharedFlow()
-    fun accountChanged(source: String) { clearResolved(source); _accountChanges.tryEmit(source) }
+    val accountRevision = MutableStateFlow(0L)
+    fun accountChanged(source: String) { clearResolved(source); accountRevision.value++; _accountChanges.tryEmit(source) }
+    suspend fun logout(context: Context, source: String) {
+        try { call(context, source, "logout") }
+        finally { context.getSharedPreferences("cp_player_prefs", 0).edit().remove("cookie_$source").apply(); accountChanged(source) }
+    }
     suspend fun initialize(context: Context) = withContext(Dispatchers.IO) {
         try {
             mutex.withLock {

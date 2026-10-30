@@ -1,10 +1,38 @@
 # 核心边界与能力核对
 
-当前 0.3.2 组合候选已正常合入 main（113acb0），已发布预览。0.3.1 是此前发布基线；0.3.2 分项及修正后的36项组合设备回归已通过（35通过/1登录条件跳过）；引擎交接空状态已有红绿证据且合法框架Stop仍可停止原生输出，历史间歇性legacy Stop尚不能宣称全部根因解决。PR13的37项已为36通过/1登录跳过，主线R8/37项和原始通用包跨应用2项已通过，最终Release安装/归档已通过，五附件摘要已核对。以下编号阶段保留当时结果，不能将其“待执行”视为当前状态；详细提交、运行与失败见 VALIDATION-2026-10-25.md。
+## 当前0.5.1开发架构（验收结果另见计划）
+
+PR16正常汇合PR11/PR14/PR15，以下描述实际调用边界；8dbc4d6组合47项已通过（46通过/1登录跳过），主线R8与确切包待执行。当前设备门槛以[实施计划](DEVELOPMENT-PLAN.md)与[验证索引](VALIDATION-2026-10-25.md)为准；下方编号内容保留历史时态。
+
+| 范围 | 当前实现与职责 | 仍需遵守的边界 |
+| --- | --- | --- |
+| 系统/原生播放、DSP | CPPlayerManager、FlickPlayer、RustEngine、ExoAudioFxManager | JNI命令/事件读取同一调度器；普通系统路由保留。原生库复用已校验基线，不能把未重编的Rust Trace修改或USB可选导出删除写成已完成 |
+| MediaSession/通知/焦点 | MusicService、RustAudioFocus、PlaybackFocusOwner | 唯一公开会话，不靠Compose维持后台；真实Stop正常处理，不能按来源屏蔽 |
+| 引擎交接 | core/playback/PlaybackHandoverPlayer | 短期ForwardingPlayer只投影已准备队列的BUFFERING/原播放请求，无第二队列/解码器/输出；解除旧player发布后才pause/release，随后激活实际新player |
+| 播放缓存 | PlaybackCache、DataSourceFactoryProvider、StreamProxy | 进程所有、远端首次open懒加载；本地/content直读。取消只清自己未完成文件，不能release仍被数据源引用的Cache或删用户曲库 |
+| 音乐源/账号 | provider、SourceStore、SourceAccount、MusicRepository | 0.4协议/云端曲库/评论/写操作路径保留；真实账号写入未由云端验收，不复制模块或凭据。服务对app.SourceStore的引用是数据层，不是Compose依赖 |
+| 曲库/队列/下载 | LibraryStore、QueueStore、Downloads、DownloadRegistry | 导入和默认双曲并存，Source/remoteId/质量/断点保留；后台下载由系统持有。QueueStore仍在app包，可后续移动数据接口，不能因为包名就删除 |
+| 歌词 | LyricsRepository、LyricParser、LyricsScreen（暂同Lyrics.kt） | 缓存/解析/全屏呈现已接通，译文与真实会话12秒点行流程已分项验收；下一阶段可按数据/呈现拆文件，不把未提供真实源等价当作已通过 |
+| 页面/状态投影 | EPlayerApp、EPlayerViewModel、CloudViewModel、MusicComponents | 自有首页/二级推荐/曲库/设置/歌词；不直接JNI、不另持队列，主题主色来自MaterialTheme，原Medium中日字体保留 |
+| 角色 | ui/artwork、EnergyAudioProcessor、MusicPulse | 共同人物/眼睛/手/发底图，实时PCM能量、阻尼运动；不逐脸换图、不增加录音权限，不删除人物/字体来减包 |
+
+已沿用PR14删除12个无调用旧文件和导航/窗口尺寸类/Media3 UI/Palette/旧歌词provider直接依赖。旧CrossfadeManager已删除且新会话尚无淡入淡出调用；旧偏好键还在但不是功能完成。安全缓存管理按钮也仍未接入。后续恢复这些能力需服务/输出层方案和真实幅度/状态测试，不能重新塞回无人调用的双播放器。
+
+## 0.3.2至0.3.3的阶段审计历史
+
+当时的 0.3.2 组合候选已正常合入 main（113acb0），已发布预览。0.3.1 是此前发布基线；0.3.2 分项及修正后的36项组合设备回归已通过（35通过/1登录条件跳过）；引擎交接空状态已有红绿证据且合法框架Stop仍可停止原生输出，历史间歇性legacy Stop尚不能宣称全部根因解决。PR13的37项已为36通过/1登录跳过，主线R8/37项和原始通用包跨应用2项已通过，最终Release安装/归档已通过，五附件摘要已核对。以下编号阶段保留当时结果，不能将其“待执行”视为当前状态；详细提交、运行与失败见 VALIDATION-2026-10-25.md。
 
 缓存已独立为进程所有，声音手记支持手动频率/增益/Q 和 AutoEQ 导入、取消、非法值拒绝。普通系统路由保留，Android 独占 USB 桥接已去除；真实外接设备路由仍由本地 agent 验证。账号、歌单及歌词的独立 PR11 不计入此组合候选。
 
 本轮基线：`888f1a4ad397213115ebabf39a33bf1705854367`。这是代码依赖核对，不是新增的功能验收通过记录。
+
+## 2026-10-28续接能力审计（0.3.3未发布）
+
+- 主线0.3.2保持已发布基线。PR11的0.4真实源能力、PR14的0.5首页/导航/歌词/音质/续播及依赖删除均为独立分支，不把它们算作main已合入；也不重复删除对方已审计的12个旧文件和UI依赖。后续集成须保留其固定本地签名和完整音乐功能。
+- 本分支只做兼容的首屏人物尺寸和核心竞态修复，不改人物纹理、眼睛、字体或系统路由。7c991a0布局检查已通过但整轮LiveEqualizer失焦失败；cfb1ec4焦点修复的设备结果待执行，不提前称通过。
+- 实际Media3 1.10中ExoPlayerImplInternal在播放线程管理焦点，release等待该线程释放。MusicService必须先准备非空替代队列并交接session，再排空旧播放器释放，最后恢复PWR；不能屏蔽正常外部LOSS或重新发布空/STOPPED会话。
+- FlickPlayer下载与其ready/progress子任务应一起取消；切本地曲、暂停跨曲、清空队列、停止与release均须结束旧所有权。StreamProxy负责IO资源与半文件，Player负责当前曲状态；不能让通用Exception把取消当作新曲失败。e39becf增加真实96KiB阻塞下载→30秒本地PCM→旧12秒响应完成的回归，产品修复与设备红绿待续。
+- engine/provider/core实际检索无Compose或导航控制器导入。service仅反向引用app.QueueStore与app.SourceStore（Android持久化/源调度，不是呈现组件）；后续可以逐步移动数据接口，不能因包名app就误删队列/音乐源。缓存所有者与声音能力已独立，Crossfade缺少新会话接入仍应如实保留能力缺口，不以删文件冒充迁移完成。
 
 ## 边界
 
