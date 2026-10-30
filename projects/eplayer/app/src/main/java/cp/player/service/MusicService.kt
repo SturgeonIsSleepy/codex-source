@@ -29,13 +29,14 @@ import cp.player.core.playback.togglePlayback
 import cp.player.core.playback.PlaybackSleepTimer
 import cp.player.engine.CPPlayerManager
 import cp.player.util.UserPreferences
-import cp.player.core.playback.PlaybackHandoverPlayer
+import cp.player.core.playback.SessionPlayer
 import cp.player.widget.MusicWidgetProvider
 
 /** One audio player, event-driven notifications and no background UI/lyric polling. */
 class MusicService : MediaSessionService() {
     private lateinit var player: Player
     private var session: MediaSession? = null
+    private lateinit var sessionPlayer: SessionPlayer
     private lateinit var audio: AudioManager
     private var rustFocus: RustAudioFocus? = null
     private var engine = 0
@@ -94,7 +95,8 @@ class MusicService : MediaSessionService() {
         val activity = PendingIntent.getActivity(this, 0,
             Intent(this, MainActivity::class.java).setAction("ACTION_SHOW_PLAYER"),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        session = MediaSession.Builder(this, player).setSessionActivity(activity)
+        sessionPlayer = SessionPlayer(player, CPPlayerManager::releasePlayer)
+        session = MediaSession.Builder(this, sessionPlayer).setSessionActivity(activity)
             .setCallback(object : MediaSession.Callback {
                 override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
                     return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
@@ -159,15 +161,9 @@ class MusicService : MediaSessionService() {
                             player.setMediaItems(items, index, position)
                             player.prepare()
                         }
-                        // Do not publish the old pause or the new player's initial false PWR.
-                        // SystemUI may dismiss a paused card and send a delayed Stop.
-                        session.setPlayer(PlaybackHandoverPlayer(player, playing && items.isNotEmpty()))
-                        previous.pause()
-                        // Media3 requests focus on its playback thread. Drain that owner's release
-                        // before the replacement requests focus, or a late old request can pause it.
-                        CPPlayerManager.releasePlayer(previous)
-                        if (items.isNotEmpty()) player.playWhenReady = playing
-                        session.setPlayer(player)
+                        // Keep the same public Player/listener identity for the MediaSession.
+                        // The bridge detaches the old output, drains its focus, then activates target.
+                        sessionPlayer.replaceWith(player, playing && items.isNotEmpty())
                     }
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
@@ -199,7 +195,7 @@ class MusicService : MediaSessionService() {
         unregisterReceiver(noisy)
         player.removeListener(listener)
         session?.release()
-        CPPlayerManager.releasePlayer(player)
+        sessionPlayer.release()
         super.onDestroy()
     }
     private fun pausePlayer() { rustFocus?.pause() ?: player.pause() }

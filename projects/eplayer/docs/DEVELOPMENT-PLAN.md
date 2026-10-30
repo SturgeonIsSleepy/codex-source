@@ -1,5 +1,11 @@
 # ePlayer 当前实施计划
 
+## 会话连续性候选（尚未设备验收）
+
+agent/eplayer-session-continuity接续149c5227e，应用使用一个持续同一的Media3 ForwardingSimpleBasePlayer作为公开SessionPlayer，删除临时PlaybackHandoverPlayer。实际解码仍只由当前系统/原生Player负责，切换时代理先解除旧delegate监听并保持原请求/BUFFERING，排空旧输出/焦点后激活新delegate；不再每次引擎切换调用两次session.setPlayer。release仍通过CPPlayerManager统一清理输出/Exo音效。真实Stop/失焦不拦截。
+
+这是减少会话/监听者重绑的候选，不是已证实的SystemUI Stop根因；原诊断149c5227e/CI41107199704保持原应用代码，先对照媒体缓冲，候选须同一47项与合法Stop通过，再谈主线R8。人物/字体/来源/队列/普通路由不变。
+
 ## 当前诊断候选
 
 agent/eplayer-systemui-media-log保持应用代码不变，只扩充真实SystemUI dump中的MediaCarouselCtlrLog/MediaTimeout/MediaLog缓冲；成功与失败均保存，便于对比迟到移除。普通系统设置不改、Stop不拦截，不以新构建冒充修复。该分支不构建R8，先取得内部移除原因，再决定是否用持续同一Player代理替换交接快照。
