@@ -1,5 +1,11 @@
 # ePlayer 变更
 
+## 0.5.4（独立数据边界开发，未发布）
+
+- 拆开混合LibraryStore.kt：Track/LibraryStore/RecentStore位于core/library，QueueStore位于core/queue；核心数据不依赖Compose/ViewModel或app包。MusicService直接使用核心队列和最近播放。
+- 更新所有界面/源协议/下载/设备检查的类型导入，以及Track与LibraryStore的精确R8保留规则；没有旧app类型转发别名、第二份队列或重复持久化。
+- 原曲库/队列/最近播放JSON字段、偏好键、文件名、内容URI和源/remoteId保持；新增旧版字面JSON兼容检查，33 JVM/本地构建通过，独立51项50通过/1登录跳过（103.113秒），R8待执行。主线0.5.2交付冻结，不以本分支结果替换。
+
 ## 0.5.2（组合设备通过，主线R8待执行）
 
 - 服务整个生命周期维持同一公开SessionPlayer，底层引擎原子交接；移除临时交接Player和反复MediaSession.setPlayer，实际输出/焦点释放仍统一走CPPlayerManager，真实Stop/失焦保留。

@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import cp.player.app.SourceStore
-import cp.player.app.Track
+import cp.player.core.library.Track
 import cp.player.app.withQuality
 import cp.player.model.Song
 import cp.player.provider.ModuleManager

@@ -14,7 +14,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import androidx.media3.common.Player
 import android.net.Uri
 import java.io.File
-import cp.player.app.RecentStore
+import cp.player.core.library.RecentStore
 import cp.player.core.playback.PlaybackCache
 import cp.player.engine.RustEngine
 import cp.player.model.Song

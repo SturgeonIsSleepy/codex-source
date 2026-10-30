@@ -1,6 +1,12 @@
 # 核心边界与能力核对
 
-## 当前0.5.2核心集成架构（验收结果另见计划）
+## 0.5.4独立数据边界候选
+
+Track/LibraryStore/RecentStore从app混合文件移到core/library，QueueStore移到core/queue。四个核心文件无Compose、ViewModel或app包引用；服务直接使用核心队列/最近播放。所有UI/source/download及设备检查显式导入数据类型，精确R8规则同步，JSON/偏好/文件/URI不变，无旧app类型转发层。33 JVM与本地构建通过；51项50通过/1登录跳过（CI41113754192，103.113秒），R8待执行。
+
+剩余依赖必须如实保留：MusicService直接使用app.ListeningClock/ListeningStatsStore；service/BackendDataSource仍调用app.SourceStore（数据/协议，不是Compose）；后续按实际调用移出，不能因app包名误删音乐源或统计。当前只迁移数据归属，不宣称完成独立Gradle模块或全部CPPlayer能力迁移。
+
+## 0.5.2核心集成架构（已合入主线，R8交付中）（验收结果另见计划）
 
 PR16已汇合PR11/PR14/PR15；当前继续汇合PR18/PR20/PR21。以下是实际调用边界，最终51项组合设备/R8/确切包尚待执行，不能沿用0.5.1失败主线或独立绿色代替。当前设备门槛以[实施计划](DEVELOPMENT-PLAN.md)与[验证索引](VALIDATION-2026-10-25.md)为准；下方编号内容保留历史时态。
 
@@ -11,7 +17,7 @@ PR16已汇合PR11/PR14/PR15；当前继续汇合PR18/PR20/PR21。以下是实际
 | 引擎交接 | core/playback/SessionPlayer（当前候选） | 持续同一的ForwardingSimpleBasePlayer只代理当前实际Player，无第二队列/解码器/输出；交接时解除旧delegate监听后pause/release，保持原请求/BUFFERING再激活新delegate；此候选设备待验收，不能宣称停止根因解决 |
 | 播放缓存 | PlaybackCache、DataSourceFactoryProvider、StreamProxy | 进程所有、远端首次open懒加载；本地/content直读。取消只清自己未完成文件，不能release仍被数据源引用的Cache或删用户曲库 |
 | 音乐源/账号 | provider、SourceStore、SourceAccount、MusicRepository | 0.4协议/云端曲库/评论/写操作路径保留；真实账号写入未由云端验收，不复制模块或凭据。服务对app.SourceStore的引用是数据层，不是Compose依赖 |
-| 曲库/队列/下载 | LibraryStore、QueueStore、Downloads、DownloadRegistry | 导入和默认双曲并存，Source/remoteId/质量/断点保留；后台下载由系统持有。QueueStore仍在app包，可后续移动数据接口，不能因为包名就删除 |
+| 曲库/队列/下载 | core/library的LibraryStore/Track、core/queue的QueueStore、Downloads/DownloadRegistry | 导入和默认双曲并存，Source/remoteId/质量/断点保留；后台下载由系统持有。QueueStore已移到核心且JSON不变，下载编排仍由app数据适配负责，不因包名删功能 |
 | 歌词 | core/lyrics的LyricsRepository/LyricParser、app/LyricsLoader与LyricsScreen | 缓存/解析/全屏呈现已接通，译文与真实会话12秒点行流程已分项验收；0.5.2已拆数据/解析/呈现，缓存以唯一半文件原子发布；Android文件系统检查待执行，不把未提供真实源等价当作已通过 |
 | 页面/状态投影 | EPlayerApp、EPlayerViewModel、CloudViewModel、MusicComponents | 自有首页/二级推荐/曲库/设置/歌词；不直接JNI、不另持队列，主题主色来自MaterialTheme，原Medium中日字体保留 |
 | 角色 | ui/artwork、EnergyAudioProcessor、MusicPulse | 共同人物/眼睛/手/发底图，实时PCM能量、阻尼运动；不逐脸换图、不增加录音权限，不删除人物/字体来减包 |

@@ -24,7 +24,7 @@ import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import cp.player.MainActivity
-import cp.player.app.QueueStore
+import cp.player.core.queue.QueueStore
 import cp.player.core.playback.togglePlayback
 import cp.player.core.playback.PlaybackSleepTimer
 import cp.player.engine.CPPlayerManager
@@ -76,7 +76,7 @@ class MusicService : MediaSessionService() {
                     Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_POSITION_DISCONTINUITY)) {
                 QueueStore.save(this@MusicService, player, queueChanged = events.contains(Player.EVENT_TIMELINE_CHANGED))
             }
-            if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) cp.player.app.RecentStore.add(this@MusicService, player)
+            if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) cp.player.core.library.RecentStore.add(this@MusicService, player)
             if (events.containsAny(Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_IS_PLAYING_CHANGED,
                     Player.EVENT_MEDIA_METADATA_CHANGED)) updateWidgets()
         }
