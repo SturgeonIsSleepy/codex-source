@@ -453,3 +453,12 @@ build.json明确instrumentation=passed、release_start=not_requested；媒体续
 
 
 歌词拆分后审计R8反射边界，原cp.player.app下三项keep同步移到core.lyrics，并精确保留Gson缓存DTO，避免只在debug/fastRelease可用。修正首次并发建目录时mkdirs返回false但另一请求已成功创建目录的竞态，使用Files.createDirectories统一处理。该增量编译/32 JVM已复核通过（20秒）；Files.createDirectories最终增量也构建通过；R8仍未执行，不因keep配置存在称混淆后通过。
+
+
+## 0.5.2歌词最终候选：48项通过，R8仍未执行
+
+固定9b76ed3bfe70607883a3dd0d3dccd9ab3d4c3312 /CI41105793719，build124237178663和device124239009750成功，48项47通过/1真实登录条件跳过，107.921秒。设备artifact13001293160 ZIP SHA25636f067617f073b370298dfada461797adaf454f2838a514069be28305764e4b1已下载核对，instrumentation=passed/release_start=not_requested；构建artifact13002475944 ZIP SHA256aea0e8359b27fe7ad8f23ae0d38b6194428ccbc42e6ebc43484614807a19edac未下载，不计为R8验收。
+
+包含Android真实Files原子替换/坏缓存重取/离线读取和既有译文/12秒行点选/保持暂停/返回。此前36d5c87的48项也通过（107.921秒为本最终轮，前轮108.620秒）；已查看前轮原生播放闭眼及全屏日中歌词截图，人物和字体未修改。同步保留规则并不等于实际混淆后通过，R8仍待后续主线一次验证。
+
+main493a9a0 /CI41104525573为47项45通过/1 EQ系统Stop失败/1跳过（93.272秒）；其两版R8构建成功，但冷启动前置阻断/确切包未执行，未发布0.5.1。本分支通过不能覆盖主线失败。所有既有失败/未执行保留，PR19内部SystemUI媒体日志和下一会话连续性候选独立推进。

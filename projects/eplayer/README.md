@@ -4,7 +4,7 @@
 
 ## 当前开发版本 0.5.2（未发布）
 
-0.5.1已正常合入main493a9a0，[主线CI41104525573](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41104525573)执行R8与独立47项。0.5.2在agent/eplayer-lyrics-core独立推进歌词核心拆分/安全缓存，不改变冻结交付候选；48项设备检查待执行。
+0.5.1已正常合入main493a9a0，[主线CI41104525573](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41104525573)执行R8与独立47项。0.5.2在agent/eplayer-lyrics-core独立推进歌词核心拆分/安全缓存，不改变冻结交付候选；48项设备检查已通过（47通过/1登录跳过，107.921秒，CI41105793719），R8未执行。主线0.5.1独立47项因EQ系统Stop失败，发布仍阻断。
 
 ### 0.5.1组合验收
 
