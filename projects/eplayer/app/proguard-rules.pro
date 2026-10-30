@@ -39,7 +39,7 @@
 -dontwarn android.os.ServiceManager
 
 # Persisted ePlayer library and queue schema.
--keep class cp.player.app.Track { *; }
+-keep class cp.player.core.library.Track { *; }
 
 # Device checks exercise the exact renderer/PCM and module core in release APKs.
 -keep class cp.player.ui.artwork.** { *; }
@@ -58,7 +58,7 @@
 
 # Public data boundary used by release integration checks.
 -keep class cp.player.app.MusicRepository { *; }
--keep class cp.player.app.LibraryStore { *; }
+-keep class cp.player.core.library.LibraryStore { *; }
 -keep class cp.player.app.MusicEntry { *; }
 -keep class cp.player.app.Account { *; }
 -keep class cp.player.app.MusicDetail { *; }

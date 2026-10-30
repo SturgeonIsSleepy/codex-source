@@ -546,6 +546,36 @@ PR22以正常merge进入main c17dc4a165702391b99d624ad281236bcc46240f，所有�
 CI41112575118执行一次普通/自用R8、独立51项和普通x86_64 R8冷启动，尚无结果；确切原始universal跨应用/新Release未执行。已通过分支e4ea4cb1与main应用/测试相同，但不能借其50通过/1跳过（103.810秒）冒充主线结果。后续仅文档更新，不重复触发大构建。31根检查在此恢复提交前复核。
 
 
+## 0.5.4独立数据边界：本地33 JVM/构建通过，设备待执行
+
+从main639a19dc（应用c17dc4a/0.5.2）开agent/eplayer-data-boundaries，0.5.3本地PR17不动。梳理旧app/LibraryStore.kt四职责后，原逻辑分别移到core/library/Track、LibraryStore、RecentStore和core/queue/QueueStore；MusicService直接引用核心队列/历史，UI/source/download/设备检查更新导入。四核心文件无Compose/ViewModel/app引用，无重复持久化或旧包转发别名；SourceStore/ListeningStats边界尚未迁出，不能声称完全解耦。
+
+保留原JSON键/偏好键/文件名/内容URI与source/remoteId、原索引恢复算法。TrackSchemaTest使用旧版字面JSON而不是新实现生成输入，检查导入ID/日文标题/时长/URI/源/远端ID及原字段完整往返；原32项不删，总33 JVM全部通过。应用和设备包本地构建34秒通过，R8精确Track/LibraryStore规则同步迁移，但本阶段R8未执行，不能把规则存在当混淆通过。整轮51项设备尚未执行。固定0.5.2主线CI41112575118仍独立运行，两个版本结果不得互换。
+
+
+## 0.5.4独立数据核心51项通过，R8仍未执行
+
+固定04d60cec9b514e82cf2983df018045080bf4c2cc /CI41113754192，build124262515729/device124264207759成功：51项50通过/1真实登录条件跳过，103.113秒。旧字面JSON的33项JVM、本地应用/设备包34秒、31根检查已通过；导入/源元数据/下载/队列恢复/最近播放清理与其余核心51项实际通过，R8 not_requested，不能据此声称新包已混淆验收。
+
+设备artifact13005706329 ZIP SHA256c7eb038d1bea85f525cda7b877cd5a7e382dbaf1bbcf48842a3d35fb4283dd4a已下载核对。真实依赖复核纠正此前过粗表述：MusicService当前直接反向引用app.ListeningClock/ListeningStatsStore；app.SourceStore的实际调用在service/BackendDataSource，provider两处只是文档引用。核心库/队列四文件无app/Compose/ViewModel依赖；没有因包名删SourceStore或音乐源能力。主线0.5.2/c17dc4a的R8与独立设备门槛仍单独运行，版本结果不得混用。
+
+
+## 恢复浏览契约修复前：测试已增加，产品尚未修改
+
+agent/eplayer-media-resumption从数据边界32479af开0.5.5。RecentBrowserTest遵循SystemUI所用传统MediaBrowserService接口，要求服务可发现且导出、EXTRA_RECENT连接/子项可播放/当前项ID和标题，并验证不prepare/不启动音频。只用UUID专用音频/队列，先要求用户队列空，finally移除本次历史/文件并清自己队列。原MusicService/Manifest尚未改，因此缺失契约的设备失败尚待取得，不能提前称红绿。预计52项，33 JVM/应用及设备包本地构建24秒通过，设备52项待执行，R8未执行；不修改媒体系统设置或过滤Stop。
+
+
+## 最近浏览修复前红色与MediaLibrary候选
+
+098e2501f0055133fe8d19bd1e3055b72a5d0f7a /CI41116950332：build124273543573成功，device124275009533失败；52项50通过/1浏览服务发现失败/1真实登录跳过（109.592秒）。唯一RecentBrowserTest.systemRecentBrowserCanReadPlayableMediaWithoutStartingIt断言“SystemUI must discover an exported recent-media browser service”；旧51项本轮通过，不能把未复现EQ Stop当成根因已解决。artifact13007535717 ZIP SHA25612d6cd11b395dbb747d694aed695b529f6cb40aa3515dfb43ca9a58d48f42846已下载核对。
+
+候选保留MusicService组件与旧MediaSessionService action，新增MediaLibraryService/传统MediaBrowserService接口；唯一MediaLibrarySession继续绑定SessionPlayer。按同UID/平台isTrusted授权连接，正常Stop没有按来源过滤。RecentMediaCatalog只读元数据，不prepare/源请求/音频输出；只有显式onPlaybackResumption返回现有队列/位置或最近项。补充MediaBrowser只读日志与双引擎显式Play清队列后恢复30秒合成WAV进度/AudioManager输出检查。浏览检查保持不自动播放断言；既有合法Stop/永久失焦/1秒不复活检查保留。
+
+33 JVM/应用与设备包首轮构建23秒通过，新增恢复检查增量6秒通过，31仓库检查提交前执行。预计53项设备尚未执行，R8/确切包/Release未执行，不以旧51/52或本地编译代替。Root/最近项JSON不加入用户凭据，不上传录音/模块/签名，人物/字体和Android Cloud入口不改。
+
+
+显式恢复夹具补强：两引擎均先让30秒合成WAV真正推进且AudioManager输出激活，再停止/清空，随后显式Play并再次要求真实进度/输出。避免把尚未实际播放、其RecentStore过渡事件可能被合并的队列项当成“最近播放”。共用同一等待 helper，不延长15秒期限、不重试失败；产品代码与3914ba6相同，53项设备待执行。
+
 ## 0.5.2主线独立失败：恢复浏览契约缺口已确认，发布继续阻断
 
 c17dc4a165702391b99d624ad281236bcc46240f /CI41112575118：build124258420042普通/自用R8成功（8分28秒），device124264682607为51项49通过/1 LiveEqualizer失败/1登录跳过，106.585秒。不是SDK离线准备失败；前期adb离线属于开机等待，实际51项已运行。普通R8冷启动因仪表失败未执行，原始包跨应用未执行，未发布0.5.2。
@@ -553,3 +583,12 @@ c17dc4a165702391b99d624ad281236bcc46240f /CI41112575118：build124258420042普�
 设备artifact13004693255 ZIP SHA25621fa42fb93ac61bd1ec63d6059f1793f6094e9cf6d16c9015abe2bb77feac283已核对。即时system-media-check/equalizer-1e9959c6-d640-4abc-a9af-62e81b24264a.txt对齐19:24:26.078非用户移除、26.084原始SystemUI Stop、26.088原生Stop，position1100ms；useMediaResumption=true/hasCheckedForResume=true/resumeAction=null。源Manifest未声明android.media.browse.MediaBrowserService且MusicService exported=false，明确缺少SystemUI所查的恢复入口。补齐MediaLibraryService/最近项浏览与显式恢复的效果仍需红绿与正常Stop验证，不直接断言穷尽根因。
 
 已下载构建artifact13004232952并核对ZIP SHA2567ca7909c2d001698accf5e54027897c1ebdb276d39d924b30dbba57407d010ba。原始通用APK44,773,259字节，0.5.2/code164，SHA2565c259827cafff31d2d8c933e2cc449d66a9e3aa04a803bcd0d77cbf431d6eaac；证书bc19ace988ec3ff6381851c4699039ebd137a2f6819880e2d7f1aa91514dc5bf，V2有效，min28/target36、三ABI。静态签名不是播放验收；准备的blackbox manifest只在Git外，未用失败main触发确切包门禁。GitHub步骤字段曾前后不一致，按完成日志确认实际R8构建成功，未把步骤滞后误计失败或重跑。
+
+
+## 0.5.5第一轮真实失败与接收器修正
+
+3914ba6 /[CI41118331969](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41118331969)：53项49通过/3失败/1真实登录跳过，118.318秒。EQ被系统Stop，传统浏览构造发生在无Looper测试线程，显式恢复前置assertFalse与Exo.stop保留playWhenReady语义不符。设备artifact13006654026 ZIP SHA256dcabfd2a867d8a8ab2b2e1d14c894af4ea837690244fe575e06264b393b6e3f6已下载校验；SystemUI发现并连接服务，但resumeAction仍null。截图可用不代表整轮通过；本轮未修改图像或字体。
+
+14ee342 /CI41119090920构建通过/设备失败，artifact13007288524服务端digest dcfba0fd5fd1a1e18be61fd2e666497acf92922909445372d903e15c77be0590；下载与原始job日志接口返回内部错误，未核验ZIP或取得项数。1d18d3b只修主线程构造，不能代替后续产品候选。
+
+cbe699f补标准MediaButtonReceiver：实际Media3 1.10的canResumePlaybackOnStart依赖Manifest接收器，因此此前SystemUI EXTRA_RECENT在到达自定义浏览前已被拒绝。三参数恢复回调按isForPlayback规范化只读最近项/保留主动恢复队列，固定日志增加MediaBrowser/legacy/MediaSessionImpl。测试先实际播放，再pause/stop/清空/主动Play，不放宽时限或输出要求。33 JVM及应用/设备包14秒、最终增量2秒、31仓库测试通过。远端53项/R8/确切原包/Release待真实结果，未宣称Stop根因解决。

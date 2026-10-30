@@ -1,5 +1,7 @@
 package cp.player.app
 
+import cp.player.core.library.Track
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn

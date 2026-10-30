@@ -1,5 +1,9 @@
 package cp.player.app
 
+import cp.player.core.library.Track
+import cp.player.core.library.LibraryStore
+import cp.player.core.library.RecentStore
+
 import cp.player.core.lyrics.LyricsText
 
 import android.app.Application

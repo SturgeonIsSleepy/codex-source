@@ -1,5 +1,13 @@
 # ePlayer 转移交接
 
+## 当前恢复：PR24媒体按键入口修正，53项仍待通过
+
+当前产品cbe699fca5e17f278bd034f0096443a01cf0506c，正常汇合main b0220c9。补Media3标准MediaButtonReceiver；实际1.10实现要求它才允许SystemUI最近浏览/恢复。三参数onPlaybackResumption区分只读浏览与主动播放，不直接prepare/play；正常Stop/焦点保留。构造MediaBrowser移主线程，恢复夹具先明确pause/stop再清空（Exo.stop保留播放请求）。本地33 JVM/应用/设备包与31仓库测试通过。
+
+3914ba6 /CI41118331969真实53项49通过/3失败/1登录跳过（118.318秒）：EQ系统停止、浏览构造线程、恢复前置状态；device artifact13006654026已核对dcabfd2a867d8a8ab2b2e1d14c894af4ea837690244fe575e06264b393b6e3f6。14ee342 /CI41119090920设备失败，下载接口内部错误、具体项数未取得；1d18d3b线程修正与cbe699f产品修正远端待结果。不能称恢复契约或历史停止已解决，新R8/确切原始APK/Release均未通过。
+
+接续以[当前实施计划](../projects/eplayer/docs/DEVELOPMENT-PLAN.md)为准，已精简当前步骤并把旧完整规划保存到项目docs/history/DEVELOPMENT-STAGES-2026-10-30.md。先通过最终53项及SysUI恢复/合法Stop，再主线一次R8、原包双引擎跨应用、Release；0.5.2失败包不发布，0.3.2不覆盖，PR17本地成果与Android Cloud入口不碰。下方全部为原阶段记录。
+
 ## 最新开发恢复：PR24 /0.5.5媒体恢复契约候选
 
 [PR24](https://github.com/SturgeonIsSleepy/codex-source/pull/24) /agent/eplayer-media-resumption：产品候选3914ba64421d45fbdb7468a9e426c4b5870046a1，最新测试修正14ee342c6e1846c1e0813a1910f1d40c6c62da07。基于PR23已验证数据边界，MusicService升级同组件MediaLibraryService，保留旧action并新增传统浏览/Library接口；只读最近项不prepare/不联网，显式恢复才返回实际队列/位置或最近项，真实Stop/失焦仍正常处理。只接受同UID/平台可信连接，不按Stop来源筛选。

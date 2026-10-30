@@ -219,7 +219,7 @@ class NativeEngineTest {
                 }
             } finally {
                 instrumentation.uiAutomation.dropShellPermissionIdentity()
-                cp.player.app.RecentStore.remove(context, id)
+                cp.player.core.library.RecentStore.remove(context, id)
                 file.delete()
             }
         }
