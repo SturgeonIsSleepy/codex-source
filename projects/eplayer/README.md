@@ -4,7 +4,7 @@
 
 ## 当前主线版本 0.5.1（未发布）
 
-PR16已正常合入main493a9a0，[主线R8/47项CI41104525573](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41104525573)执行中，确切通用包及Release待验收。后续[0.5.2歌词核心PR18](https://github.com/SturgeonIsSleepy/codex-source/pull/18)保持独立。
+PR16已正常合入main493a9a0，[主线R8/47项CI41104525573](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41104525573)R8两版构建通过，但47项45通过/1 EQ启动失败/1登录跳过（93.272秒），停止链路仍待修复；冷启动未执行，确切通用包及Release阻断。后续[0.5.2歌词核心PR18](https://github.com/SturgeonIsSleepy/codex-source/pull/18)保持独立。
 
 合入独立0.4音乐源与0.5首页/导航/歌词/音质重构，并接续0.3.3的首屏人物、焦点交接及跨曲下载所有权修复。人物、动效、中日文字体、普通/原生双引擎完整保留；普通版不附音源或歌曲录音。首页统计与继续播放、网易云二级页、独立曲库、最右侧设置及全屏歌词沿用0.5实现。当前组合CI40761643034通过47项（46通过/1登录跳过，94.027秒），主线R8与确切包待执行；变化与原验证边界见[0.5.0记录](docs/LIGHT-0.5.0.md)。
 

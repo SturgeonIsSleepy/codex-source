@@ -1,5 +1,10 @@
 # ePlayer 当前实施计划
 
+## 最新阻断：主线47项失败
+
+493a9a0 /CI41104525573：R8两版构建通过；47项45通过/1 EQ启动失败/1登录跳过，93.272秒。原始Stop仍来自SystemUI，播放80ms停止；三轮交接断言通过仍不能解决全部间歇停止。冷启动未执行，确切包与Release不得推进。先补SystemUI MediaCarouselCtlrLog/MediaTimeout/MediaLog只读证据，评估用唯一公开播放器代理原子切引擎，替换重复setPlayer；不屏蔽真实Stop或修改系统设置。0.5.2歌词36d5c87独立48项通过（47通过/1跳过，108.620秒），9b76ed3最终候选仍待设备结果；不借其绿色覆盖主线失败。
+
+
 当前交付版 **0.5.1，未发布**，[PR #16](https://github.com/SturgeonIsSleepy/codex-source/pull/16)已正常合入main493a9a0；CI41104525573构建普通/自用R8，之后执行独立47项及冷启动。歌词核心0.5.2独立在PR18，不改变此冻结交付。主线合入前为21bd595，公开[0.3.2 Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.2)及原始APK保持固定。本文是恢复入口；不从历史“待执行”段落判断当前状态。
 
 ## 已接续的功能与依赖

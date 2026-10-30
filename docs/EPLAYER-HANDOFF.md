@@ -1,10 +1,16 @@
 # ePlayer 转移交接
 
-## 当前恢复入口：0.5.1已合入主线，R8/确切包待验收
+## 当前恢复入口：0.5.1主线回归失败，禁止发布
 
-PR16已正常合入main `493a9a0f0d73b859d64b28e4343d46e3e3ef048c`，保留PR11/PR14/PR15父历史；[主线CI41104525573](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41104525573)正在构建普通/自用R8，之后执行独立47项和R8冷启动。下方候选绿色不代替本轮主线结果。0.5.1交付源码冻结，仍未发布新APK。
+[主线CI41104525573](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41104525573)普通/自用R8构建通过，但47项45通过/1 EQ启动失败/1登录跳过（93.272秒）。18:22:05.171原始SystemUI发出Stop，原生被停止在80ms；三轮交接断言本轮通过，说明消除人为PAUSED仍不足以解决全部停止问题。R8冷启动未执行，确切新包检查/Release未执行；不重跑同源码凑绿色、不屏蔽真实Stop。设备artifact13000628932已下载核对8e5e8b1903c478430dd1ef10a789bc014a950d7f6c2efe28eabfd6396ca9369d。
 
-后续纯歌词核心/缓存拆分独立在[PR18](https://github.com/SturgeonIsSleepy/codex-source/pull/18)，本地32 JVM/应用与设备包编译通过，48项设备待验收；不混入0.5.1。另有本地开发者的[PR17](https://github.com/SturgeonIsSleepy/codex-source/pull/17)界面成果，尚未合入；保留其模块、固定签名和原成果，不在此覆盖。
+下一步优先取SystemUI媒体日志缓冲中的移除原因，评估保持唯一公开Player代理、原子切换实际引擎，替换临时反复session.setPlayer；该方案尚未实现/验证，不称根因已解决。0.5.1公开包仍没有发布。
+
+### 原候选与后续分支
+
+PR16已正常合入main `493a9a0f0d73b859d64b28e4343d46e3e3ef048c`，保留PR11/PR14/PR15父历史；[主线CI41104525573](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41104525573)已构建普通/自用R8，独立47项失败，冷启动未执行。下方候选绿色不代替本轮主线结果。0.5.1交付源码冻结，仍未发布新APK。
+
+后续纯歌词核心/缓存拆分独立在[PR18](https://github.com/SturgeonIsSleepy/codex-source/pull/18)，本地32 JVM/应用与设备包编译通过，36d5c87的48项47通过/1登录跳过（108.620秒）；后续9b76ed3同步R8保留规则后的设备仍待验收；不混入0.5.1。另有本地开发者的[PR17](https://github.com/SturgeonIsSleepy/codex-source/pull/17)界面成果，尚未合入；保留其模块、固定签名和原成果，不在此覆盖。
 
 ### 0.5.1候选绿色（历史门槛）
 
