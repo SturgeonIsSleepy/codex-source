@@ -6,7 +6,7 @@ agent/eplayer-data-boundaries从main639a19dc接续，冻结应用0.5.2/c17dc4a�
 
 已实际梳理：旧app/LibraryStore.kt同时持有Track模型、MediaStore/导入、队列异步持久化、最近播放；服务经app反向引用队列/历史。当前拆为core/library的Track/LibraryStore/RecentStore和core/queue的QueueStore；服务直接引用核心，UI/源协议/下载只导入数据类型，无兼容转发类、第二队列或重复写盘。SourceStore/ListeningStats仍为后续边界，不声称完全解耦。
 
-JSON字段、偏好键、文件名、FileProvider URI/source/remoteId和恢复算法保持；同步移动精确R8规则，新增旧版字面JSON兼容检查。33 JVM/应用及设备包34秒通过，31根检查提交前执行；本阶段51项设备和R8尚未执行，不能用0.5.2通过记录代替。
+JSON字段、偏好键、文件名、FileProvider URI/source/remoteId和恢复算法保持；同步移动精确R8规则，新增旧版字面JSON兼容检查。33 JVM/应用及设备包34秒、31根检查通过；本阶段CI41113754192的51项50通过/1真实登录跳过（103.113秒），R8未执行，不能用0.5.2通过记录代替。
 
 实施顺序：推送独立51项→主线0.5.2 R8/原始确切包/Release完成后，再正常合入这阶段并验证对应R8/旧JSON/真实导入/队列/后台。后续继续SourceStore数据接口、淡入淡出、安全缓存和原生Trace真实三ABI验证；不先删除未恢复的功能。以下保留0.5.2冻结交付门槛。
 

@@ -2,9 +2,9 @@
 
 ## 0.5.4独立数据边界候选
 
-Track/LibraryStore/RecentStore从app混合文件移到core/library，QueueStore移到core/queue。四个核心文件无Compose、ViewModel或app包引用；服务直接使用核心队列/最近播放。所有UI/source/download及设备检查显式导入数据类型，精确R8规则同步，JSON/偏好/文件/URI不变，无旧app类型转发层。33 JVM与本地构建通过，设备/R8待执行。
+Track/LibraryStore/RecentStore从app混合文件移到core/library，QueueStore移到core/queue。四个核心文件无Compose、ViewModel或app包引用；服务直接使用核心队列/最近播放。所有UI/source/download及设备检查显式导入数据类型，精确R8规则同步，JSON/偏好/文件/URI不变，无旧app类型转发层。33 JVM与本地构建通过；51项50通过/1登录跳过（CI41113754192，103.113秒），R8待执行。
 
-剩余依赖必须如实保留：MusicService仍使用app.SourceStore以及ListeningClock/ListeningStatsStore（数据/协议，不是Compose）；后续按实际调用移出，不能因app包名误删音乐源或统计。当前只迁移数据归属，不宣称完成独立Gradle模块或全部CPPlayer能力迁移。
+剩余依赖必须如实保留：MusicService直接使用app.ListeningClock/ListeningStatsStore；service/BackendDataSource仍调用app.SourceStore（数据/协议，不是Compose）；后续按实际调用移出，不能因app包名误删音乐源或统计。当前只迁移数据归属，不宣称完成独立Gradle模块或全部CPPlayer能力迁移。
 
 ## 0.5.2核心集成架构（已合入主线，R8交付中）（验收结果另见计划）
 

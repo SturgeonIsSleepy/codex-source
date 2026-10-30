@@ -551,3 +551,10 @@ CI41112575118执行一次普通/自用R8、独立51项和普通x86_64 R8冷启�
 从main639a19dc（应用c17dc4a/0.5.2）开agent/eplayer-data-boundaries，0.5.3本地PR17不动。梳理旧app/LibraryStore.kt四职责后，原逻辑分别移到core/library/Track、LibraryStore、RecentStore和core/queue/QueueStore；MusicService直接引用核心队列/历史，UI/source/download/设备检查更新导入。四核心文件无Compose/ViewModel/app引用，无重复持久化或旧包转发别名；SourceStore/ListeningStats边界尚未迁出，不能声称完全解耦。
 
 保留原JSON键/偏好键/文件名/内容URI与source/remoteId、原索引恢复算法。TrackSchemaTest使用旧版字面JSON而不是新实现生成输入，检查导入ID/日文标题/时长/URI/源/远端ID及原字段完整往返；原32项不删，总33 JVM全部通过。应用和设备包本地构建34秒通过，R8精确Track/LibraryStore规则同步迁移，但本阶段R8未执行，不能把规则存在当混淆通过。整轮51项设备尚未执行。固定0.5.2主线CI41112575118仍独立运行，两个版本结果不得互换。
+
+
+## 0.5.4独立数据核心51项通过，R8仍未执行
+
+固定04d60cec9b514e82cf2983df018045080bf4c2cc /CI41113754192，build124262515729/device124264207759成功：51项50通过/1真实登录条件跳过，103.113秒。旧字面JSON的33项JVM、本地应用/设备包34秒、31根检查已通过；导入/源元数据/下载/队列恢复/最近播放清理与其余核心51项实际通过，R8 not_requested，不能据此声称新包已混淆验收。
+
+设备artifact13005706329 ZIP SHA256c7eb038d1bea85f525cda7b877cd5a7e382dbaf1bbcf48842a3d35fb4283dd4a已下载核对。真实依赖复核纠正此前过粗表述：MusicService当前直接反向引用app.ListeningClock/ListeningStatsStore；app.SourceStore的实际调用在service/BackendDataSource，provider两处只是文档引用。核心库/队列四文件无app/Compose/ViewModel依赖；没有因包名删SourceStore或音乐源能力。主线0.5.2/c17dc4a的R8与独立设备门槛仍单独运行，版本结果不得混用。

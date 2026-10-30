@@ -4,7 +4,7 @@
 
 ## 当前开发版本 0.5.4（数据边界，未发布）
 
-agent/eplayer-data-boundaries将Track/LibraryStore/RecentStore移入core/library，QueueStore移入core/queue；服务不再经混合UI文件取得队列/最近播放，界面只消费核心数据。旧JSON/偏好键/文件名/URI与源标识保持。33 JVM及本地应用/设备包构建34秒通过；51项设备与此版本R8尚未执行。0.5.3保留给本地PR17界面分支，不覆盖其成果。
+agent/eplayer-data-boundaries将Track/LibraryStore/RecentStore移入core/library，QueueStore移入core/queue；服务不再经混合UI文件取得队列/最近播放，界面只消费核心数据。旧JSON/偏好键/文件名/URI与源标识保持。33 JVM及本地应用/设备包构建34秒通过；本分支51项已50通过/1登录跳过（103.113秒，CI41113754192），此版本R8尚未执行。0.5.3保留给本地PR17界面分支，不覆盖其成果。
 
 ### 冻结的主线0.5.2交付（继续执行）
 
