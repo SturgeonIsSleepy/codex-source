@@ -537,3 +537,10 @@ main493a9a0 /CI41104525573为47项45通过/1 EQ系统Stop失败/1跳过（93.272
 设备artifact13003099676 ZIP SHA256a3820db126bdccc90cbea1177214238a1866ef7b888937a66f0fe4de5e0c8693已下载核对，source_commit完整匹配e4ea4cb1，instrumentation=passed、release_start=not_requested。fast APK SHA25686231f2438a1927e8dca2c450a85bcea6bc5e9aed43bcb8d2b73b2fcfacd49ad；测试APK b3fb782fee290cabc0ceb30992b001332f53e66fb025007a571591d34b085d95。已实际查看visual-check/player-rust-playing.png、player-rust-paused.png和layout-check/portrait-2.0.png，人物完整、闭眼/睁眼与主题文字在这些静态图中无新明显错位；字符/字体资产未改，不称逐帧/长时/实机听感验收。
 
 c83f0ae已正常合入main4202d33恢复指针，应用/测试与e4ea4cb1相同；后续记录仍仅文档变化。旧0.5.1 main493a9a0失败与b012298e整轮EQ失败完整保留，未将其写成通过；不宣称所有历史SystemUI Stop根因穷尽。下一步以预期head正常合入最新main→普通/自用R8与独立51项/冷启动→原始universal确切包双引擎跨应用→0.5.2 Release归档，尚未执行的新门槛不提前算成功。
+
+
+## 0.5.2正常合入主线，R8独立门槛正在执行
+
+PR22以正常merge进入main c17dc4a165702391b99d624ad281236bcc46240f，所有四父/后续文档父历史保留，未强推。PR18/19/20随祖先提交自动merged；队列b012298e也经merge-base确认是main祖先，旧PR21因base是歌词分支仍open，将关闭并保留分支/证据。PR17本地界面及签名/模块/登录不改。
+
+CI41112575118执行一次普通/自用R8、独立51项和普通x86_64 R8冷启动，尚无结果；确切原始universal跨应用/新Release未执行。已通过分支e4ea4cb1与main应用/测试相同，但不能借其50通过/1跳过（103.810秒）冒充主线结果。后续仅文档更新，不重复触发大构建。31根检查在此恢复提交前复核。

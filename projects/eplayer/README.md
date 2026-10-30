@@ -2,7 +2,9 @@
 
 基于 [Aurora-Nasa-1/CPPlayer](https://github.com/Aurora-Nasa-1/CPPlayer) 的 Android 音乐播放器，统一为白纸、天空和手绘墨线风格。应用独立安装标识为 `app.eplayer.music`；保留原项目 Kotlin 包名与 JNI 名称，以免破坏原生引擎接口。
 
-## 当前开发版本 0.5.2（未发布）
+## 当前主线版本 0.5.2（未发布）
+
+PR22已正常合入main c17dc4a，[CI41112575118](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41112575118)执行普通/自用R8、独立51项和普通R8冷启动。确切原始通用包跨应用与Release尚未执行；下面是已通过分支组合的范围。
 
 当前agent/eplayer-052-core-integration汇合持续公开SessionPlayer、纯歌词核心/原子缓存和队列恢复索引修复，完整51项设备已通过（CI41110662240，50通过/1真实登录跳过，103.810秒），主线R8与确切包待执行；原人物/动作/Medium字体不改。主线0.5.1虽R8构建通过但独立47项失败，未发布；后续按最终0.5.2统一执行一次主线R8/全轮→确切原始包双引擎跨应用→Release，不用旧分支绿色代替组合验收。
 

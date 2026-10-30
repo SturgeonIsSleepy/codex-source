@@ -1,5 +1,14 @@
 # ePlayer 转移交接
 
+## 最新主线：0.5.2 / c17dc4a，R8与独立51项运行中
+
+[PR22](https://github.com/SturgeonIsSleepy/codex-source/pull/22)已正常合入main `c17dc4a165702391b99d624ad281236bcc46240f`，保留歌词/会话/通知/队列全部父历史。主线[CI41112575118](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41112575118)执行一次普通/自用R8、独立51项和普通R8冷启动；结果尚未取得，确切通用包与Release未执行。当前应用与已通过组合e4ea4cb1相同，不能用分支50通过/1登录跳过代替主线结果。
+
+后续先取得这轮结果；成功后提取未经重签/重打包的universal APK，核对真实SHA/版本号/证书/三ABI并执行双引擎文件选择器导入/播放暂停/12秒定位/后台/实际通知返回，再发布0.5.2并归档全部红绿/跳过/未执行。不要发布旧0.5.1失败包，原0.3.2资产不动。
+
+PR18/19/20已随祖先提交自动merged；PR21队列提交b012298e也是main祖先，关闭其旧的歌词分支目标PR并保留源码分支/验证记录。PR17本地界面/签名/模块/登录未改。下方为当前组合与历史证据，不从旧“待执行”恢复。
+
+
 ## 最新组合恢复：PR22 /0.5.2核心集成，51项组合设备通过
 
 固定应用e4ea4cb1a4da92fb0c495c4a28986c4282189f4d /[CI41110662240](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41110662240)构建及51项组合设备通过（50通过/1真实登录跳过，103.810秒）。[PR22](https://github.com/SturgeonIsSleepy/codex-source/pull/22)正常合并main4202d33恢复指针，应用不变；该文档合并不触发重复构建。设备artifact13003099676已核对SHA256a3820db126bdccc90cbea1177214238a1866ef7b888937a66f0fe4de5e0c8693；随后正常合入main并做R8/原始确切包，暂未发布。
