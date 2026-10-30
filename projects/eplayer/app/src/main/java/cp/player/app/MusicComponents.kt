@@ -1,10 +1,13 @@
 package cp.player.app
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -16,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
@@ -43,10 +45,8 @@ internal fun songArtwork(song: Song?) = song?.albumArtUrl?.takeUnless {
 
 @Composable
 internal fun MusicCover(song: Song?, modifier: Modifier = Modifier) {
-    val artwork = songArtwork(song)
     Box(modifier.clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest)) {
-        AsyncImage(artwork ?: "file:///android_asset/elaina-layer.png", null,
-            Modifier.fillMaxSize(), contentScale = if (artwork != null) ContentScale.Crop else ContentScale.Fit)
+        TrackArtwork(song, Modifier.fillMaxSize(), 128, "file:///android_asset/elaina-layer.png")
     }
 }
 
@@ -65,7 +65,8 @@ internal fun MusicSegments(labels: List<String>, selected: Int, choose: (Int) ->
         labels.forEachIndexed { index, label ->
             Box(Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
                 .background(if (index == selected) MaterialTheme.colorScheme.surface else Color.Transparent)
-                .clickable { choose(index) }.padding(vertical = 7.dp), contentAlignment = Alignment.Center) {
+                .selectable(selected = index == selected, role = Role.Tab, onClick = { choose(index) })
+                .testTag("music-segment-$label").padding(vertical = 7.dp), contentAlignment = Alignment.Center) {
                 Text(label, style = MaterialTheme.typography.labelLarge,
                     color = if (index == selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -101,7 +102,7 @@ internal fun SettingsRow(title: String, value: String? = null, click: () -> Unit
 @Composable
 internal fun QualitySheet(model: EPlayerViewModel, close: () -> Unit) {
     val quality by model.quality.collectAsState()
-    ModalBottomSheet(onDismissRequest = close, containerColor = MaterialTheme.colorScheme.surface) {
+    TravelSheet(onDismissRequest = close, containerColor = MaterialTheme.colorScheme.surface) {
         Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp)) {
             Text("音质", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = 16.dp))
             QualityChoices.forEach { (label, value) ->
@@ -132,35 +133,21 @@ internal fun FloatingBar(modifier: Modifier = Modifier, content: @Composable Box
         .border(.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f), shape), content = content)
 }
 
-/** A small cached cover, composed once behind the character; no animated blur pass. */
-@Composable
-internal fun AlbumBackdrop(song: Song?, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val base = MaterialTheme.colorScheme.background
-    val artwork = songArtwork(song)
-    val request = remember(context, artwork) {
-        ImageRequest.Builder(context).data(artwork)
-            .size(320).build()
-    }
-    Box(modifier.background(base).testTag("album-backdrop")) {
-        AsyncImage(request, null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
-        Box(Modifier.matchParentSize().background(Brush.verticalGradient(
-            0f to base, .10f to base, .28f to base.copy(alpha = .70f),
-            .50f to base.copy(alpha = .56f), .76f to base.copy(alpha = .78f), 1f to base.copy(alpha = .98f))))
-    }
-}
-
 @Composable
 internal fun MusicDock(state: Playback, page: Int, discovery: Boolean, choose: (Int) -> Unit,
-    showPlayer: () -> Unit, playPause: () -> Unit, next: () -> Unit) {
+    showPlayer: () -> Unit, playPause: () -> Unit, next: () -> Unit, queue: () -> Unit = {}) {
           FloatingBar(Modifier.fillMaxWidth().testTag("music-dock")) {
            Column(Modifier.fillMaxWidth()) {
             if (state.song != null) {
                 Row(Modifier.fillMaxWidth().height(60.dp).testTag("dock-now-playing").clickable { showPlayer() }.padding(start = 10.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     MusicCover(state.song, Modifier.size(42.dp))
-                    Text(state.song!!.name, Modifier.weight(1f).padding(horizontal = 12.dp), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
+                    AnimatedContent(state.song, contentKey = { it?.id }, modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                        transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(140)) }, label = "mini-track") { current ->
+                        Text(current?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
+                    }
                     IconButton(onClick = playPause) { Icon(if (state.playRequested) Icons.Default.Pause else Icons.Default.PlayArrow, if (state.playRequested) "暂停" else "播放") }
                     IconButton(onClick = next) { Icon(Icons.Default.SkipNext, "下一首") }
+                    IconButton(onClick = queue) { Icon(Icons.Default.QueueMusic, "当前播放列表") }
                 }
                 HorizontalDivider(Modifier.padding(horizontal = 22.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .45f))
             }
@@ -183,9 +170,6 @@ internal fun MusicDock(state: Playback, page: Int, discovery: Boolean, choose: (
 /** The album replaces only the old sky panel; the full character stays in front of it. */
 @Composable
 internal fun CharacterStage(song: Song?, modifier: Modifier = Modifier, portrait: @Composable (Modifier) -> Unit) {
-    val context = LocalContext.current
-    val artwork = songArtwork(song)
-    val request = remember(context, artwork) { ImageRequest.Builder(context).data(artwork).size(512).build() }
     BoxWithConstraints(modifier) {
         val scale = minOf(maxWidth.value / 865f, maxHeight.value / 1280f)
         val left = (maxWidth.value - 865f * scale) / 2f
@@ -194,9 +178,25 @@ internal fun CharacterStage(song: Song?, modifier: Modifier = Modifier, portrait
         Box(Modifier.offset(x = (left + 80f * scale).dp, y = (top + 100f * scale).dp)
             .size((705f * scale).dp).clip(RoundedCornerShape((24f * scale).dp))
             .background(MaterialTheme.colorScheme.primaryContainer).testTag("stage-cover")) {
-            AsyncImage(request, null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
+            TrackArtwork(song, Modifier.matchParentSize(), 512)
         }
         portrait(Modifier.fillMaxSize())
         }
+    }
+}
+
+private data class ArtworkKey(val id: String?, val url: String?)
+
+/** Only the cover transitions; the live portrait and transport stay mounted. */
+@Composable
+private fun TrackArtwork(song: Song?, modifier: Modifier, size: Int, fallback: String? = null) {
+    val context = LocalContext.current
+    AnimatedContent(ArtworkKey(song?.id, songArtwork(song)), modifier = modifier,
+        transitionSpec = { (fadeIn(tween(240)) + scaleIn(tween(240), initialScale = .97f)) togetherWith fadeOut(tween(160)) },
+        label = "track-artwork") { target ->
+        val request = remember(context, target.url, size, fallback) {
+            ImageRequest.Builder(context).data(target.url ?: fallback).size(size).build()
+        }
+        AsyncImage(request, null, Modifier.fillMaxSize(), contentScale = if (target.url != null || fallback == null) ContentScale.Crop else ContentScale.Fit)
     }
 }

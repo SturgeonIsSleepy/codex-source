@@ -97,12 +97,20 @@ internal fun TravelAlertDialog(onDismissRequest: () -> Unit, confirmButton: @Com
         properties = DialogProperties(dismissOnBackPress = false))
 }
 
-/** Context actions use the same predictive sheet behavior as queue and quality. */
+/** A back gesture dismisses a panel in one step rather than first collapsing it. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+internal fun TravelSheet(onDismissRequest: () -> Unit, modifier: Modifier = Modifier,
+    containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    content: @Composable ColumnScope.() -> Unit) {
+    ModalBottomSheet(onDismissRequest, modifier = modifier,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = containerColor, content = content)
+}
+
+@Composable
 internal fun TravelMenu(expanded: Boolean, onDismissRequest: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
-    if (expanded) ModalBottomSheet(onDismissRequest,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    if (expanded) TravelSheet(onDismissRequest) {
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp), content = content)
     }
 }

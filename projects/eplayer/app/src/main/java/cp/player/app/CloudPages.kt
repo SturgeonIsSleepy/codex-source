@@ -98,6 +98,13 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                         }
                     }
                 }
+                val ranked = target.kind == MusicKind.RECORD_ALL || target.kind == MusicKind.RECORD_WEEK
+                if (ranked) Box(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                    MusicSegments(listOf("所有时间", "最近一周"), if (target.kind == MusicKind.RECORD_WEEK) 1 else 0) { period ->
+                        val kind = if (period == 1) MusicKind.RECORD_WEEK else MusicKind.RECORD_ALL
+                        if (kind != target.kind) cloud.replaceTop(target.copy(kind = kind))
+                    }
+                }
                 val listState = androidx.compose.foundation.lazy.rememberLazyListState()
                 LaunchedEffect(page.target) { listState.scrollToItem(0) }
                 LazyColumn(Modifier.weight(1f), state = listState, contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -126,7 +133,24 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                                 enabled = !busy, onClick = { cloud.subscribe(target) }) { Text(if (target.subscribed) "取消收藏" else "收藏") }
                         }
                     }
-                    items(tracks, key = { "${it.source}:${it.song.id}" }) { track ->
+                    if (ranked) {
+                        items(tracks.size) { index ->
+                            val track = tracks[index]
+                            val record = page.data?.records?.getOrNull(index)
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Text("${index + 1}", Modifier.width(30.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleMedium)
+                                Box(Modifier.weight(1f)) {
+                                    SongRow(track, playback.song?.id == track.song.id, { player.play(track, tracks); showPlayer() }) {
+                                        record?.playCount?.takeIf { it > 0 }?.let { Text("${it} 次", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                        IconButton(onClick = { songOptions(track, null) }) { Icon(Icons.Default.MoreVert, "歌曲操作") }
+                                    }
+                                }
+                            }
+                        }
+                        if (!page.loading && page.error == null && page.data != null && tracks.isEmpty()) item {
+                            Text("暂无听歌排行", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else items(tracks, key = { "${it.source}:${it.song.id}" }) { track ->
                         SongRow(track, playback.song?.id == track.song.id, { player.play(track, tracks); showPlayer() }) {
                             IconButton(onClick = { songOptions(track, if (own && target.kind == MusicKind.PLAYLIST) target else null) }) { Icon(Icons.Default.MoreVert, "歌曲操作") }
                         }
@@ -160,7 +184,7 @@ internal fun SongOptions(track: Track, playlist: MusicEntry?, cloud: CloudViewMo
     val home by cloud.home.collectAsState()
     val likes by cloud.likes.collectAsState()
     var choosePlaylist by remember { mutableStateOf(false) }
-    ModalBottomSheet(onDismissRequest = close) {
+    TravelSheet(onDismissRequest = close) {
         Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 32.dp)) {
             Text(track.song.name, style = MaterialTheme.typography.titleLarge)
             TextButton(onClick = { player.addNext(track); close() }) { Text("下一首播放") }
@@ -201,7 +225,7 @@ internal fun CommentsSheet(track: Track, close: () -> Unit) {
         try { refresh() } catch (failure: Exception) { error = failure.message }
         finally { loading = false }
     }
-    ModalBottomSheet(onDismissRequest = close) {
+    TravelSheet(onDismissRequest = close) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(.85f).imePadding().padding(horizontal = 20.dp)) {
             Text("评论", style = MaterialTheme.typography.titleLarge)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())

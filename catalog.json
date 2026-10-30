@@ -11,7 +11,7 @@
     {
       "id": "eplayer",
       "path": "projects/eplayer",
-      "version": "0.5.4",
+      "version": "0.5.5",
       "description": "魔女之旅音乐播放器，自用通用包；封面人物播放器与预见式返回",
       "entrypoint": "README.md"
     },

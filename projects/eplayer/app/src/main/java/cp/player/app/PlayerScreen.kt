@@ -1,10 +1,10 @@
 package cp.player.app
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -32,7 +32,6 @@ import androidx.compose.ui.window.DialogProperties
 import cp.player.model.Song
 import cp.player.ui.artwork.WitchPlayerView
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
@@ -59,7 +58,6 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
     var lyrics by remember { mutableStateOf<LyricsText?>(null) }
     var showLyrics by remember { mutableStateOf(false) }
     var seeking by remember(state.song?.id) { mutableStateOf<Float?>(null) }
-    val scope = rememberCoroutineScope()
     val liked = state.song?.let { song ->
         if (state.source == null) song.id in favorites else (state.remoteId ?: song.id) in likes[state.source].orEmpty()
     } ?: false
@@ -99,23 +97,7 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
             }
         )
     }
-    if (queue) ModalBottomSheet(onDismissRequest = { queue = false }) {
-        LazyColumn(contentPadding = PaddingValues(20.dp)) {
-            items(state.queue.size) { index ->
-                var options by remember { mutableStateOf(false) }
-                SongRow(Track(state.queue[index]), state.queue[index].id == state.song?.id, { model.queueIndex(index); queue = false }) {
-                    Box {
-                        IconButton(onClick = { options = true }) { Icon(Icons.Default.MoreVert, "队列操作") }
-                        TravelMenu(options, { options = false }) {
-                            if (index > 0) DropdownMenuItem(text = { Text("上移") }, onClick = { options = false; model.moveQueue(index, index - 1) })
-                            if (index < state.queue.lastIndex) DropdownMenuItem(text = { Text("下移") }, onClick = { options = false; model.moveQueue(index, index + 1) })
-                            DropdownMenuItem(text = { Text("移除") }, onClick = { options = false; model.removeQueue(index) })
-                        }
-                    }
-                }
-            }
-        }
-    }
+    if (queue) QueueSheet(state, model::queueIndex, model::moveQueue, model::removeQueue, model::clearQueue) { queue = false }
     if (qualitySheet) QualitySheet(model) { qualitySheet = false }
     if (showLyrics) LyricsScreen(lyrics, model) { showLyrics = false }
 }
@@ -156,11 +138,15 @@ internal fun PlayerLayout(song: Song?, buffering: Boolean, header: @Composable (
 
 @Composable
 private fun PlayerMetadata(song: Song?) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp).testTag("player-metadata")) {
-        Text(song?.name ?: "未选择音乐", style = MaterialTheme.typography.headlineSmall,
-            maxLines = 3, overflow = TextOverflow.Ellipsis)
-        if (!song?.artist.isNullOrBlank()) Text(song!!.artist, style = MaterialTheme.typography.bodyMedium,
-            maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    AnimatedContent(song, contentKey = { it?.id },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp).testTag("player-metadata"),
+        transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(140)) }, label = "track-metadata") { display ->
+        Column(Modifier.fillMaxWidth()) {
+            Text(display?.name ?: "未选择音乐", style = MaterialTheme.typography.headlineSmall,
+                maxLines = 3, overflow = TextOverflow.Ellipsis)
+            if (!display?.artist.isNullOrBlank()) Text(display!!.artist, style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 

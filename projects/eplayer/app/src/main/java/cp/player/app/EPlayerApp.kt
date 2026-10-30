@@ -28,7 +28,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import cp.player.BuildConfig
-import cp.player.manager.WitchPlaylist
 import cp.player.provider.BackendProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,10 +50,10 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     val importing by model.importing.collectAsState()
     val message by model.message.collectAsState()
     val cloudMessage by cloud.message.collectAsState()
-    var page by rememberSaveable { mutableIntStateOf(0) }
+    var page by rememberSaveable { mutableIntStateOf(model.initialTab) }
     var discovery by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
-    var libraryMode by rememberSaveable { mutableIntStateOf(1) }
+    var libraryMode by rememberSaveable { mutableIntStateOf(0) }
     var createPlaylist by remember { mutableStateOf(false) }
     var playlistName by remember { mutableStateOf("") }
     var privatePlaylist by remember { mutableStateOf(false) }
@@ -64,13 +63,12 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     var pendingTrackDelete by remember { mutableStateOf<Track?>(null) }
     var logout by remember { mutableStateOf(false) }
     var playbackSettings by remember { mutableStateOf(false) }
-    var witchTarget by rememberSaveable { mutableIntStateOf(0) }
+    var queueOpen by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val lists = remember { List(3) { LazyListState() } }
     val importAudio = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments(), model::importAudio)
     val importSource = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let(model::importSource) }
-    val importWitch = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { model.importWitch(witchTarget, it) } }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) model.scanLibrary() }
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
@@ -82,6 +80,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
         onDispose { lifecycle.removeObserver(observer); model.setVisible(false) }
     }
     LaunchedEffect(page, discovery) {
+        model.rememberTab(page)
         if (page == 0 && !discovery) model.refreshPlaybackSnapshot()
         else if (page != 0) cloud.ensureLibrary()
     }
@@ -92,11 +91,12 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); model.message.value = null } }
     LaunchedEffect(cloudMessage) { cloudMessage?.let { snackbar.showSnackbar(it); cloud.message.value = null } }
     val backPreview = rememberBackPreview()
-    PreviewBackHandler(backPreview, enabled = (discovery || page != 0 || searched) && !showPlayer) {
+    val visibleSearch = page == 1 && !discovery && searched
+    PreviewBackHandler(backPreview, enabled = (discovery || visibleSearch) && !showPlayer) {
         when {
-            searched -> { query = ""; cloud.clearSearch() }
+            visibleSearch -> { query = ""; cloud.clearSearch() }
             discovery -> discovery = false
-            else -> page = 0
+            else -> Unit
         }
     }
 
@@ -105,10 +105,10 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     val chromeVisible = (!showPlayer && detailPages.isEmpty() && !playbackSettings) || revealingBack
     @Composable
     fun RootContents(destination: Boolean) {
-        val screenPage = if (destination && !searched) 0 else page
+        val screenPage = page
         val screenDiscovery = discovery && !destination
-        val screenSearched = searched && !destination
-            LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), state = if (destination) rememberLazyListState(lists[screenPage].firstVisibleItemIndex, lists[screenPage].firstVisibleItemScrollOffset) else if (discovery) rememberLazyListState() else lists[page],
+        val screenSearched = visibleSearch && !destination
+            LazyColumn(Modifier.fillMaxSize().statusBarsPadding().testTag(if (screenPage == 1) "library-content" else "root-content-$screenPage"), state = if (destination) rememberLazyListState(lists[screenPage].firstVisibleItemIndex, lists[screenPage].firstVisibleItemScrollOffset) else if (discovery) rememberLazyListState() else lists[page],
                 contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = if (state.song != null) 164.dp else 108.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (screenDiscovery) {
@@ -130,7 +130,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                         item { Text("继续播放", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 18.dp)) }
                         item {
                             val track = state.song?.let { Track(it, source = state.source, remoteId = state.remoteId) } ?: recent.firstOrNull()
-                            if (track == null) SettingsRow("前往曲库") { page = 1 }
+                            if (track == null) SettingsRow("前往曲库") { libraryMode = 0; query = ""; cloud.clearSearch(); page = 1 }
                             else Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
                                 .background(MaterialTheme.colorScheme.surfaceContainerLow).clickable {
                                     if (state.song == null) model.play(track, recent)
@@ -177,26 +177,18 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                                     if (home.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
                                     if (home.account == null) item { SettingsRow("登录网易云") { page = 2 } }
                                     home.account?.let { account ->
-                                        item { SettingsRow("我喜欢的音乐") { cloud.open(MusicEntry(account.id, "我喜欢的音乐", home.source!!, MusicKind.LIKED)) } }
-                                        item { SettingsRow("音乐云盘") { cloud.open(MusicEntry(account.id, "音乐云盘", home.source!!, MusicKind.CLOUD)) } }
+                                        item { SettingsRow("听歌排行") { cloud.open(MusicEntry(account.id, "听歌排行", home.source!!, MusicKind.RECORD_ALL)) } }
                                     }
                                     items(home.playlists, key = { it.id }) { entry -> MusicEntryRow(entry) { cloud.open(entry) } }
+                                    home.account?.let { account ->
+                                        item { SettingsRow("音乐云盘") { cloud.open(MusicEntry(account.id, "音乐云盘", home.source!!, MusicKind.CLOUD)) } }
+                                    }
                                 }
                                 1 -> {
                                     item { Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text("魔女の旅々", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                                        Text("本地音乐", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
                                         TextButton(onClick = { permission.launch(if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE) }) { Text("扫描") }
                                     } }
-                                    items(WitchPlaylist.songs.indices.toList()) { index ->
-                                        val song = WitchPlaylist.songs[index]
-                                        val available = remember(importing, library) { model.witchTracks() }
-                                        val track = available.find { it.song.id == song.id }
-                                        SongRow(Track(song), state.song?.id == song.id, {
-                                            if (track == null) { witchTarget = index; importWitch.launch(arrayOf("audio/*")) }
-                                            else { model.play(track, available); onShowPlayer(true) }
-                                        }) { TextButton(enabled = !importing, onClick = { witchTarget = index; importWitch.launch(arrayOf("audio/*")) }) { Text(if (track == null) "导入" else "更换") } }
-                                    }
-                                    if (library.isNotEmpty()) item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
                                     items(library, key = { it.song.id }) { track -> SongRow(track, state.song?.id == track.song.id, { model.play(track, library); onShowPlayer(true) }) {
                                         IconButton(onClick = { if (track.song.id.startsWith("import_")) pendingTrackDelete = track else selectedTrack = track to null }) { Icon(Icons.Default.MoreHoriz, "歌曲操作") }
                                     } }
@@ -236,11 +228,15 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
             RootContents(false)
         }
         Box(Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (chromeVisible) 1f else 0f }.navigationBarsPadding().padding(horizontal = 18.dp).padding(bottom = 8.dp)) {
-            MusicDock(state, page, discovery, { page = it; discovery = false },
-                { onShowPlayer(true) }, model::playPause, model::next)
+            MusicDock(state, page, discovery, { target ->
+                if (target == 1 && page != 1) { libraryMode = 0; query = ""; cloud.clearSearch() }
+                page = target; discovery = false
+            },
+                { onShowPlayer(true) }, model::playPause, model::next, { queueOpen = true })
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 180.dp))
     }
+    if (queueOpen) QueueSheet(state, model::queueIndex, model::moveQueue, model::removeQueue, model::clearQueue) { queueOpen = false }
     if (playbackSettings) Settings(model) { playbackSettings = false }
     pendingDelete?.let { source -> TravelAlertDialog(onDismissRequest = { pendingDelete = null }, title = { Text("移除 ${source.name}？") },
         confirmButton = { TextButton(onClick = { model.removeSource(source); pendingDelete = null }) { Text("移除") } }, dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("取消") } }) }
@@ -283,8 +279,8 @@ private fun ListeningSummary(stats: ListeningStats) {
 }
 
 @Composable
-internal fun SongRow(track: Track, selected: Boolean, play: () -> Unit, trailing: @Composable RowScope.() -> Unit = {}) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = play).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+internal fun SongRow(track: Track, selected: Boolean, play: () -> Unit, enabled: Boolean = true, trailing: @Composable RowScope.() -> Unit = {}) {
+    Row(Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = play).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         MusicCover(track.song, Modifier.size(44.dp))
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(track.song.name, style = MaterialTheme.typography.titleMedium, color = if (selected) MusicRed else MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)

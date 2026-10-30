@@ -126,7 +126,7 @@ jobs:
         env:
           EPLAYER_VARIANT: ${{ github.ref == 'refs/heads/codex/eplayer-power' && 'internal' || 'standard' }}
           EPLAYER_APK_ARCH: ${{ github.ref == 'refs/heads/codex/eplayer-power' && 'universal' || 'x86_64' }}
-          EPLAYER_TEST_CLASSES: ${{ github.ref == 'refs/heads/codex/eplayer-power' && 'cp.player.EPlayerIntegrationTest,cp.player.engine.EnergyAudioProcessorTest,cp.player.ui.artwork.ArtworkPowerTest,cp.player.ui.artwork.ArtIntegrityTest,cp.player.app.DarkAppearanceTest,cp.player.app.TravelPresentationTest,cp.player.app.LightNavigationTest,cp.player.app.LyricPresentationTest' || '' }}
+          EPLAYER_TEST_CLASSES: ${{ github.ref == 'refs/heads/codex/eplayer-power' && 'cp.player.EPlayerIntegrationTest,cp.player.engine.EnergyAudioProcessorTest,cp.player.ui.artwork.ArtworkPowerTest,cp.player.ui.artwork.ArtIntegrityTest,cp.player.app.DarkAppearanceTest,cp.player.app.TravelPresentationTest,cp.player.app.LightNavigationTest,cp.player.app.LyricPresentationTest,cp.player.app.LibraryFlowTest' || '' }}
           EPLAYER_CHECK_RELEASE: ${{ (github.ref == 'refs/heads/codex/eplayer-power' || github.ref == 'refs/heads/codex/eplayer-light' || github.ref == 'refs/heads/codex/ncm-basic-completion' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'workflow_dispatch') && '1' || '0' }}
         with:
           api-level: 36

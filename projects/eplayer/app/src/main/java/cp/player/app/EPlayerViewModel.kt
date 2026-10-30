@@ -15,7 +15,6 @@ import com.google.common.util.concurrent.MoreExecutors
 import cp.player.core.playback.togglePlayback
 import cp.player.core.playback.PlaybackSleepTimer
 import cp.player.manager.DownloadRegistry
-import cp.player.manager.WitchPlaylist
 import cp.player.model.Song
 import cp.player.provider.BackendProvider
 import cp.player.provider.ModuleManager
@@ -34,12 +33,17 @@ import kotlinx.coroutines.withContext
 
 data class Playback(val song: Song? = null, val playing: Boolean = false, val buffering: Boolean = false,
     val position: Long = 0, val duration: Long = 0, val queue: List<Song> = emptyList(),
-    val shuffle: Boolean = false, val repeat: Int = Player.REPEAT_MODE_OFF, val error: String? = null, val source: String? = null, val remoteId: String? = null, val playRequested: Boolean = playing)
+    val shuffle: Boolean = false, val repeat: Int = Player.REPEAT_MODE_OFF, val error: String? = null, val source: String? = null, val remoteId: String? = null, val playRequested: Boolean = playing, val queueIndex: Int = -1)
 
 class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private val soundSettingsDelegate = lazy { SoundSettingsStore(app, viewModelScope) }
     internal val soundSettings by soundSettingsDelegate
     private val catalog by lazy { LibraryStore(app) }
+    val initialTab = app.getSharedPreferences("eplayer_ui", 0).getInt("selected_tab", 0).coerceIn(0, 2)
+    fun rememberTab(value: Int) {
+        val prefs = app.getSharedPreferences("eplayer_ui", 0)
+        if (value in 0..2 && prefs.getInt("selected_tab", 0) != value) prefs.edit().putInt("selected_tab", value).apply()
+    }
     private val _library = MutableStateFlow<List<Track>>(emptyList())
     val library = _library.asStateFlow()
     val recent = MutableStateFlow<List<Track>>(emptyList())
@@ -105,12 +109,13 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         if (queueChanged) queueSnapshot = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).toSong() }
         val currentPosition = player.currentPosition.coerceAtLeast(0)
         val displayedPosition = if (snapshotPosition || !player.isPlaying) currentPosition else _playback.value.position
-        _playback.value = Playback(player.currentMediaItem?.toSong(), player.isPlaying,
+        val song = player.currentMediaItem?.toSong()
+        _playback.value = Playback(song, player.isPlaying,
             player.playbackState == Player.STATE_BUFFERING, displayedPosition,
-            player.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0,
+            player.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: song?.durationMs?.coerceAtLeast(0) ?: 0,
             queueSnapshot,
             player.shuffleModeEnabled, player.repeatMode, player.playerError?.message, player.currentMediaItem?.mediaMetadata?.extras?.getString("source"), player.currentMediaItem?.mediaMetadata?.extras?.getString("remoteId"),
-            playRequested = player.playWhenReady && player.playbackState != Player.STATE_ENDED && player.playerError == null)
+            playRequested = player.playWhenReady && player.playbackState != Player.STATE_ENDED && player.playerError == null, queueIndex = player.currentMediaItemIndex)
         position.value = currentPosition
         restartTicker()
     }
@@ -159,13 +164,6 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     fun scanLibrary() = viewModelScope.launch {
         try { scanned = withContext(Dispatchers.IO) { catalog.scan() }; reloadLibrary() }
         catch (error: Exception) { message.value = error.message ?: "读取失败" }
-    }
-    fun witchTracks(): List<Track> = WitchPlaylist.songs.mapNotNull { song -> WitchPlaylist.uri(app, song.id)?.let { Track(song, it.toString()) } }
-    fun importWitch(index: Int, uri: Uri) = viewModelScope.launch {
-        importing.value = true
-        try { withContext(Dispatchers.IO) { WitchPlaylist.import(app, index, uri) }; reloadLibrary() }
-        catch (error: Exception) { message.value = error.message ?: "导入失败" }
-        finally { importing.value = false }
     }
     fun play(track: Track, queue: List<Track>, radio: Boolean = false) {
         radioSource = if (radio) track.source else null
@@ -219,7 +217,16 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
             } else changed.forEach { player.replaceMediaItem(it, updated[it]) }
         }
     }
-    fun removeQueue(index: Int) { controller?.let { if (index in 0 until it.mediaItemCount) it.removeMediaItem(index) } }
+    fun removeQueue(index: Int) { controller?.let {
+        if (index in 0 until it.mediaItemCount) {
+            if (it.mediaItemCount == 1) radioSource = null
+            it.removeMediaItem(index)
+        }
+    } }
+    fun clearQueue() {
+        radioSource = null; pendingPlay = null
+        controller?.let { it.stop(); it.clearMediaItems() }
+    }
     fun moveQueue(from: Int, to: Int) { controller?.let { if (from in 0 until it.mediaItemCount && to in 0 until it.mediaItemCount) it.moveMediaItem(from, to) } }
     fun addNext(track: Track) { controller?.let { it.addMediaItem((it.currentMediaItemIndex + 1).coerceIn(0, it.mediaItemCount), track.mediaItem(quality.value)) } }
     fun addQueue(track: Track) { controller?.addMediaItem(track.mediaItem(quality.value)) }

@@ -4,20 +4,15 @@ import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.core.content.FileProvider
-import cp.player.model.Song
 import java.io.File
 
-/** The original playlist remains available without a provider, alongside the full CPPlayer library. */
+/** Compatibility for explicitly imported audio in older installations; no preset songs are exposed. */
 object WitchPlaylist {
-    val songs = listOf(
-        Song("witch_0", "灰色のサーガ", "ChouCho", album = "魔女の旅々"),
-        Song("witch_1", "リテラチュア", "上田麗奈", album = "魔女の旅々")
-    )
+    private val legacyIds = listOf("witch_0", "witch_1")
     private fun file(context: Context, index: Int) = File(context.filesDir, "witch/audio-$index")
     fun isImported(context: Context, index: Int) = file(context, index).isFile
-    fun available(context: Context) = songs.filterIndexed { index, _ -> isImported(context, index) }
     fun uri(context: Context, id: String): Uri? {
-        val index = songs.indexOfFirst { it.id == id }
+        val index = legacyIds.indexOf(id)
         if (index < 0 || !isImported(context, index)) return null
         val recording = file(context, index)
         val inode = android.system.Os.stat(recording.absolutePath).st_ino
@@ -27,7 +22,7 @@ object WitchPlaylist {
             .buildUpon().appendQueryParameter("recording", revision).build()
     }
     fun import(context: Context, index: Int, uri: Uri) {
-        require(index in songs.indices)
+        require(index in legacyIds.indices)
         val destination = file(context, index)
         destination.parentFile!!.mkdirs()
         val temporary = File.createTempFile("import-", ".audio", destination.parentFile)
