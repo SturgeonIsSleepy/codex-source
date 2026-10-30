@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -89,5 +90,15 @@ class LibraryFlowTest {
         val actions = compose.onNodeWithTag("queue-row-1").fetchSemanticsNode().config[SemanticsActions.CustomActions]
         compose.runOnUiThread { assertTrue(actions.first { it.label == "上移" }.action()) }
         compose.runOnIdle { assertEquals(listOf(c, b), latest.queue); assertEquals(1, latest.queueIndex); assertEquals(0, selects) }
+        val distance = 84f * compose.activity.resources.displayMetrics.density
+        compose.onNodeWithContentDescription("拖动第 1 首").performTouchInput {
+            swipe(center, Offset(center.x, center.y + distance), durationMillis = 600)
+        }
+        compose.onNodeWithTag("queue-list").assertIsDisplayed()
+        compose.runOnIdle {
+            assertEquals("drag handle must reorder rather than dismiss the sheet", listOf(b, c), latest.queue)
+            assertEquals(b, latest.song)
+            assertEquals(0, selects)
+        }
     }
 }

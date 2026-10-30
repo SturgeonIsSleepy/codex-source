@@ -101,11 +101,11 @@ internal fun TravelAlertDialog(onDismissRequest: () -> Unit, confirmButton: @Com
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun TravelSheet(onDismissRequest: () -> Unit, modifier: Modifier = Modifier,
-    containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    gesturesEnabled: Boolean = true, containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceContainerLow,
     content: @Composable ColumnScope.() -> Unit) {
     ModalBottomSheet(onDismissRequest, modifier = modifier,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = containerColor, content = content)
+        sheetGesturesEnabled = gesturesEnabled, containerColor = containerColor, content = content)
 }
 
 @Composable

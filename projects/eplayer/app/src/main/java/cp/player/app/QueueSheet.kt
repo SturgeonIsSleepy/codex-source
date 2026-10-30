@@ -1,7 +1,7 @@
 package cp.player.app
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -54,42 +54,15 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
             delay(32)
         }
     }
-    TravelSheet(close) {
+    TravelSheet(close, gesturesEnabled = !editing) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("播放队列 · ${state.queue.size}", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
             if (editing && state.queue.isNotEmpty()) IconButton(onClick = { confirmClear = true }) { Icon(Icons.Default.DeleteSweep, "清空播放队列") }
             TextButton(onClick = { editing = !editing; dragging = null; edgeSpeed = 0f }) { Text(if (editing) "完成" else "编辑") }
         }
         if (state.queue.isEmpty()) Text("暂无歌曲", Modifier.padding(24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 560.dp).testTag("queue-list")
-            .pointerInput(editing) {
-                if (editing) detectDragGesturesAfterLongPress(
-                    onDragStart = { point ->
-                        edgeSpeed = 0f
-                        val row = list.layoutInfo.visibleItemsInfo.firstOrNull { point.y >= it.offset && point.y <= it.offset + it.size }
-                        dragging = row?.index
-                        center = row?.let { it.offset + it.size / 2f } ?: point.y
-                    },
-                    onDragCancel = { dragging = null; edgeSpeed = 0f },
-                    onDragEnd = { dragging = null; edgeSpeed = 0f },
-                    onDrag = { change, amount ->
-                        change.consume()
-                        val from = dragging
-                        if (from != null && from in 0 until size) {
-                            center += amount.y
-                            val target = list.layoutInfo.visibleItemsInfo.firstOrNull { center >= it.offset && center <= it.offset + it.size }?.index
-                            if (target != null && target != from && target in 0 until size) {
-                                latestMove(from, target); dragging = target
-                            }
-                            val edge = 56.dp.toPx()
-                            edgeSpeed = when {
-                                change.position.y < edge -> -12f
-                                change.position.y > list.layoutInfo.viewportEndOffset - edge -> 12f
-                                else -> 0f
-                            }
-                        }
-                    })
-            }, state = list, contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)) {
+        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 560.dp).testTag("queue-list"),
+            state = list, contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)) {
             itemsIndexed(state.queue, key = { index, _ -> keys[index] }) { index, song ->
                 val current = if (state.queueIndex >= 0) index == state.queueIndex else song.id == state.song?.id
                 Row(Modifier.fillMaxWidth().animateItem().testTag("queue-row-$index")
@@ -106,7 +79,35 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
                     }
                     if (editing) {
                         IconButton(onClick = { remove(index) }) { Icon(Icons.Default.RemoveCircleOutline, "移除第 ${index + 1} 首") }
-                        Icon(Icons.Default.DragHandle, "长按拖动第 ${index + 1} 首", Modifier.padding(start = 4.dp).size(26.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val currentIndex by rememberUpdatedState(index)
+                        Icon(Icons.Default.DragHandle, "拖动第 ${index + 1} 首",
+                            Modifier.padding(start = 4.dp).size(32.dp).pointerInput(keys[index]) {
+                                detectDragGestures(
+                                    onDragStart = {
+                                        val row = list.layoutInfo.visibleItemsInfo.firstOrNull { it.index == currentIndex }
+                                        dragging = currentIndex; edgeSpeed = 0f
+                                        center = row?.let { it.offset + it.size / 2f } ?: 0f
+                                    },
+                                    onDragCancel = { dragging = null; edgeSpeed = 0f },
+                                    onDragEnd = { dragging = null; edgeSpeed = 0f },
+                                    onDrag = { change, amount ->
+                                        change.consume()
+                                        val from = dragging
+                                        if (from != null && from in 0 until size) {
+                                            center += amount.y
+                                            val target = list.layoutInfo.visibleItemsInfo.firstOrNull { center >= it.offset && center <= it.offset + it.size }?.index
+                                            if (target != null && target != from && target in 0 until size) {
+                                                latestMove(from, target); dragging = target
+                                            }
+                                            val edge = 56.dp.toPx()
+                                            edgeSpeed = when {
+                                                center < edge -> -12f
+                                                center > list.layoutInfo.viewportEndOffset - edge -> 12f
+                                                else -> 0f
+                                            }
+                                        }
+                                    })
+                            }, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else if (current) Icon(Icons.Default.GraphicEq, "当前播放", tint = MusicRed)
                 }
             }
