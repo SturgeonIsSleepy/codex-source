@@ -1,5 +1,9 @@
 # ePlayer 变更
 
+## 0.5.5（恢复浏览契约开发，未发布）
+
+- 增加真实传统MediaBrowser发现/连接/最近项与浏览不播放的契约检查，产品暂未改变；修复前设备结果待取得。main0.5.2两版R8构建成功但独立51项EQ失败，继续阻断发布。
+
 ## 0.5.4（独立数据边界开发，未发布）
 
 - 拆开混合LibraryStore.kt：Track/LibraryStore/RecentStore位于core/library，QueueStore位于core/queue；核心数据不依赖Compose/ViewModel或app包。MusicService直接使用核心队列和最近播放。

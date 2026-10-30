@@ -1,5 +1,14 @@
 # ePlayer 当前实施计划
 
+## 当前0.5.5恢复浏览契约：先取得真实红色
+
+agent/eplayer-media-resumption从已通过数据边界32479af接续。main c17dc4a /CI41112575118独立51项再次49通过/1 EQ失败/1登录跳过（106.585秒）；两版R8构建成功但冷启动/确切包阻断，0.5.2不发布。即时快照useMediaResumption=true、hasCheckedForResume=true而resumeAction=null；服务未声明传统MediaBrowserService且exported=false。
+
+先只增加RecentBrowserTest：按SystemUI的传统接口发现导出服务、连接EXTRA_RECENT、读取当前可播放子项，验证浏览不prepare/不联网/不自动播放；保持旧服务产品代码，预计52项设备取得缺失契约的真实红色。再接MediaLibraryService/最近项/显式恢复并只接受同UID或平台可信控制器，保留原服务组件和普通路由、真实Stop/失焦，不屏蔽来源。是否解决全部历史移除必须看实际SysUI和组合/主线结果。
+
+33 JVM及旧数据边界51项通过只属于04d60ce；此新52项与新R8均未执行，不沿用旧绿色。原候选失败和0.3.2 Release保持。
+
+
 ## 独立下一阶段：0.5.4数据边界
 
 agent/eplayer-data-boundaries从main639a19dc接续，冻结应用0.5.2/c17dc4a的R8/交付继续，不混入该发布。0.5.3留给本地PR17，不覆盖其界面或模块签名登录。

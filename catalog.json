@@ -11,7 +11,7 @@
     {
       "id": "eplayer",
       "path": "projects/eplayer",
-      "version": "0.5.4",
+      "version": "0.5.5",
       "description": "音乐核心与手绘界面重构中，普通版/自用版隔离；能力缺口与验收见交接说明",
       "entrypoint": "README.md"
     },

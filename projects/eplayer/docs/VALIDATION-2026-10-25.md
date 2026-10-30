@@ -558,3 +558,8 @@ CI41112575118执行一次普通/自用R8、独立51项和普通x86_64 R8冷启�
 固定04d60cec9b514e82cf2983df018045080bf4c2cc /CI41113754192，build124262515729/device124264207759成功：51项50通过/1真实登录条件跳过，103.113秒。旧字面JSON的33项JVM、本地应用/设备包34秒、31根检查已通过；导入/源元数据/下载/队列恢复/最近播放清理与其余核心51项实际通过，R8 not_requested，不能据此声称新包已混淆验收。
 
 设备artifact13005706329 ZIP SHA256c7eb038d1bea85f525cda7b877cd5a7e382dbaf1bbcf48842a3d35fb4283dd4a已下载核对。真实依赖复核纠正此前过粗表述：MusicService当前直接反向引用app.ListeningClock/ListeningStatsStore；app.SourceStore的实际调用在service/BackendDataSource，provider两处只是文档引用。核心库/队列四文件无app/Compose/ViewModel依赖；没有因包名删SourceStore或音乐源能力。主线0.5.2/c17dc4a的R8与独立设备门槛仍单独运行，版本结果不得混用。
+
+
+## 恢复浏览契约修复前：测试已增加，产品尚未修改
+
+agent/eplayer-media-resumption从数据边界32479af开0.5.5。RecentBrowserTest遵循SystemUI所用传统MediaBrowserService接口，要求服务可发现且导出、EXTRA_RECENT连接/子项可播放/当前项ID和标题，并验证不prepare/不启动音频。只用UUID专用音频/队列，先要求用户队列空，finally移除本次历史/文件并清自己队列。原MusicService/Manifest尚未改，因此缺失契约的设备失败尚待取得，不能提前称红绿。预计52项，33 JVM/应用及设备包本地构建24秒通过，设备52项待执行，R8未执行；不修改媒体系统设置或过滤Stop。
