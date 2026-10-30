@@ -2,9 +2,9 @@
 
 ## 0.5.5系统恢复浏览候选
 
-同一MusicService现为MediaLibraryService，唯一MediaLibrarySession仍绑定持续SessionPlayer；不添加第二队列/播放器。RecentMediaCatalog只投影当前曲或已有最近项并给出标准可浏览根/可播放子项，读取不prepare/不发源请求。显式onPlaybackResumption返回当前队列/位置，空队列时返回最近项；播放器仍由Media3标准命令操作。组件导出以支持系统传统浏览，但onConnect只接受同UID或平台可信控制器，普通Android路由/真实Stop不改。
+同一MusicService现为MediaLibraryService，唯一MediaLibrarySession仍绑定持续SessionPlayer；不添加第二队列/播放器。RecentMediaCatalog只投影当前曲或已有最近项并给出标准可浏览根/可播放子项，读取不prepare/不发源请求。三参数onPlaybackResumption按isForPlayback区分只读查询与主动恢复：查询仅规范化最近项，主动恢复保留当前队列/位置、空队列回读历史；播放器仍由Media3标准命令操作。补标准MediaButtonReceiver满足Media3内部SystemUI恢复能力检查。组件导出以支持系统传统浏览，但onConnect只接受同UID或平台可信控制器，普通Android路由/真实Stop不改。
 
-旧0.5.2即时快照恢复Action为空；098e2501的52项已复现浏览发现缺失。新候选本地33 JVM/构建通过，53项设备/R8待执行；不能将补齐契约直接写成穷尽所有SystemUI移除根因。
+旧0.5.2即时快照恢复Action为空；098e2501的52项已复现浏览发现缺失。3914首轮53项49通过/3失败/1跳过（EQ停止、浏览构造线程、恢复前置状态），已保留证据。最终cbe699f补接收器及有依据的测试修正，本地33 JVM/构建通过，53项设备/R8待结果；不能将补齐契约直接写成穷尽所有SystemUI移除根因。
 
 
 ## 0.5.4独立数据边界候选
