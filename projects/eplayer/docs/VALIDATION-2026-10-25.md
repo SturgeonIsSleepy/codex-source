@@ -544,3 +544,12 @@ c83f0ae已正常合入main4202d33恢复指针，应用/测试与e4ea4cb1相同�
 PR22以正常merge进入main c17dc4a165702391b99d624ad281236bcc46240f，所有四父/后续文档父历史保留，未强推。PR18/19/20随祖先提交自动merged；队列b012298e也经merge-base确认是main祖先，旧PR21因base是歌词分支仍open，将关闭并保留分支/证据。PR17本地界面及签名/模块/登录不改。
 
 CI41112575118执行一次普通/自用R8、独立51项和普通x86_64 R8冷启动，尚无结果；确切原始universal跨应用/新Release未执行。已通过分支e4ea4cb1与main应用/测试相同，但不能借其50通过/1跳过（103.810秒）冒充主线结果。后续仅文档更新，不重复触发大构建。31根检查在此恢复提交前复核。
+
+
+## 0.5.2主线独立失败：恢复浏览契约缺口已确认，发布继续阻断
+
+c17dc4a165702391b99d624ad281236bcc46240f /CI41112575118：build124258420042普通/自用R8成功（8分28秒），device124264682607为51项49通过/1 LiveEqualizer失败/1登录跳过，106.585秒。不是SDK离线准备失败；前期adb离线属于开机等待，实际51项已运行。普通R8冷启动因仪表失败未执行，原始包跨应用未执行，未发布0.5.2。
+
+设备artifact13004693255 ZIP SHA25621fa42fb93ac61bd1ec63d6059f1793f6094e9cf6d16c9015abe2bb77feac283已核对。即时system-media-check/equalizer-1e9959c6-d640-4abc-a9af-62e81b24264a.txt对齐19:24:26.078非用户移除、26.084原始SystemUI Stop、26.088原生Stop，position1100ms；useMediaResumption=true/hasCheckedForResume=true/resumeAction=null。源Manifest未声明android.media.browse.MediaBrowserService且MusicService exported=false，明确缺少SystemUI所查的恢复入口。补齐MediaLibraryService/最近项浏览与显式恢复的效果仍需红绿与正常Stop验证，不直接断言穷尽根因。
+
+已下载构建artifact13004232952并核对ZIP SHA2567ca7909c2d001698accf5e54027897c1ebdb276d39d924b30dbba57407d010ba。原始通用APK44,773,259字节，0.5.2/code164，SHA2565c259827cafff31d2d8c933e2cc449d66a9e3aa04a803bcd0d77cbf431d6eaac；证书bc19ace988ec3ff6381851c4699039ebd137a2f6819880e2d7f1aa91514dc5bf，V2有效，min28/target36、三ABI。静态签名不是播放验收；准备的blackbox manifest只在Git外，未用失败main触发确切包门禁。GitHub步骤字段曾前后不一致，按完成日志确认实际R8构建成功，未把步骤滞后误计失败或重跑。

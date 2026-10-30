@@ -1,5 +1,15 @@
 # ePlayer 转移交接
 
+## 最新阻断：0.5.2主线独立51项仍EQ失败，不发布
+
+c17dc4a /CI41112575118：两版R8构建通过，但独立51项49通过/1 EQ停止失败/1登录跳过（106.585秒）；普通R8冷启动因前置失败未执行，确切包未运行，Release未发布。设备artifact13004693255 ZIP SHA25621fa42fb93ac61bd1ec63d6059f1793f6094e9cf6d16c9015abe2bb77feac283已下载核对。
+
+即时快照记录19:24:26.078非用户媒体卡片移除→26.084原始SystemUI Stop→26.088实际原生Stop，停止位置1100ms。useMediaResumption=true、hasCheckedForResume=true但resumeAction=null；Manifest的MusicService未声明android.media.browse.MediaBrowserService且exported=false。接下来先加SystemUI所用传统MediaBrowser最近项发现/连接/不自动播放的真实回归，再接MediaLibraryService/最近项/显式恢复回调；不改系统设置、不按来源拦Stop。尚未证实补齐浏览契约就解决全部历史移除原因。
+
+独立PR23/0.5.4数据边界04d60ce /CI41113754192的51项50通过/1登录跳过（103.113秒），33 JVM通过，R8未执行；32479af只保存记录。该绿色不能覆盖主线失败。全部源/规划/截图索引与失败已保存，旧0.3.2不覆盖，PR17模块/签名/登录不碰。
+
+
+
 ## 最新主线：0.5.2 / c17dc4a，R8与独立51项运行中
 
 [PR22](https://github.com/SturgeonIsSleepy/codex-source/pull/22)已正常合入main `c17dc4a165702391b99d624ad281236bcc46240f`，保留歌词/会话/通知/队列全部父历史。主线[CI41112575118](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41112575118)执行一次普通/自用R8、独立51项和普通R8冷启动；结果尚未取得，确切通用包与Release未执行。当前应用与已通过组合e4ea4cb1相同，不能用分支50通过/1登录跳过代替主线结果。

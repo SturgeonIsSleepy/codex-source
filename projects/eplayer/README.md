@@ -4,7 +4,7 @@
 
 ## 当前主线版本 0.5.2（未发布）
 
-PR22已正常合入main c17dc4a，[CI41112575118](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41112575118)执行普通/自用R8、独立51项和普通R8冷启动。确切原始通用包跨应用与Release尚未执行；下面是已通过分支组合的范围。
+PR22已正常合入main c17dc4a，[CI41112575118](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41112575118)两版R8构建通过，但独立51项49通过/1 EQ停止失败/1登录跳过（106.585秒），冷启动前置阻断。确切原始通用包跨应用与Release尚未执行；下面是已通过分支组合的范围。
 
 当前agent/eplayer-052-core-integration汇合持续公开SessionPlayer、纯歌词核心/原子缓存和队列恢复索引修复，完整51项设备已通过（CI41110662240，50通过/1真实登录跳过，103.810秒），主线R8与确切包待执行；原人物/动作/Medium字体不改。主线0.5.1虽R8构建通过但独立47项失败，未发布；后续按最终0.5.2统一执行一次主线R8/全轮→确切原始包双引擎跨应用→Release，不用旧分支绿色代替组合验收。
 
