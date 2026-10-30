@@ -459,3 +459,20 @@ main493a9a0f0d73b859d64b28e4343d46e3e3ef048c /CI41104525573：普通/自用R8构
 agent/eplayer-session-continuity接续诊断149c5227e，基线应用为失败的main493a9a0；不混入歌词/队列或本地PR17的界面。删除PlaybackHandoverPlayer，使用Media3提供的ForwardingSimpleBasePlayer作为服务整个生命周期唯一公开SessionPlayer；在其setPlayer中解除旧delegate监听，再暂停/排空旧输出/焦点并启动新delegate，最后投影新状态。交接保留原用户请求与BUFFERING；命令由Media3原有转发处理，合法Stop/焦点仍有效。服务销毁通过代理调用CPPlayerManager释放实际输出和Exo音效，不再重复释放实际player。
 
 本地初次28 JVM/主程序/设备包28秒通过，错误态快照边界最终增量28 JVM/构建5秒复核通过；整轮47项设备尚未执行。系统媒体缓冲诊断CI41107199704独立运行，尚无其移除原因，不宣称候选已解决所有Stop。保留截图/素材/字体/默认双曲与导入、完整音乐协议，不改系统媒体设置。
+
+
+## 通知连续性：旧应用代码上的强化检查待执行
+
+诊断149c5227e /CI41107199704为47项46通过/1登录跳过（79.036秒）；不会把未复现Stop写成修复。其已校验的SystemUI缓冲可见非用户移除，但对应正常清理。新增实际NotificationManager.activeNotifications观测，先确认真实媒体通知存在，再仅在三轮播放中交接区间每5ms只读本应用媒体通知；结束/停止观察后才发送合法失焦与Stop。若采样看到消失则失败，不能把未采样到消失称为绝对不会移除。原框架状态断言保留。
+
+仅修改设备测试/规划，应用保持原主线代码；不更改POST_NOTIFICATIONS、系统媒体设置、来源或签名。新增观察线程限定该区间、finally关闭并等待，正常清理不算通知回归。本地设备包编译12秒通过，实际设备结果待取得，用于与持续公开SessionPlayer候选对照，而非靠放宽断言或重跑同代码凑绿色。
+
+
+## 持续SessionPlayer现有47项通过，正常合入强化通知检查
+
+固定eadde4bc487ddccd82205e63e87276d9102c326b /CI41108013086：build124242832977/device124244551215成功，47项46通过/1真实登录跳过（92.607秒）。真实EQ三生命周期/跨采样率、三轮框架交接、正常永久失焦/显式恢复与合法Stop/1秒不复活通过。设备artifact13002956552 ZIP SHA25616bf3b12ab54a70475519ebfd05110f2f3eeb160691fbcd9f05a94b6f8ac3ee9已下载核对；R8 not_requested，没有凭此绿色发布或宣称全部根因穷尽。
+
+正常两父合并e1eb7fe，把相同真实媒体通知观测用于本候选；两处文档冲突按共同前缀/后缀确认仅双方新增段后完整保留。旧应用e1eb7fe修复前47项独立运行，产品仍eadde4bc而强化检查设备待执行。本次28 JVM/应用和设备包构建21秒通过，强化47项设备待执行，主线失败/Release阻断仍有效。后续与PR18/PR21正常汇合形成最终组合，不覆盖本地PR17或固定签名/模块/登录。
+
+
+同期PR21 b012298e /CI41108850985：51项49通过/1 EQ失败/1真实登录跳过（110.748秒），两个旧队列断言与新尾部缺失均通过，整轮仍未通过。artifact13001738799 ZIP SHA25630c1456c341ab3bdd062291ffb847fcf7ebb24c55396ed74bd5c8fea4aab94de已下载核对，故障瞬间system-media-check/equalizer-b9b45276-a831-4bc3-bb33-88760328321b.txt实际生成。18:46:17.265 MediaCarouselCtlrLog记录removing player/by user false，17.275原始SystemUI发送Stop，17.288进入FlickPlayer.handleStop，失败停止于130ms；已将移除与停止对齐，但具体触发移除的先前状态仍需通知观测/持续代理候选验证，不能称穷尽根因。没有延长原断言等待、变更系统设置或过滤Stop。
