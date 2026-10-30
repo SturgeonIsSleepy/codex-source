@@ -563,3 +563,12 @@ CI41112575118执行一次普通/自用R8、独立51项和普通x86_64 R8冷启�
 ## 恢复浏览契约修复前：测试已增加，产品尚未修改
 
 agent/eplayer-media-resumption从数据边界32479af开0.5.5。RecentBrowserTest遵循SystemUI所用传统MediaBrowserService接口，要求服务可发现且导出、EXTRA_RECENT连接/子项可播放/当前项ID和标题，并验证不prepare/不启动音频。只用UUID专用音频/队列，先要求用户队列空，finally移除本次历史/文件并清自己队列。原MusicService/Manifest尚未改，因此缺失契约的设备失败尚待取得，不能提前称红绿。预计52项，33 JVM/应用及设备包本地构建24秒通过，设备52项待执行，R8未执行；不修改媒体系统设置或过滤Stop。
+
+
+## 最近浏览修复前红色与MediaLibrary候选
+
+098e2501f0055133fe8d19bd1e3055b72a5d0f7a /CI41116950332：build124273543573成功，device124275009533失败；52项50通过/1浏览服务发现失败/1真实登录跳过（109.592秒）。唯一RecentBrowserTest.systemRecentBrowserCanReadPlayableMediaWithoutStartingIt断言“SystemUI must discover an exported recent-media browser service”；旧51项本轮通过，不能把未复现EQ Stop当成根因已解决。artifact13007535717 ZIP SHA25612d6cd11b395dbb747d694aed695b529f6cb40aa3515dfb43ca9a58d48f42846已下载核对。
+
+候选保留MusicService组件与旧MediaSessionService action，新增MediaLibraryService/传统MediaBrowserService接口；唯一MediaLibrarySession继续绑定SessionPlayer。按同UID/平台isTrusted授权连接，正常Stop没有按来源过滤。RecentMediaCatalog只读元数据，不prepare/源请求/音频输出；只有显式onPlaybackResumption返回现有队列/位置或最近项。补充MediaBrowser只读日志与双引擎显式Play清队列后恢复30秒合成WAV进度/AudioManager输出检查。浏览检查保持不自动播放断言；既有合法Stop/永久失焦/1秒不复活检查保留。
+
+33 JVM/应用与设备包首轮构建23秒通过，新增恢复检查增量6秒通过，31仓库检查提交前执行。预计53项设备尚未执行，R8/确切包/Release未执行，不以旧51/52或本地编译代替。Root/最近项JSON不加入用户凭据，不上传录音/模块/签名，人物/字体和Android Cloud入口不改。

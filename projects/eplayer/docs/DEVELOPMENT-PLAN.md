@@ -1,5 +1,14 @@
 # ePlayer 当前实施计划
 
+## 0.5.5当前候选：恢复浏览已接入，53项待验收
+
+修复前098e2501 /CI41116950332真实52项50通过/1浏览服务发现失败/1登录跳过（109.592秒），EQ该轮通过，不称停止根因解决。artifact13007535717已校验12d6cd11b395dbb747d694aed695b529f6cb40aa3515dfb43ca9a58d48f42846。
+
+候选将原MusicService组件提升为MediaLibraryService/MediaLibrarySession，保留旧action并声明传统浏览和Library入口；只接受本UID/平台可信控制器。RecentMediaCatalog只读当前曲/最近历史，输出可播放元数据，不持新队列、不prepare/不联网；只有显式Play的onPlaybackResumption才交还实际队列/位置或最近项。原SessionPlayer、普通系统路由、真实失焦/Stop保持，系统设置不改。同步记录MediaBrowser日志。
+
+新增双引擎显式Play在清空队列后恢复真实30秒合成音频进度/AudioManager输出检查，与原浏览不自动播放分开；预计最终53项。33 JVM/主程序和设备包首轮23秒、追加检查增量6秒通过；设备/R8未执行。先取得红绿与SysUI恢复Action证据，再正常汇合main最新恢复记录，以最终0.5.5执行一次R8/完整设备/确切原包/Release，不继续重复未改的失败0.5.2。
+
+
 ## 当前0.5.5恢复浏览契约：先取得真实红色
 
 agent/eplayer-media-resumption从已通过数据边界32479af接续。main c17dc4a /CI41112575118独立51项再次49通过/1 EQ失败/1登录跳过（106.585秒）；两版R8构建成功但冷启动/确切包阻断，0.5.2不发布。即时快照useMediaResumption=true、hasCheckedForResume=true而resumeAction=null；服务未声明传统MediaBrowserService且exported=false。

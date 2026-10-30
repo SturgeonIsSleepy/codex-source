@@ -40,6 +40,72 @@ class RecentBrowserTest {
         failure?.let { throw it }
     }
 
+    @Test fun explicitPlayCanResumeRecentAudioAfterQueueClearOnBothEngines() {
+        val saved = context.getSharedPreferences("eplayer_queue", 0).getString("items", null)
+        assumeTrue("Preserve user queue", saved == null || saved == "[]")
+        val savedEngine = UserPreferences.getAudioEngine(context)
+        val prefix = "explicit-recent-${UUID.randomUUID()}"
+        val file = File.createTempFile("explicit-recent-", ".wav", context.cacheDir)
+        var controller: MediaController? = null
+        var ownsQueue = false
+        var volume = 1f
+        fun engine(value: Int) {
+            lateinit var reply: com.google.common.util.concurrent.ListenableFuture<SessionResult>
+            main { reply = controller!!.sendCustomCommand(SessionCommand("SET_ENGINE", Bundle.EMPTY), Bundle().apply { putInt("engine", value) }) }
+            assertEquals(SessionResult.RESULT_SUCCESS, reply.get(10, TimeUnit.SECONDS).resultCode)
+        }
+        try {
+            file.writeBytes(SyntheticAudio.wav(30))
+            context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            instrumentation.waitForIdleSync()
+            controller = MediaController.Builder(context, SessionToken(context, ComponentName(context, MusicService::class.java)))
+                .buildAsync().get(30, TimeUnit.SECONDS)
+            val current = controller
+            var empty = false
+            main { empty = current.mediaItemCount == 0 }
+            assumeTrue("Preserve active playback", empty)
+            ownsQueue = true
+            main { volume = current.volume; current.volume = .2f }
+            for (value in 0..1) {
+                engine(value)
+                main {
+                    current.setMediaItem(MediaItem.Builder().setMediaId("$prefix-$value").setUri(android.net.Uri.fromFile(file))
+                        .setMediaMetadata(MediaMetadata.Builder().setTitle("最近播放恢复$value").build()).build())
+                }
+                main { current.stop(); current.clearMediaItems() }
+                engine(value) // Join the clear before asking the session to resume an empty queue.
+                main { assertEquals(0, current.mediaItemCount); assertFalse(current.playWhenReady); current.play() }
+                val deadline = android.os.SystemClock.elapsedRealtime() + 15000
+                var progressed = false
+                while (android.os.SystemClock.elapsedRealtime() < deadline) {
+                    main {
+                        assertNull(current.playerError)
+                        progressed = current.currentMediaItem?.mediaId == "$prefix-$value" && current.isPlaying &&
+                            current.currentPosition > 500 && current.duration in 29000L..31000L
+                    }
+                    if (progressed && context.getSystemService(AudioManager::class.java).isMusicActive) break
+                    android.os.SystemClock.sleep(50)
+                }
+                assertTrue("Explicit recent resume must produce progress on engine $value", progressed)
+                assertTrue(context.getSystemService(AudioManager::class.java).isMusicActive)
+                android.util.Log.i("EPlayerTest", "Explicit recent resume progressed on engine $value")
+                main { current.stop(); current.clearMediaItems() }
+                engine(value)
+            }
+        } finally {
+            try {
+                if (ownsQueue) {
+                    main { controller?.stop(); controller?.clearMediaItems(); controller?.volume = volume }
+                    engine(savedEngine)
+                }
+            } finally {
+                main { controller?.release() }
+                for (value in 0..1) RecentStore.remove(context, "$prefix-$value")
+                file.delete()
+            }
+        }
+    }
+
     @Test fun systemRecentBrowserCanReadPlayableMediaWithoutStartingIt() {
         val prefs = context.getSharedPreferences("eplayer_queue", 0)
         val saved = prefs.getString("items", null)

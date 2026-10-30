@@ -1,5 +1,12 @@
 # 核心边界与能力核对
 
+## 0.5.5系统恢复浏览候选
+
+同一MusicService现为MediaLibraryService，唯一MediaLibrarySession仍绑定持续SessionPlayer；不添加第二队列/播放器。RecentMediaCatalog只投影当前曲或已有最近项并给出标准可浏览根/可播放子项，读取不prepare/不发源请求。显式onPlaybackResumption返回当前队列/位置，空队列时返回最近项；播放器仍由Media3标准命令操作。组件导出以支持系统传统浏览，但onConnect只接受同UID或平台可信控制器，普通Android路由/真实Stop不改。
+
+旧0.5.2即时快照恢复Action为空；098e2501的52项已复现浏览发现缺失。新候选本地33 JVM/构建通过，53项设备/R8待执行；不能将补齐契约直接写成穷尽所有SystemUI移除根因。
+
+
 ## 0.5.4独立数据边界候选
 
 Track/LibraryStore/RecentStore从app混合文件移到core/library，QueueStore移到core/queue。四个核心文件无Compose、ViewModel或app包引用；服务直接使用核心队列/最近播放。所有UI/source/download及设备检查显式导入数据类型，精确R8规则同步，JSON/偏好/文件/URI不变，无旧app类型转发层。33 JVM与本地构建通过；51项50通过/1登录跳过（CI41113754192，103.113秒），R8待执行。

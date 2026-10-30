@@ -28,7 +28,7 @@ def capture_system_media():
     for name, arguments in [
         ('system-media.txt', ['activity', 'service', 'com.android.systemui/.SystemUIService',
                               'MediaCarouselController', 'MediaDataManager', 'MediaTimeoutListener',
-                              'MediaCarouselCtlrLog', 'MediaTimeout', 'MediaLog']),
+                              'MediaCarouselCtlrLog', 'MediaTimeout', 'MediaLog', 'MediaBrowser']),
         ('system-sessions.txt', ['media_session']),
     ]:
         result = subprocess.run(['adb', 'shell', 'dumpsys', *arguments],

@@ -67,7 +67,7 @@ class LiveEqualizerTest {
             val destination = File(directory, "equalizer-${UUID.randomUUID()}.txt")
             val descriptor = instrumentation.uiAutomation.executeShellCommand(
                 "dumpsys activity service com.android.systemui/.SystemUIService " +
-                    "MediaCarouselCtlrLog MediaTimeout MediaLog MediaDataManager")
+                    "MediaCarouselCtlrLog MediaTimeout MediaLog MediaBrowser MediaDataManager")
             android.os.ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { input ->
                 destination.outputStream().use { input.copyTo(it) }
             }
