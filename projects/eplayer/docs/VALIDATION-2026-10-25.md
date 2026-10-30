@@ -572,3 +572,6 @@ agent/eplayer-media-resumption从数据边界32479af开0.5.5。RecentBrowserTest
 候选保留MusicService组件与旧MediaSessionService action，新增MediaLibraryService/传统MediaBrowserService接口；唯一MediaLibrarySession继续绑定SessionPlayer。按同UID/平台isTrusted授权连接，正常Stop没有按来源过滤。RecentMediaCatalog只读元数据，不prepare/源请求/音频输出；只有显式onPlaybackResumption返回现有队列/位置或最近项。补充MediaBrowser只读日志与双引擎显式Play清队列后恢复30秒合成WAV进度/AudioManager输出检查。浏览检查保持不自动播放断言；既有合法Stop/永久失焦/1秒不复活检查保留。
 
 33 JVM/应用与设备包首轮构建23秒通过，新增恢复检查增量6秒通过，31仓库检查提交前执行。预计53项设备尚未执行，R8/确切包/Release未执行，不以旧51/52或本地编译代替。Root/最近项JSON不加入用户凭据，不上传录音/模块/签名，人物/字体和Android Cloud入口不改。
+
+
+显式恢复夹具补强：两引擎均先让30秒合成WAV真正推进且AudioManager输出激活，再停止/清空，随后显式Play并再次要求真实进度/输出。避免把尚未实际播放、其RecentStore过渡事件可能被合并的队列项当成“最近播放”。共用同一等待 helper，不延长15秒期限、不重试失败；产品代码与3914ba6相同，53项设备待执行。

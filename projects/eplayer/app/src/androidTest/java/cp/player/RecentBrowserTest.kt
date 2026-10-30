@@ -40,6 +40,21 @@ class RecentBrowserTest {
         failure?.let { throw it }
     }
 
+    private fun awaitAudio(current: MediaController, id: String) {
+        val deadline = android.os.SystemClock.elapsedRealtime() + 15000
+        var progressed = false
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            main {
+                assertNull(current.playerError)
+                progressed = current.currentMediaItem?.mediaId == id && current.isPlaying &&
+                    current.currentPosition > 500 && current.duration in 29000L..31000L
+            }
+            if (progressed && context.getSystemService(AudioManager::class.java).isMusicActive) return
+            android.os.SystemClock.sleep(50)
+        }
+        fail("Recent playback must produce real session progress and an active audio output: $id")
+    }
+
     @Test fun explicitPlayCanResumeRecentAudioAfterQueueClearOnBothEngines() {
         val saved = context.getSharedPreferences("eplayer_queue", 0).getString("items", null)
         assumeTrue("Preserve user queue", saved == null || saved == "[]")
@@ -71,23 +86,13 @@ class RecentBrowserTest {
                 main {
                     current.setMediaItem(MediaItem.Builder().setMediaId("$prefix-$value").setUri(android.net.Uri.fromFile(file))
                         .setMediaMetadata(MediaMetadata.Builder().setTitle("最近播放恢复$value").build()).build())
+                    current.prepare(); current.play()
                 }
+                awaitAudio(current, "$prefix-$value") // Establish an actually played recent item before clearing it.
                 main { current.stop(); current.clearMediaItems() }
                 engine(value) // Join the clear before asking the session to resume an empty queue.
                 main { assertEquals(0, current.mediaItemCount); assertFalse(current.playWhenReady); current.play() }
-                val deadline = android.os.SystemClock.elapsedRealtime() + 15000
-                var progressed = false
-                while (android.os.SystemClock.elapsedRealtime() < deadline) {
-                    main {
-                        assertNull(current.playerError)
-                        progressed = current.currentMediaItem?.mediaId == "$prefix-$value" && current.isPlaying &&
-                            current.currentPosition > 500 && current.duration in 29000L..31000L
-                    }
-                    if (progressed && context.getSystemService(AudioManager::class.java).isMusicActive) break
-                    android.os.SystemClock.sleep(50)
-                }
-                assertTrue("Explicit recent resume must produce progress on engine $value", progressed)
-                assertTrue(context.getSystemService(AudioManager::class.java).isMusicActive)
+                awaitAudio(current, "$prefix-$value")
                 android.util.Log.i("EPlayerTest", "Explicit recent resume progressed on engine $value")
                 main { current.stop(); current.clearMediaItems() }
                 engine(value)
