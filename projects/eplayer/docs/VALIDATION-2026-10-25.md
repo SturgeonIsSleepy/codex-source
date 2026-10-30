@@ -453,3 +453,10 @@ build.json明确instrumentation=passed、release_start=not_requested；媒体续
 
 
 歌词拆分后审计R8反射边界，原cp.player.app下三项keep同步移到core.lyrics，并精确保留Gson缓存DTO，避免只在debug/fastRelease可用。修正首次并发建目录时mkdirs返回false但另一请求已成功创建目录的竞态，使用Files.createDirectories统一处理。该增量编译/32 JVM已复核通过（20秒）；Files.createDirectories最终增量也构建通过；R8仍未执行，不因keep配置存在称混淆后通过。
+
+
+## 独立队列恢复：修复前真实播放器检查待执行
+
+agent/eplayer-queue-resume基于0.5.2歌词候选9b76ed3，产品QueueStore未修改。新增两项真实ExoPlayer检查（不prepare、不发网络、不打开音频输出）：过滤当前曲之前的无URI项后，应保留当前曲和12秒位置；当前曲不可用时，下一有效曲不得继承旧12秒位置。现实现直接对过滤后列表clamp旧index，代码审计有错曲/错位置风险，但设备失败尚未取得。
+
+测试只将eplayer_queue重定向到UUID专用SharedPreferences，使用虚构file URI且不准备解码；finally释放播放器并删除该UUID偏好，不覆盖用户队列/历史或导入。设备包本地编译通过。预计整轮50项，设备待执行，不能提前称红绿。0.5.1主线R8交付与0.5.2歌词验收独立继续。
