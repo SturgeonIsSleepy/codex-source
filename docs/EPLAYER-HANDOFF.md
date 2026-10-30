@@ -1,6 +1,10 @@
 # ePlayer 转移交接
 
-## 最新组合恢复：0.5.2核心集成，51项待设备验收
+## 最新组合恢复：PR22 /0.5.2核心集成，51项设备运行中
+
+固定应用e4ea4cb1a4da92fb0c495c4a28986c4282189f4d /[CI41110662240](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41110662240)构建通过，51项设备运行中。[PR22](https://github.com/SturgeonIsSleepy/codex-source/pull/22)正常合并main4202d33恢复指针，应用不变；该文档合并不触发重复构建。
+
+强化会话2c3f77d /CI41110061129已有47项46通过/1登录跳过（115.051秒），含三轮真实媒体通知采样、框架状态及正常失焦/合法Stop。设备artifact13002389697 ZIP SHA256f81930ed9aed5d018da4285df5960513eca2cdd3b971109cc62c9254685a016d已下载核对。旧应用e1eb7fe同一47项也通过（88.435秒），不能把这个未复现轮次算根因红绿；最终组合仍待结果。
 
 agent/eplayer-052-core-integration正常汇合PR20持续SessionPlayer/强化媒体通知观测、PR18纯歌词核心/原子缓存、PR21原始队列索引恢复，并保留主线d9dc2dad与歌词e364f5cc文档父历史。0.5.1主线R8虽构建通过但47项失败，未发布；不再为该失败包重复R8，以最终0.5.2组合完成交付门槛。
 
