@@ -109,7 +109,7 @@ class MusicService : MediaLibraryService() {
             override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
                 if (controller.uid != android.os.Process.myUid() && !controller.isTrusted) {
                     Log.w("EPlayerSession", "Rejected untrusted service controller uid=${controller.uid} package=${controller.packageName}")
-                return MediaSession.ConnectionResult.reject()
+                    return MediaSession.ConnectionResult.reject()
                 }
                 return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                     .setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
@@ -146,14 +146,15 @@ class MusicService : MediaLibraryService() {
                 parentId: String): ListenableFuture<LibraryResult<Void>> = Futures.immediateFuture(LibraryResult.ofVoid())
 
             override fun onPlaybackResumption(session: MediaSession,
-                controller: MediaSession.ControllerInfo): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+                controller: MediaSession.ControllerInfo, isForPlayback: Boolean): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
                 val output = this@MusicService.player
-                val items = if (output.mediaItemCount > 0) (0 until output.mediaItemCount).map(output::getMediaItemAt)
+                val resumeQueue = isForPlayback && output.mediaItemCount > 0
+                val items = if (resumeQueue) (0 until output.mediaItemCount).map(output::getMediaItemAt)
                     else RecentMediaCatalog.items(this@MusicService, output)
                 if (items.isEmpty()) return Futures.immediateFailedFuture(UnsupportedOperationException("没有可恢复的音频"))
-                val index = if (output.mediaItemCount > 0) output.currentMediaItemIndex.coerceIn(items.indices) else 0
-                val position = if (output.mediaItemCount > 0) output.currentPosition.coerceAtLeast(0) else 0L
-                Log.i("EPlayerSession", "Explicit playback resumption items=${items.size} index=$index")
+                val index = if (resumeQueue) output.currentMediaItemIndex.coerceIn(items.indices) else 0
+                val position = if (resumeQueue) output.currentPosition.coerceAtLeast(0) else 0L
+                Log.i("EPlayerSession", "Playback resumption forPlayback=$isForPlayback items=${items.size} index=$index")
                 return Futures.immediateFuture(MediaSession.MediaItemsWithStartPosition(items, index, position))
             }
 

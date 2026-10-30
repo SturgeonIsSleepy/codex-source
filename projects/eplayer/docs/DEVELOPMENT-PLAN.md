@@ -1,5 +1,11 @@
 # ePlayer 当前实施计划
 
+## 当前产品修复：补齐Media3媒体按键恢复入口
+
+实际1.10.0实现MediaLibrarySessionImpl对SystemUI EXTRA_RECENT先检查canResumePlaybackOnStart；MediaSessionLegacyStub仅在找到MEDIA_BUTTON广播接收器时返回true。原清单无该接收器，故服务可见仍被拒绝。补标准androidx.media3.session.MediaButtonReceiver声明，不增加自定义接收器/权限/队列。三参数onPlaybackResumption按isForPlayback区分：浏览仅返回规范化可播放最近项，显式恢复保留实际完整队列/位置；两者都不直接prepare或play。
+
+传统浏览测试增加接收器发现断言，构造已移主线程；显式恢复测试先pause再stop/清空，因为ExoPlayer.stop按API保留playWhenReady，旧assertFalse不是正确前置条件。仍要求先真实播放、再主动恢复且双引擎进度/音频输出通过，未放宽时限。补MediaBrowser/MediaSessionImpl/legacy固定日志标签，避免只记录上层“Cannot resume”而丢具体错误。本地33 JVM/应用及设备包初轮14秒通过，最终测试增量待完成；设备/R8/确切包/Release仍未通过。
+
 ## 当前断点：53项失败保留，先修测试线程并继续定位系统停止
 
 3914ba6 /CI41118331969实际53项49通过/3失败/1真实登录跳过：EQ被系统停止、传统MediaBrowser在无Looper测试线程构造、显式恢复夹具未先建立实际播放。设备artifact13006654026已校验SHA256dcabfd2a867d8a8ab2b2e1d14c894af4ea837690244fe575e06264b393b6e3f6。MediaBrowser已被SystemUI发现并尝试连接，但失败快照仍resumeAction=null，不称恢复契约或历史停止已解决。

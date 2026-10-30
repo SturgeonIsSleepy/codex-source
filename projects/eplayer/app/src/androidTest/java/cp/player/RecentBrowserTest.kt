@@ -89,18 +89,19 @@ class RecentBrowserTest {
                     current.prepare(); current.play()
                 }
                 awaitAudio(current, "$prefix-$value") // Establish an actually played recent item before clearing it.
-                main { current.stop(); current.clearMediaItems() }
+                // ExoPlayer.stop() retains playWhenReady; establish a real paused/empty resume boundary.
+                main { current.pause(); current.stop(); current.clearMediaItems() }
                 engine(value) // Join the clear before asking the session to resume an empty queue.
                 main { assertEquals(0, current.mediaItemCount); assertFalse(current.playWhenReady); current.play() }
                 awaitAudio(current, "$prefix-$value")
                 android.util.Log.i("EPlayerTest", "Explicit recent resume progressed on engine $value")
-                main { current.stop(); current.clearMediaItems() }
+                main { current.pause(); current.stop(); current.clearMediaItems() }
                 engine(value)
             }
         } finally {
             try {
                 if (ownsQueue) {
-                    main { controller?.stop(); controller?.clearMediaItems(); controller?.volume = volume }
+                    main { controller?.pause(); controller?.stop(); controller?.clearMediaItems(); controller?.volume = volume }
                     engine(savedEngine)
                 }
             } finally {
@@ -115,6 +116,9 @@ class RecentBrowserTest {
         val prefs = context.getSharedPreferences("eplayer_queue", 0)
         val saved = prefs.getString("items", null)
         assumeTrue("Preserve user queue", saved == null || saved == "[]")
+        assertTrue("Media3 requires a media-button receiver for SystemUI playback resumption",
+            context.packageManager.queryBroadcastReceivers(Intent(Intent.ACTION_MEDIA_BUTTON)
+                .setPackage(context.packageName), 0).any { it.activityInfo.exported })
         val component = ComponentName(context, MusicService::class.java)
         val discovered = context.packageManager.queryIntentServices(
             Intent(MediaBrowserService.SERVICE_INTERFACE).setPackage(context.packageName), 0)
@@ -180,7 +184,7 @@ class RecentBrowserTest {
                 if (ownsQueue) {
                     lateinit var barrier: com.google.common.util.concurrent.ListenableFuture<SessionResult>
                     main {
-                        current.stop(); current.clearMediaItems()
+                        current.pause(); current.stop(); current.clearMediaItems()
                         barrier = current.sendCustomCommand(SessionCommand("SET_ENGINE", Bundle.EMPTY), Bundle().apply { putInt("engine", engine) })
                     }
                     barrier.get(10, TimeUnit.SECONDS)

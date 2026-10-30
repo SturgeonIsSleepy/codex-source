@@ -14,7 +14,8 @@ output.mkdir(exist_ok=True)
 RUNTIME_TAGS = ['AndroidRuntime', 'EPlayerTest', 'EPlayerSession', 'FlickPlayer', 'RustEngine',
                 'RustAudioEngine', 'CPPlayerDebug', 'AudioTrack', 'AAudio', 'AudioManager',
                 'MediaSessionService', 'MediaSessionRecord', 'MediaDataManager', 'MediaDataProcessor',
-                'MediaTimeoutListener', 'MediaResumeListener', 'MediaCarouselController', 'NotificationService']
+                'MediaTimeoutListener', 'MediaResumeListener', 'MediaCarouselController', 'NotificationService',
+                'MediaBrowser', 'MediaBrowserServiceCompat', 'MLSLegacyStub', 'MSSLegacyStub', 'MediaSessionImpl']
 
 
 def capture_runtime(name):
