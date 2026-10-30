@@ -146,11 +146,12 @@ class RecentBrowserTest {
             val loaded = CountDownLatch(1)
             val error = AtomicReference<String?>(null)
             val items = AtomicReference<List<MediaBrowser.MediaItem>?>(null)
-            val candidate = MediaBrowser(context, component, object : MediaBrowser.ConnectionCallback() {
+            lateinit var candidate: MediaBrowser
+            main { candidate = MediaBrowser(context, component, object : MediaBrowser.ConnectionCallback() {
                 override fun onConnected() { connected.countDown() }
                 override fun onConnectionFailed() { error.set("Legacy recent browser connection failed"); connected.countDown() }
                 override fun onConnectionSuspended() { error.set("Legacy recent browser suspended"); connected.countDown() }
-            }, Bundle().apply { putBoolean(MediaBrowserService.BrowserRoot.EXTRA_RECENT, true) })
+            }, Bundle().apply { putBoolean(MediaBrowserService.BrowserRoot.EXTRA_RECENT, true) }) }
             browser = candidate
             main { candidate.connect() }
             assertTrue("Legacy recent browser did not answer", connected.await(15, TimeUnit.SECONDS))
