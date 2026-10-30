@@ -1,6 +1,6 @@
 # ePlayer 当前实施计划
 
-当前分支 `agent/eplayer-050-core-integration` / [PR #16](https://github.com/SturgeonIsSleepy/codex-source/pull/16)，开发版 **0.5.1，未发布**。主线合入前为21bd595，公开[0.3.2 Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.2)及原始APK保持固定。本文是恢复入口；不从历史“待执行”段落判断当前状态。
+当前交付版 **0.5.1，未发布**，[PR #16](https://github.com/SturgeonIsSleepy/codex-source/pull/16)已正常合入main493a9a0；CI41104525573构建普通/自用R8，之后执行独立47项及冷启动。歌词核心0.5.2独立在PR18，不改变此冻结交付。主线合入前为21bd595，公开[0.3.2 Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.2)及原始APK保持固定。本文是恢复入口；不从历史“待执行”段落判断当前状态。
 
 ## 已接续的功能与依赖
 
@@ -25,7 +25,7 @@
 ## 接下来的实施顺序
 
 1. 已完成3c853ab人工PAUSED红色与8dbc4d6同一强化47项绿色，保留历史SystemUI Stop失败和SDK准备未执行记录。设置null不证明媒体续播关闭，不宣称所有历史根因穷尽。
-2. 保存截图索引/能力边界/绿色证据，以预期head正常合入main，再只执行一次普通/自用R8、独立47项与普通R8冷启动；失败继续分析，不重跑同代码凑绿色。
+2. 已保存截图索引/能力边界/绿色证据并正常合入main493a9a0，当前只执行一次普通/自用R8、独立47项与普通R8冷启动；失败继续分析，不重跑同代码凑绿色。
 3. 从成功主线CI读取未经重打包的universal APK，实际核对SHA/版本号/证书/ABI；用同一字节执行系统/原生两项跨应用检查，覆盖文件选择器导入、播放/暂停/12秒拖动、后台进度与真实通知点击返回。
 4. 上述通过后发布0.5.1预览。源码、规划、变更和证据索引进Git；原始APK/原生库/日志与历史失败归档进GitHub Release。先核对最终安装与归档摘要，不覆盖旧版、不重签冒充CI原件；不上传用户模块、固定签名或账号数据。
 5. 继续有价值阶段：原生Trace日志及热路径成本（须真正重编/验证三ABI并更新库校验，不能只改源码声称节电）；再精简QueueStore/SourceStore数据边界、恢复单会话淡入淡出及安全缓存管理。角色动作仍以共同底图和真实能量驱动，不逐脸换帧，不堆贴图。

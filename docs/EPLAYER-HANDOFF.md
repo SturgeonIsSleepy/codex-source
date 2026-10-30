@@ -1,8 +1,14 @@
 # ePlayer 转移交接
 
-## 当前恢复入口：0.5.1组合设备通过，主线R8待执行
+## 当前恢复入口：0.5.1已合入主线，R8/确切包待验收
 
-[PR #16](https://github.com/SturgeonIsSleepy/codex-source/pull/16)正常汇合PR11/PR14/PR15，保留完整父历史。固定应用候选`8dbc4d658dbe0643ec988d116120eee0ec57afd1`；1070706仅合并主线文档，应用不变。下一步正常合入main，再执行普通/自用R8、独立47项和确切原始包跨应用验收。
+PR16已正常合入main `493a9a0f0d73b859d64b28e4343d46e3e3ef048c`，保留PR11/PR14/PR15父历史；[主线CI41104525573](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41104525573)正在构建普通/自用R8，之后执行独立47项和R8冷启动。下方候选绿色不代替本轮主线结果。0.5.1交付源码冻结，仍未发布新APK。
+
+后续纯歌词核心/缓存拆分独立在[PR18](https://github.com/SturgeonIsSleepy/codex-source/pull/18)，本地32 JVM/应用与设备包编译通过，48项设备待验收；不混入0.5.1。另有本地开发者的[PR17](https://github.com/SturgeonIsSleepy/codex-source/pull/17)界面成果，尚未合入；保留其模块、固定签名和原成果，不在此覆盖。
+
+### 0.5.1候选绿色（历史门槛）
+
+[PR #16](https://github.com/SturgeonIsSleepy/codex-source/pull/16)正常汇合PR11/PR14/PR15，保留完整父历史。固定应用候选`8dbc4d658dbe0643ec988d116120eee0ec57afd1`；1070706仅合并主线文档，应用不变。已正常合入main；继续主线R8、独立47项和确切原始包跨应用验收。
 
 [CI40761643034](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40761643034)完成47项：46通过/1真实登录条件跳过，94.027秒。三轮交接不发布NONE/STOPPED/PAUSED，真实EQ幅度、正常外部失焦暂停、合法framework Stop及之后1秒不复活、延迟旧下载不得抢占、缓冲暂停与新导航/歌词流程通过。28 JVM/31仓库检查通过；R8/确切新包未执行，0.5.1未发布。
 
