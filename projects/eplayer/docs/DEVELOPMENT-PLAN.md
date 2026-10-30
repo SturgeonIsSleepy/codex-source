@@ -1,5 +1,9 @@
 # ePlayer 当前实施计划
 
+## 当前诊断候选
+
+agent/eplayer-systemui-media-log保持应用代码不变，只扩充真实SystemUI dump中的MediaCarouselCtlrLog/MediaTimeout/MediaLog缓冲；成功与失败均保存，便于对比迟到移除。普通系统设置不改、Stop不拦截，不以新构建冒充修复。该分支不构建R8，先取得内部移除原因，再决定是否用持续同一Player代理替换交接快照。
+
 ## 最新阻断：主线47项失败
 
 493a9a0 /CI41104525573：R8两版构建通过；47项45通过/1 EQ启动失败/1登录跳过，93.272秒。原始Stop仍来自SystemUI，播放80ms停止；三轮交接断言通过仍不能解决全部间歇停止。冷启动未执行，确切包与Release不得推进。先补SystemUI MediaCarouselCtlrLog/MediaTimeout/MediaLog只读证据，评估用唯一公开播放器代理原子切引擎，替换重复setPlayer；不屏蔽真实Stop或修改系统设置。0.5.2歌词36d5c87独立48项通过（47通过/1跳过，108.620秒），9b76ed3最终候选仍待设备结果；不借其绿色覆盖主线失败。
