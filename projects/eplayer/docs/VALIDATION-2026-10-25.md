@@ -443,6 +443,35 @@ FlickPlayer去掉awaitingNativeStart附加标志，以已有用户意图统一�
 build.json明确instrumentation=passed、release_start=not_requested；媒体续播设置为字符串null，未改OS设置，不能解释为关闭。不宣称所有历史SystemUI Stop根因穷尽，真实Stop未过滤。1070706仅合主线交接文档，应用与8dbc4d6相同。28 JVM、本地构建16秒和31根检查通过；主线普通/自用R8及独立47项、确切通用包跨应用、Release待执行。无新增实机/真实账号写入/声学听感结果。
 
 
+## 2026-10-30：0.5.2歌词核心拆分（设备待执行）
+
+以已合入main493a9a0为父，在agent/eplayer-lyrics-core独立开发，不改变冻结的0.5.1交付。LyricParser/TimedLine/LyricsText从Compose文件移入core/lyrics；LyricsRepository接收目录与suspend加载器，只负责数据缓存，不依赖Android Context、SourceStore、ViewModel或Compose。app/LyricsLoader保留原lyric/new请求和lrc/tlyric映射，缓存SHA键/JSON兼容。
+
+缓存以请求独占半文件和同目录ATOMIC_MOVE/REPLACE_EXISTING发布，finally只清自己的半文件；加载器吞掉取消也不能继续发布，损坏/缺字段缓存重新获取。4项新JVM测试覆盖离线跨实例、并发加载及完整JSON、取消、损坏数据/无歌词不缓存；原6项解析测试移包保留。Android新增UUID独占目录检查实际原子替换/离线读/坏缓存恢复，不碰用户歌词或源模块。
+
+最终本地32 JVM全部通过，debug应用/设备包构建24秒通过，31仓库检查通过。预计完整设备48项，尚未执行；没有新截图、R8、实机、账号或声学验收结果。0.5.1主线CI41104525573独立继续，不能用新分支结果替换它。
+
+
+歌词拆分后审计R8反射边界，原cp.player.app下三项keep同步移到core.lyrics，并精确保留Gson缓存DTO，避免只在debug/fastRelease可用。修正首次并发建目录时mkdirs返回false但另一请求已成功创建目录的竞态，使用Files.createDirectories统一处理。该增量编译/32 JVM已复核通过（20秒）；Files.createDirectories最终增量也构建通过；R8仍未执行，不因keep配置存在称混淆后通过。
+
+
+## 独立队列恢复：修复前真实播放器检查待执行
+
+agent/eplayer-queue-resume基于0.5.2歌词候选9b76ed3，产品QueueStore未修改。新增两项真实ExoPlayer检查（不prepare、不发网络、不打开音频输出）：过滤当前曲之前的无URI项后，应保留当前曲和12秒位置；当前曲不可用时，下一有效曲不得继承旧12秒位置。现实现直接对过滤后列表clamp旧index，代码审计有错曲/错位置风险，但设备失败尚未取得。
+
+测试只将eplayer_queue重定向到UUID专用SharedPreferences，使用虚构file URI且不准备解码；finally释放播放器并删除该UUID偏好，不覆盖用户队列/历史或导入。首轮设备包编译失败（夹具Song漏填album），设备未执行；此前误记编译通过在此更正。补齐字段后本地设备包编译15秒通过，设备仍未执行。预计整轮50项，设备待执行，不能提前称红绿。0.5.1主线R8交付与0.5.2歌词验收独立继续。
+
+
+## 队列恢复修复前：两个真实断言失败；候选保持原始索引
+
+3b9641e6ba9c0b8978a50061e95556ad1ccb6959 /CI41106489854，build124238698775成功/device124240444820失败。50项46通过/3失败/1真实登录跳过（103.480秒）。新增两项分别expected saved-current却得到next、expected position0却12000；第三项是已知LiveEqualizer Stop，并未把整轮红色归为只有队列问题。artifact13001388977 ZIP SHA2568c00ad5e72160b3735543d790940cbfa937d95c30a7e7cbfbee5f7d60bed94a4已下载核对。更早9b75503 /CI41106319134为测试夹具album缺失导致构建失败、设备未执行，不计为功能红色。
+
+产品QueueStore.restore改为过滤时保留原始索引；当前曲仍有效则恢复原曲/位置，当前无效则后继有效曲从零开始，末尾缺失回最后有效曲从零开始。使用已有唯一Player/队列，不改源标识/质量/序列化格式，不启动prepare或联网。原两个断言不改，新增尾部缺失分支检查，预计完整51项。仅UUID专用偏好/虚构URI，无用户队列或导入变更；候选32 JVM/应用及设备包本地构建27秒通过；失败时快照增量设备包另已编译通过，整轮51项设备待执行。
+
+
+队列候选同时沿用149c5227e的只读SystemUI缓冲，并在LiveEqualizer失败截止点（固定原断言结果后）抓取MediaCarouselCtlrLog/MediaTimeout/MediaLog，避免整轮结束前100条缓冲覆盖故障时间。仅明确CI参数eplayer.mediaDiagnostics=1且ranchu/goldfish模拟器启用，输出到本轮UUID文件；不变更系统设置、不延长等待或重试失败条件，不影响通过/失败判定。script拉取system-media-check，正常绿色基线149c5227e /CI41107199704为47项46通过/1登录跳过（79.036秒），其完整缓冲已核对artifact13002716783 /SHA25645ac7deac7ac76876494409531d5cf74a4d32b4b3d59dd2477dee3423b16def4；该轮并未复现Stop，不能作修复证明。
+
+
 ## 0.5.1主线独立重复：EQ再次被SystemUI Stop，发布阻断
 
 main493a9a0f0d73b859d64b28e4343d46e3e3ef048c /CI41104525573：普通/自用R8构建成功；build job124230387594，device job124235507885失败。47项45通过/1失败/1真实登录跳过，93.272秒；唯一LiveEqualizer启动失败，原生stopped、position80ms。三轮框架交接断言/正常失焦/合法Stop与其他分项通过，不能据此将整轮算成功。R8冷启动因前置失败未执行，确切包跨应用未执行，未发布0.5.1。
@@ -454,14 +483,57 @@ main493a9a0f0d73b859d64b28e4343d46e3e3ef048c /CI41104525573：普通/自用R8构
 独立歌词36d5c875b40a9571fc43daa600db46cf25ca42d3 /CI41105257305：48项47通过/1登录跳过，108.620秒，含真实Android原子缓存发布/损坏恢复及旧歌词UI/会话定位。artifact13001596264 ZIP SHA2561de245cd6659693af4e0257be6c7e88c46b057bf2463066aa102b99356931ffe已下载核对。后续9b76ed3同步R8保留规则/建目录后，CI41105793719待结果；本轮R8未执行，不能用歌词分支通过替换main失败。
 
 
-## 2026-10-30当前源码/验收断点汇总
+## 会话连续性候选：统一公开代理，移除临时会话Player重绑
 
-PR20 eadde4bc487ddccd82205e63e87276d9102c326b /CI41108013086：唯一公开SessionPlayer候选，28 JVM及本地应用/设备包28秒、最终5秒增量与31根检查通过；47项设备进行中。尚无其绿色，不宣称解决历史Stop。
+agent/eplayer-session-continuity接续诊断149c5227e，基线应用为失败的main493a9a0；不混入歌词/队列或本地PR17的界面。删除PlaybackHandoverPlayer，使用Media3提供的ForwardingSimpleBasePlayer作为服务整个生命周期唯一公开SessionPlayer；在其setPlayer中解除旧delegate监听，再暂停/排空旧输出/焦点并启动新delegate，最后投影新状态。交接保留原用户请求与BUFFERING；命令由Media3原有转发处理，合法Stop/焦点仍有效。服务销毁通过代理调用CPPlayerManager释放实际输出和Exo音效，不再重复释放实际player。
 
-PR18最终9b76ed3 /CI41105793719：48项47通过/1真实登录跳过，107.921秒；设备artifact13001293160 ZIP SHA25636f067617f073b370298dfada461797adaf454f2838a514069be28305764e4b1已下载核对，R8 not_requested。早期36d5c87也48项通过，108.620秒；e364f5c只保存记录，应用仍9b76ed3。
+本地初次28 JVM/主程序/设备包28秒通过，错误态快照边界最终增量28 JVM/构建5秒复核通过；整轮47项设备尚未执行。系统媒体缓冲诊断CI41107199704独立运行，尚无其移除原因，不宣称候选已解决所有Stop。保留截图/素材/字体/默认双曲与导入、完整音乐协议，不改系统媒体设置。
 
-PR21修复前3b9641e /CI41106489854：50项46通过/3失败/1跳过，103.480秒；saved-current却next、position0却12000及已知EQ Stop。artifact13001388977 ZIP SHA2568c00ad5e72160b3735543d790940cbfa937d95c30a7e7cbfbee5f7d60bed94a4已核对。更早9b75503 /CI41106319134为夹具album缺失编译失败，设备未执行。修复b012298e709c842000a31d400f0230d954e7be19恢复原索引/替代曲位置归零，追加尾部缺失回归；32 JVM/本地构建27秒及即时取证增量4秒通过，51项设备待执行。
 
-PR19诊断149c5227e /CI41107199704：47项46通过/1跳过，79.036秒；应用保持主线失败代码，绿色只说明间歇问题这轮未复现。设备artifact13002716783 ZIP SHA25645ac7deac7ac76876494409531d5cf74a4d32b4b3d59dd2477dee3423b16def4已下载核对，system-media.txt包含MediaCarouselCtlrLog/MediaTimeout/MediaLog；存在非用户移除日志，时间与正常清理相符，不能直接认作失败瞬间根因。PR21加入EQ等待截止点即时快照，先固定原断言结果再取证，不延长或重试。仅明确CI参数且ranchu/goldfish模拟器启用，UUID文件输出，不改设置、不碰真实用户数据。
+## 通知连续性：旧应用代码上的强化检查待执行
 
-当前main失败、未执行R8冷启动/确切包/Release的原结论仍有效。新成功/失败/未执行日志暂为Actions证据索引，下一实际Release统一归档；没有伪造新Release链接或覆盖0.3.2资产。
+诊断149c5227e /CI41107199704为47项46通过/1登录跳过（79.036秒）；不会把未复现Stop写成修复。其已校验的SystemUI缓冲可见非用户移除，但对应正常清理。新增实际NotificationManager.activeNotifications观测，先确认真实媒体通知存在，再仅在三轮播放中交接区间每5ms只读本应用媒体通知；结束/停止观察后才发送合法失焦与Stop。若采样看到消失则失败，不能把未采样到消失称为绝对不会移除。原框架状态断言保留。
+
+仅修改设备测试/规划，应用保持原主线代码；不更改POST_NOTIFICATIONS、系统媒体设置、来源或签名。新增观察线程限定该区间、finally关闭并等待，正常清理不算通知回归。本地设备包编译12秒通过，实际设备结果待取得，用于与持续公开SessionPlayer候选对照，而非靠放宽断言或重跑同代码凑绿色。
+
+
+## 持续SessionPlayer现有47项通过，正常合入强化通知检查
+
+固定eadde4bc487ddccd82205e63e87276d9102c326b /CI41108013086：build124242832977/device124244551215成功，47项46通过/1真实登录跳过（92.607秒）。真实EQ三生命周期/跨采样率、三轮框架交接、正常永久失焦/显式恢复与合法Stop/1秒不复活通过。设备artifact13002956552 ZIP SHA25616bf3b12ab54a70475519ebfd05110f2f3eeb160691fbcd9f05a94b6f8ac3ee9已下载核对；R8 not_requested，没有凭此绿色发布或宣称全部根因穷尽。
+
+正常两父合并e1eb7fe，把相同真实媒体通知观测用于本候选；两处文档冲突按共同前缀/后缀确认仅双方新增段后完整保留。旧应用e1eb7fe修复前47项独立运行，产品仍eadde4bc而强化检查设备待执行。本次28 JVM/应用和设备包构建21秒通过，强化47项设备待执行，主线失败/Release阻断仍有效。后续与PR18/PR21正常汇合形成最终组合，不覆盖本地PR17或固定签名/模块/登录。
+
+
+同期PR21 b012298e /CI41108850985：51项49通过/1 EQ失败/1真实登录跳过（110.748秒），两个旧队列断言与新尾部缺失均通过，整轮仍未通过。artifact13001738799 ZIP SHA25630c1456c341ab3bdd062291ffb847fcf7ebb24c55396ed74bd5c8fea4aab94de已下载核对，故障瞬间system-media-check/equalizer-b9b45276-a831-4bc3-bb33-88760328321b.txt实际生成。18:46:17.265 MediaCarouselCtlrLog记录removing player/by user false，17.275原始SystemUI发送Stop，17.288进入FlickPlayer.handleStop，失败停止于130ms；已将移除与停止对齐，但具体触发移除的先前状态仍需通知观测/持续代理候选验证，不能称穷尽根因。没有延长原断言等待、变更系统设置或过滤Stop。
+
+
+## 0.5.2歌词最终候选：48项通过，R8仍未执行
+
+固定9b76ed3bfe70607883a3dd0d3dccd9ab3d4c3312 /CI41105793719，build124237178663和device124239009750成功，48项47通过/1真实登录条件跳过，107.921秒。设备artifact13001293160 ZIP SHA25636f067617f073b370298dfada461797adaf454f2838a514069be28305764e4b1已下载核对，instrumentation=passed/release_start=not_requested；构建artifact13002475944 ZIP SHA256aea0e8359b27fe7ad8f23ae0d38b6194428ccbc42e6ebc43484614807a19edac未下载，不计为R8验收。
+
+包含Android真实Files原子替换/坏缓存重取/离线读取和既有译文/12秒行点选/保持暂停/返回。此前36d5c87的48项也通过（107.921秒为本最终轮，前轮108.620秒）；已查看前轮原生播放闭眼及全屏日中歌词截图，人物和字体未修改。同步保留规则并不等于实际混淆后通过，R8仍待后续主线一次验证。
+
+main493a9a0 /CI41104525573为47项45通过/1 EQ系统Stop失败/1跳过（93.272秒）；其两版R8构建成功，但冷启动前置阻断/确切包未执行，未发布0.5.1。本分支通过不能覆盖主线失败。所有既有失败/未执行保留，PR19内部SystemUI媒体日志和下一会话连续性候选独立推进。
+
+
+## 0.5.2最终核心组合待验收
+
+正常汇合队列b012298e、持续会话/强化通知2c3f77d、歌词最终文档e364f5c与主线d9dc2dad四父历史，未强推。应用0.5.2，保持PR11/PR14音乐完整路径及角色/字体资产，未混入本地PR17界面或用户模块/签名。最终组合包含51项检查，不能把会话独立47绿色、歌词48绿色和队列三个分项通过计作组合绿色。0.5.1失败主线包不发布，后续以最终0.5.2源码执行一次主线R8/全轮/确切包交付。
+
+文档冲突保存四份阶段计划原文并重写当前实施顺序；验证索引以共同基线加双方新增记录完整保留，歌词最终证据另追加。Android Cloud入口/其他项目未改，所有二进制仍在Git外。本地32 JVM全部通过，应用与设备包构建24秒通过，31根检查通过；51项设备结果待执行，不提前称组合通过。
+
+
+## 强化真实媒体通知：会话候选47项再次通过，组合51项运行中
+
+2c3f77d89502491574cce937a18fce7dcfab479e /CI41110061129，build124249857674与device124251636642成功：47项46通过/1登录跳过，115.051秒。真实通知存在后在三轮播放交接中采样未见消失，框架NONE/STOPPED/PAUSED保护、真实EQ、永久失焦与合法Stop/1秒不复活均通过。artifact13002389697 ZIP SHA256f81930ed9aed5d018da4285df5960513eca2cdd3b971109cc62c9254685a016d已下载核对。采样通过不证明更短间隙绝不发生，也不穷尽所有历史停止根因。
+
+旧应用e1eb7fe /CI41109753203也47项46通过/1登录跳过（88.435秒），本轮未复现消失/Stop，不将其视为修复前功能红色。组合e4ea4cb1a4da92fb0c495c4a28986c4282189f4d /CI41110662240构建成功，设备51项正在执行，不能沿用两轮47绿色。已正常合并main4202d33恢复指针，双方独有结果与当前计划保留，后续仅文档变化，应用/测试仍e4ea4cb1。31根检查待本次提交复核，R8/确切包/新Release未执行。
+
+
+## 0.5.2核心最终组合51项通过，准备一次主线R8
+
+固定应用e4ea4cb1a4da92fb0c495c4a28986c4282189f4d /CI41110662240，build124251916316/device124253588193成功。51项50通过/1 SourceLoginLiveTest真实登录条件跳过，103.810秒。持续SessionPlayer的真实EQ/交接/媒体通知采样/合法失焦/Stop、原子歌词缓存与译文/暂停行定位/返回、三个队列恢复检查在同一轮通过。32 JVM及本地应用/设备包24秒、31仓库检查通过。
+
+设备artifact13003099676 ZIP SHA256a3820db126bdccc90cbea1177214238a1866ef7b888937a66f0fe4de5e0c8693已下载核对，source_commit完整匹配e4ea4cb1，instrumentation=passed、release_start=not_requested。fast APK SHA25686231f2438a1927e8dca2c450a85bcea6bc5e9aed43bcb8d2b73b2fcfacd49ad；测试APK b3fb782fee290cabc0ceb30992b001332f53e66fb025007a571591d34b085d95。已实际查看visual-check/player-rust-playing.png、player-rust-paused.png和layout-check/portrait-2.0.png，人物完整、闭眼/睁眼与主题文字在这些静态图中无新明显错位；字符/字体资产未改，不称逐帧/长时/实机听感验收。
+
+c83f0ae已正常合入main4202d33恢复指针，应用/测试与e4ea4cb1相同；后续记录仍仅文档变化。旧0.5.1 main493a9a0失败与b012298e整轮EQ失败完整保留，未将其写成通过；不宣称所有历史SystemUI Stop根因穷尽。下一步以预期head正常合入最新main→普通/自用R8与独立51项/冷启动→原始universal确切包双引擎跨应用→0.5.2 Release归档，尚未执行的新门槛不提前算成功。

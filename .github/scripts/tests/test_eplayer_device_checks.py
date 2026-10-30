@@ -54,6 +54,8 @@ class DeviceEvidenceTests(unittest.TestCase):
         self.assertEqual({'instrumentation': 'passed', 'release_start': 'not_requested'}, self.metadata()['checks'])
         self.assertIsNone(self.metadata()['release'])
         self.assertTrue(Path('device-evidence/release-not-run.txt').exists())
+        self.assertTrue(Path('device-evidence/system-media.txt').exists())
+        self.assertTrue(any('MediaCarouselCtlrLog' in call and 'MediaTimeout' in call and 'MediaLog' in call for call in self.calls))
 
     def test_instrumentation_failure_with_zero_shell_exit_stays_failed(self):
         self.result = 'FAILURES!!!\nTests run: 1, Failures: 1\nINSTRUMENTATION_CODE: -1\n'

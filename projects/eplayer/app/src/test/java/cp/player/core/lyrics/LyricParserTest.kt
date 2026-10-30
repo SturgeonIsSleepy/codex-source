@@ -1,4 +1,4 @@
-package cp.player.app
+package cp.player.core.lyrics
 
 import org.junit.Assert.*
 import org.junit.Test

@@ -14,7 +14,7 @@ output.mkdir(exist_ok=True)
 RUNTIME_TAGS = ['AndroidRuntime', 'EPlayerTest', 'EPlayerSession', 'FlickPlayer', 'RustEngine',
                 'RustAudioEngine', 'CPPlayerDebug', 'AudioTrack', 'AAudio', 'AudioManager',
                 'MediaSessionService', 'MediaSessionRecord', 'MediaDataManager', 'MediaDataProcessor',
-                'MediaTimeoutListener', 'MediaResumeListener', 'NotificationService']
+                'MediaTimeoutListener', 'MediaResumeListener', 'MediaCarouselController', 'NotificationService']
 
 
 def capture_runtime(name):
@@ -27,7 +27,8 @@ def capture_system_media():
     # Fresh CI emulator only; inspect media state without changing system settings.
     for name, arguments in [
         ('system-media.txt', ['activity', 'service', 'com.android.systemui/.SystemUIService',
-                              'MediaCarouselController', 'MediaDataManager', 'MediaTimeoutListener']),
+                              'MediaCarouselController', 'MediaDataManager', 'MediaTimeoutListener',
+                              'MediaCarouselCtlrLog', 'MediaTimeout', 'MediaLog']),
         ('system-sessions.txt', ['media_session']),
     ]:
         result = subprocess.run(['adb', 'shell', 'dumpsys', *arguments],
@@ -89,6 +90,7 @@ def main():
         adb('install', '-r', '-t', tests)
         metadata['checks']['instrumentation'] = 'running'
         result = adb('shell', 'am', 'instrument', '-w', '-r', '-e', 'timeout_msec', '120000',
+                     '-e', 'eplayer.mediaDiagnostics', '1',
                      'app.eplayer.music.test/androidx.test.runner.AndroidJUnitRunner',
                      capture_output=True, text=True, timeout=480)
         (output / 'instrumentation.txt').write_text(result.stdout + result.stderr)
@@ -121,11 +123,11 @@ def main():
             if status == 'running':
                 metadata['checks'][check] = 'incomplete'
         (output / 'build.json').write_text(json.dumps(metadata, indent=2))
-        for folder in ['visual-check', 'art-check', 'layout-check']:
+        for folder in ['visual-check', 'art-check', 'layout-check', 'system-media-check']:
             subprocess.run(['adb', 'pull', f'/sdcard/Android/data/app.eplayer.music/files/{folder}', str(output / folder)], check=False)
         capture_runtime('runtime.txt')
-        if any(status in {'failed', 'timed_out', 'incomplete'} for status in metadata['checks'].values()):
-            capture_system_media()
+        # Preserve media buffers on success too: compare actual removal decisions across runs.
+        capture_system_media()
         subprocess.run(['adb', 'shell', 'wm', 'size', 'reset'], check=False)
         subprocess.run(['adb', 'shell', 'wm', 'density', 'reset'], check=False)
 

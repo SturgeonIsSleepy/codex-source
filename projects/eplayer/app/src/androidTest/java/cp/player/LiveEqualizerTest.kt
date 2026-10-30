@@ -53,8 +53,27 @@ class LiveEqualizerTest {
             if (action()) return
             SystemClock.sleep(100)
         }
-        assertTrue(describe(), action())
+        val settled = action()
+        val message = describe()
+        if (!settled) captureMediaFailure()
+        assertTrue(message, settled)
     }
+    private fun captureMediaFailure() {
+        if (InstrumentationRegistry.getArguments().getString("eplayer.mediaDiagnostics") != "1" ||
+            android.os.Build.HARDWARE !in setOf("ranchu", "goldfish")) return
+        // Media buffers are small: take the failure-time snapshot before fixture cleanup evicts it.
+        runCatching {
+            val directory = File(context.getExternalFilesDir(null), "system-media-check").apply { mkdirs() }
+            val destination = File(directory, "equalizer-${UUID.randomUUID()}.txt")
+            val descriptor = instrumentation.uiAutomation.executeShellCommand(
+                "dumpsys activity service com.android.systemui/.SystemUIService " +
+                    "MediaCarouselCtlrLog MediaTimeout MediaLog MediaDataManager")
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { input ->
+                destination.outputStream().use { input.copyTo(it) }
+            }
+        }.onFailure { android.util.Log.w("EPlayerTest", "Media failure snapshot unavailable", it) }
+    }
+
     private fun level(): Float {
         return runBlocking { withContext(RustEngine.engineDispatcher) {
             RustEngine.getProgress()

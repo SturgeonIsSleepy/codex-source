@@ -1,5 +1,7 @@
 package cp.player.app
 
+import cp.player.core.lyrics.LyricsText
+
 import android.app.Application
 import android.content.ComponentName
 import android.net.Uri
@@ -248,7 +250,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     suspend fun lyrics(): LyricsText {
         val source = playback.value.source ?: return LyricsText("暂无歌词")
         val song = playback.value.song ?: return LyricsText("暂无歌词")
-        return try { LyricsRepository(app).get(source, playback.value.remoteId ?: song.id) }
+        return try { loadLyrics(app, source, playback.value.remoteId ?: song.id) }
         catch (error: kotlinx.coroutines.CancellationException) { throw error }
         catch (error: Exception) { LyricsText(error.message ?: "歌词加载失败") }
     }

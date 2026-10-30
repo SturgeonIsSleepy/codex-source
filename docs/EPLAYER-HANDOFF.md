@@ -1,14 +1,19 @@
 # ePlayer 转移交接
 
-## 最新恢复入口：PR22 / 0.5.2核心组合验收中
+## 最新组合恢复：PR22 /0.5.2核心集成，51项组合设备通过
 
-[PR22](https://github.com/SturgeonIsSleepy/codex-source/pull/22) / agent/eplayer-052-core-integration，固定候选`e4ea4cb1a4da92fb0c495c4a28986c4282189f4d`，[CI41110662240](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41110662240)正在构建并将执行51项。四父正常汇合队列b012298e、会话/强化通知2c3f77d、歌词记录e364f5c及本主线d9dc2dad，无强推。32 JVM、应用/设备包24秒、31根检查通过；源码/规划/变更/阶段计划已推送。
+固定应用e4ea4cb1a4da92fb0c495c4a28986c4282189f4d /[CI41110662240](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41110662240)构建及51项组合设备通过（50通过/1真实登录跳过，103.810秒）。[PR22](https://github.com/SturgeonIsSleepy/codex-source/pull/22)正常合并main4202d33恢复指针，应用不变；该文档合并不触发重复构建。设备artifact13003099676已核对SHA256a3820db126bdccc90cbea1177214238a1866ef7b888937a66f0fe4de5e0c8693；随后正常合入main并做R8/原始确切包，暂未发布。
 
-0.5.1主线失败包不发布；待最终组合通过后按0.5.2做一次main普通/自用R8+51项+冷启动→原始universal确切包系统/原生跨应用→Release归档。此组合尚未绿色/R8/确切包通过，不能以独立结果代替。
+强化会话2c3f77d /CI41110061129已有47项46通过/1登录跳过（115.051秒），含三轮真实媒体通知采样、框架状态及正常失焦/合法Stop。设备artifact13002389697 ZIP SHA256f81930ed9aed5d018da4285df5960513eca2cdd3b971109cc62c9254685a016d已下载核对。旧应用e1eb7fe同一47项也通过（88.435秒），不能把这个未复现轮次算根因红绿；最终组合仍待结果。
 
-补充：会话eadde4bc /CI41108013086已有47项46通过/1跳过（92.607秒）；旧应用强化通知e1eb7fe /CI41109753203也47项46通过/1跳过（88.435秒），未复现通知消失，不是触发原因红绿。会话强化2c3f77d /CI41110061129仍待结果。队列修复b012298e /CI41108850985为51项49通过/1 EQ失败/1跳过（110.748秒），三个队列检查通过；即时媒体快照对齐18:46:17.265非用户移除→17.275 SystemUI Stop→17.288实际Stop，具体先前触发状态尚未穷尽。所有失败保留。
+agent/eplayer-052-core-integration正常汇合PR20持续SessionPlayer/强化媒体通知观测、PR18纯歌词核心/原子缓存、PR21原始队列索引恢复，并保留主线d9dc2dad与歌词e364f5cc文档父历史。0.5.1主线R8虽构建通过但47项失败，未发布；不再为该失败包重复R8，以最终0.5.2组合完成交付门槛。
 
-优先读PR22分支[最新计划](https://github.com/SturgeonIsSleepy/codex-source/blob/e4ea4cb1a4da92fb0c495c4a28986c4282189f4d/projects/eplayer/docs/DEVELOPMENT-PLAN.md)及[证据索引](https://github.com/SturgeonIsSleepy/codex-source/blob/e4ea4cb1a4da92fb0c495c4a28986c4282189f4d/projects/eplayer/docs/VALIDATION-2026-10-25.md)，再取得真实新结果。PR17本地界面/固定签名/模块/登录与Android Cloud入口不动。下方为既往阶段断点，不能从其旧“待执行”恢复。
+- SessionPlayer eadde4bc /CI41108013086现有47项46通过/1登录跳过（92.607秒），真实失焦/Stop保持；强化通知观测2c3f77d与旧应用e1eb7fe独立设备待结果。
+- 歌词9b76ed3 /CI41105793719的48项47通过/1跳过（107.921秒），32 JVM通过，R8未执行。
+- 队列b012298e /CI41108850985的51项49通过/1 EQ停止失败/1跳过（110.748秒），原两个队列红色和新尾部缺失均通过；没有把整轮失败写成通过。即时快照将18:46:17.265非用户移除→17.275 SystemUI Stop→17.288实际Stop对齐，仍需确认触发移除的具体状态。
+- 当前组合51项50通过/1真实登录跳过（103.810秒）；人物/动作/Medium中日字体和全部源/曲库/队列/下载/歌词能力不删。R8、确切原始通用包和Release需最终组合通过后执行。实机/账号写入/长时/淡入淡出/安全缓存入口仍有缺口。
+
+固定恢复计划与证据看[实施计划](../projects/eplayer/docs/DEVELOPMENT-PLAN.md)、[验证索引](../projects/eplayer/docs/VALIDATION-2026-10-25.md)。四份集成前完整计划在项目docs/history/DEVELOPMENT-STAGES-2026-10-30.md保存。PR17本地界面与固定签名/模块/登录不动，Android Cloud固定入口不动；不强推。下方为保留历史门槛。
 
 
 ## 当前恢复入口：主线失败阻断发布，PR20/PR21候选继续

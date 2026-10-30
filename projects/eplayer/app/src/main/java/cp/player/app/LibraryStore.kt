@@ -117,9 +117,16 @@ object QueueStore {
         val prefs = context.getSharedPreferences("eplayer_queue", Context.MODE_PRIVATE)
         val json = prefs.getString("items", null) ?: return
         val items = runCatching { gson.fromJson<List<Track>>(json, object : TypeToken<List<Track>>() {}.type) }.getOrNull().orEmpty()
-        val valid = items.filter { it.uri != null && (!it.song.id.startsWith("witch_") || WitchPlaylist.uri(context, it.song.id) != null) }
+        val valid = items.withIndex().filter { (_, track) ->
+            track.uri != null && (!track.song.id.startsWith("witch_") || WitchPlaylist.uri(context, track.song.id) != null)
+        }
         if (valid.isEmpty()) return
-        player.setMediaItems(valid.map { it.mediaItem() }, prefs.getInt("index", 0).coerceIn(valid.indices), prefs.getLong("position", 0).coerceAtLeast(0))
+        val savedIndex = prefs.getInt("index", 0)
+        val restoredIndex = valid.indexOfFirst { it.index >= savedIndex }.takeIf { it >= 0 } ?: valid.lastIndex
+        // Filtering earlier entries changes the index, not the identity of the saved song.
+        // If that song disappeared, resume the next (or last surviving) song from its beginning.
+        val position = if (valid[restoredIndex].index == savedIndex) prefs.getLong("position", 0).coerceAtLeast(0) else 0L
+        player.setMediaItems(valid.map { it.value.mediaItem() }, restoredIndex, position)
         // Opening the app must not silently start playback or networking.
     }
 }
