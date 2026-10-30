@@ -2,7 +2,6 @@ package cp.player.app
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -20,8 +19,6 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 
 @Composable
 internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int) -> Unit,
@@ -40,25 +37,23 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
             "$identity#$count"
         }
     }
-    var dragging by remember { mutableStateOf<Int?>(null) }
+    val latestKeys by rememberUpdatedState(keys)
+    var dragIdentity by remember { mutableStateOf<String?>(null) }
+    var dragFrom by remember { mutableStateOf<Int?>(null) }
+    var dragTo by remember { mutableStateOf<Int?>(null) }
     var center by remember { mutableFloatStateOf(0f) }
-    var edgeSpeed by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(dragging != null, edgeSpeed) {
-        while (isActive && dragging != null && edgeSpeed != 0f) {
-            list.scrollBy(edgeSpeed)
-            val from = dragging
-            val target = list.layoutInfo.visibleItemsInfo.firstOrNull { center >= it.offset && center <= it.offset + it.size }?.index
-            if (from != null && target != null && from != target && from in 0 until size && target in 0 until size) {
-                latestMove(from, target); dragging = target
-            }
-            delay(32)
-        }
+    fun finishDrag(commit: Boolean) {
+        val from = dragIdentity?.let { latestKeys.indexOf(it).takeIf { index -> index >= 0 } }
+        val to = dragTo
+        dragIdentity = null; dragFrom = null; dragTo = null
+        if (commit && from != null && to != null && from != to && from in 0 until size && to in 0 until size)
+            latestMove(from, to)
     }
     TravelSheet(close, gesturesEnabled = !editing) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("播放队列 · ${state.queue.size}", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
             if (editing && state.queue.isNotEmpty()) IconButton(onClick = { confirmClear = true }) { Icon(Icons.Default.DeleteSweep, "清空播放队列") }
-            TextButton(onClick = { editing = !editing; dragging = null; edgeSpeed = 0f }) { Text(if (editing) "完成" else "编辑") }
+            TextButton(onClick = { editing = !editing; finishDrag(false) }) { Text(if (editing) "完成" else "编辑") }
         }
         if (state.queue.isEmpty()) Text("暂无歌曲", Modifier.padding(24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         LazyColumn(Modifier.fillMaxWidth().heightIn(max = 560.dp).testTag("queue-list"),
@@ -66,7 +61,7 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
             itemsIndexed(state.queue, key = { index, _ -> keys[index] }) { index, song ->
                 val current = if (state.queueIndex >= 0) index == state.queueIndex else song.id == state.song?.id
                 Row(Modifier.fillMaxWidth().animateItem().testTag("queue-row-$index")
-                    .background(if (dragging == index) MaterialTheme.colorScheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent)
+                    .background(if (dragTo == index) MaterialTheme.colorScheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent)
                     .semantics {
                         customActions = buildList {
                             if (index > 0) add(CustomAccessibilityAction("上移") { move(index, index - 1); true })
@@ -85,26 +80,22 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
                                 detectDragGestures(
                                     onDragStart = {
                                         val row = list.layoutInfo.visibleItemsInfo.firstOrNull { it.index == currentIndex }
-                                        dragging = currentIndex; edgeSpeed = 0f
+                                        dragIdentity = latestKeys.getOrNull(currentIndex)
+                                        dragFrom = currentIndex; dragTo = currentIndex
                                         center = row?.let { it.offset + it.size / 2f } ?: 0f
                                     },
-                                    onDragCancel = { dragging = null; edgeSpeed = 0f },
-                                    onDragEnd = { dragging = null; edgeSpeed = 0f },
+                                    onDragCancel = { finishDrag(false) },
+                                    onDragEnd = { finishDrag(true) },
                                     onDrag = { change, amount ->
                                         change.consume()
-                                        val from = dragging
+                                        val from = dragFrom
                                         if (from != null && from in 0 until size) {
                                             center += amount.y
                                             val target = list.layoutInfo.visibleItemsInfo.firstOrNull { center >= it.offset && center <= it.offset + it.size }?.index
-                                            if (target != null && target != from && target in 0 until size) {
-                                                latestMove(from, target); dragging = target
+                                            if (target != null && target in 0 until size) {
+                                                dragTo = target
                                             }
-                                            val edge = 56.dp.toPx()
-                                            edgeSpeed = when {
-                                                center < edge -> -12f
-                                                center > list.layoutInfo.viewportEndOffset - edge -> 12f
-                                                else -> 0f
-                                            }
+
                                         }
                                     })
                             }, tint = MaterialTheme.colorScheme.onSurfaceVariant)

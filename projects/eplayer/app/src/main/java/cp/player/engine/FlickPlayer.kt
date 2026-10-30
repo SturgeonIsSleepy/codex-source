@@ -867,6 +867,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     }
 
     override fun handleMoveMediaItems(fromIndex: Int, toIndex: Int, newIndex: Int): ListenableFuture<*> {
+        val currentUid = playlist.getOrNull(currentMediaItemIndex)?.uid
         val newList = playlist.toMutableList()
         val validFrom = fromIndex.coerceAtLeast(0)
         val validTo = toIndex.coerceAtMost(newList.size)
@@ -876,14 +877,8 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         val insertIndex = newIndex.coerceIn(0, newList.size)
         newList.addAll(insertIndex, itemsToMove)
         playlist = newList
-        if (currentMediaItemIndex in validFrom until validTo) {
-            currentMediaItemIndex = insertIndex + (currentMediaItemIndex - validFrom)
-        } else if (currentMediaItemIndex >= validTo && currentMediaItemIndex < insertIndex) {
-            currentMediaItemIndex -= (validTo - validFrom)
-        } else if (currentMediaItemIndex >= insertIndex && currentMediaItemIndex < validFrom) {
-            currentMediaItemIndex += (validTo - validFrom)
-        }
-        currentMediaItemIndex = currentMediaItemIndex.coerceIn(0, (playlist.size - 1).coerceAtLeast(0))
+        // Preserve the actual item across moves, including items shifted across the current index.
+        currentMediaItemIndex = newList.indexOfFirst { it.uid == currentUid }.coerceAtLeast(0)
         cancelPreCache()
         invalidateState()
         return Futures.immediateVoidFuture()

@@ -68,10 +68,12 @@ class LibraryFlowTest {
         val c = Song("queue-c", "Queue C", "fixture", album = "fixture")
         var latest = Playback(b, playing = true, position = 42000, queue = listOf(a, b, c), queueIndex = 1)
         var selects = 0
+        var moves = 0
         compose.runOnUiThread { compose.activity.setContent { EPlayerTheme {
             var state by remember { mutableStateOf(latest) }
             SideEffect { latest = state }
             QueueSheet(state, select = { selects++ }, move = { from, to ->
+                moves++
                 val queue = state.queue.toMutableList().apply { add(to, removeAt(from)) }
                 state = state.copy(queue = queue, queueIndex = queue.indexOf(b))
             }, remove = { index ->
@@ -96,6 +98,7 @@ class LibraryFlowTest {
         }
         compose.onNodeWithTag("queue-list").assertIsDisplayed()
         compose.runOnIdle {
+            assertEquals("one move on drop, not repeated hover commands", 2, moves)
             assertEquals("drag handle must reorder rather than dismiss the sheet", listOf(b, c), latest.queue)
             assertEquals(b, latest.song)
             assertEquals(0, selects)

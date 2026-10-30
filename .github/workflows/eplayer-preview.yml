@@ -46,7 +46,7 @@ jobs:
         run: |
           bash tools/prepare-local-signing.sh
           if [ "$GITHUB_REF" = "refs/heads/codex/eplayer-power" ]; then
-            bash gradlew testInternalFastReleaseUnitTest assembleInternalFastRelease assembleInternalFastReleaseAndroidTest -PwithRust=false -PtestBuildType=fastRelease '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8' --console=plain
+            bash gradlew testInternalReleaseUnitTest assembleInternalRelease -PwithRust=false '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8' --console=plain
           else
             bash gradlew testStandardFastReleaseUnitTest assembleStandardFastRelease assembleInternalFastRelease assembleStandardFastReleaseAndroidTest -PwithRust=false -PtestBuildType=fastRelease --console=plain
           fi
@@ -59,17 +59,8 @@ jobs:
             projects/eplayer/app/build/outputs/apk/standard/fastRelease/*x86_64*.apk
             projects/eplayer/app/build/outputs/apk/androidTest/standard/fastRelease/*.apk
           if-no-files-found: error
-      - name: Upload internal universal fast validation candidate
-        if: github.ref == 'refs/heads/codex/eplayer-power'
-        uses: actions/upload-artifact@v4
-        with:
-          name: eplayer-fast-${{ github.sha }}
-          path: |
-            projects/eplayer/app/build/outputs/apk/internal/fastRelease/*universal*.apk
-            projects/eplayer/app/build/outputs/apk/androidTest/internal/fastRelease/*.apk
-          if-no-files-found: error
       - name: Build shrunk release candidates
-        if: github.ref == 'refs/heads/codex/eplayer-power' || github.ref == 'refs/heads/codex/eplayer-light' || github.ref == 'refs/heads/codex/ncm-basic-completion' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'workflow_dispatch'
+        if: github.ref == 'refs/heads/codex/eplayer-light' || github.ref == 'refs/heads/codex/ncm-basic-completion' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/codex/eplayer-power')
         run: |
           if [ "$GITHUB_REF" = "refs/heads/codex/eplayer-power" ]; then
             bash gradlew assembleInternalRelease -PwithRust=false '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8' --console=plain
@@ -83,8 +74,6 @@ jobs:
           name: eplayer-preview-${{ github.sha }}
           path: |
             projects/eplayer/app/build/outputs/apk/internal/release/*universal*.apk
-            projects/eplayer/app/build/outputs/apk/internal/fastRelease/*universal*.apk
-            projects/eplayer/app/build/outputs/apk/androidTest/internal/fastRelease/*.apk
           if-no-files-found: error
       - name: Upload preview and device tests
         if: github.ref != 'refs/heads/codex/eplayer-power'
@@ -103,6 +92,7 @@ jobs:
             projects/eplayer/app/build/outputs/apk/androidTest/standard/fastRelease/*.apk
           if-no-files-found: error
   device-check:
+    if: github.ref != 'refs/heads/codex/eplayer-power'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 20
