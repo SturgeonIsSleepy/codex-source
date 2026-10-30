@@ -1,12 +1,42 @@
 # ePlayer 转移交接
 
-## 当前恢复入口：0.5.1主线交付 + 0.5.2独立歌词核心
+## 最新组合恢复：0.5.2核心集成，51项待设备验收
 
-PR16已正常合入main493a9a0；CI41104525573执行R8/独立47项。agent/eplayer-lyrics-core开发0.5.2，解析/模型/缓存与Compose拆开，源协议只经app/LyricsLoader适配；新增缓存取消/并发/非法数据验证。完整48项设备待执行，不能替代冻结0.5.1交付验收。
+agent/eplayer-052-core-integration正常汇合PR20持续SessionPlayer/强化媒体通知观测、PR18纯歌词核心/原子缓存、PR21原始队列索引恢复，并保留主线d9dc2dad与歌词e364f5cc文档父历史。0.5.1主线R8虽构建通过但47项失败，未发布；不再为该失败包重复R8，以最终0.5.2组合完成交付门槛。
 
-### 0.5.1候选绿色记录
+- SessionPlayer eadde4bc /CI41108013086现有47项46通过/1登录跳过（92.607秒），真实失焦/Stop保持；强化通知观测2c3f77d与旧应用e1eb7fe独立设备待结果。
+- 歌词9b76ed3 /CI41105793719的48项47通过/1跳过（107.921秒），32 JVM通过，R8未执行。
+- 队列b012298e /CI41108850985的51项49通过/1 EQ停止失败/1跳过（110.748秒），原两个队列红色和新尾部缺失均通过；没有把整轮失败写成通过。即时快照将18:46:17.265非用户移除→17.275 SystemUI Stop→17.288实际Stop对齐，仍需确认触发移除的具体状态。
+- 当前组合51项设备待验收；人物/动作/Medium中日字体和全部源/曲库/队列/下载/歌词能力不删。R8、确切原始通用包和Release需最终组合通过后执行。实机/账号写入/长时/淡入淡出/安全缓存入口仍有缺口。
 
-[PR #16](https://github.com/SturgeonIsSleepy/codex-source/pull/16)正常汇合PR11/PR14/PR15，保留完整父历史。固定应用候选`8dbc4d658dbe0643ec988d116120eee0ec57afd1`；1070706仅合并主线文档，应用不变。下一步正常合入main，再执行普通/自用R8、独立47项和确切原始包跨应用验收。
+固定恢复计划与证据看[实施计划](../projects/eplayer/docs/DEVELOPMENT-PLAN.md)、[验证索引](../projects/eplayer/docs/VALIDATION-2026-10-25.md)。四份集成前完整计划在项目docs/history/DEVELOPMENT-STAGES-2026-10-30.md保存。PR17本地界面与固定签名/模块/登录不动，Android Cloud固定入口不动；不强推。下方为保留历史门槛。
+
+
+## 当前恢复入口：主线失败阻断发布，PR20/PR21候选继续
+
+- 主线应用493a9a0 /CI41104525573仍45通过/1 EQ系统Stop失败/1登录跳过，93.272秒；R8两版构建通过，但冷启动/确切包未执行，未发布0.5.1。
+- [PR20 会话连续性](https://github.com/SturgeonIsSleepy/codex-source/pull/20)：eadde4bc487ddccd82205e63e87276d9102c326b /[CI41108013086](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41108013086)，用一个持续公开的SessionPlayer替换临时交接Player/反复session.setPlayer；28 JVM/本地构建/31仓库检查通过，47项设备进行中，不能称根因已修复。
+- [PR18 歌词核心](https://github.com/SturgeonIsSleepy/codex-source/pull/18)：最终9b76ed3 /CI41105793719通过48项（47通过/1登录跳过，107.921秒），32 JVM通过，R8未执行；e364f5c仅保存文档。保持独立，不用其绿色覆盖主线失败。
+- [PR21 队列恢复](https://github.com/SturgeonIsSleepy/codex-source/pull/21)：修复前3b9641e /CI41106489854，50项46通过/3失败/1跳过（103.480秒），两个新增真实断言复现错曲/继承错误位置，另一个为已知EQ Stop。修复候选b012298e709c842000a31d400f0230d954e7be19保留原索引并新增尾部缺失回归，32 JVM/本地构建通过，51项待执行；与PR20独立。早期测试album漏填编译失败已更正，不计功能红色。
+- [PR19 媒体日志](https://github.com/SturgeonIsSleepy/codex-source/pull/19)：149c5227e /CI41107199704仅扩充只读SystemUI缓冲，应用代码不改；47项46通过/1跳过（79.036秒），本轮未复现Stop。artifact13002716783已校验，缓冲看到非用户触发移除，但不能借正常清理认定失败根因。PR21另在EQ失败当下抓媒体缓冲，固定断言结果后再取证，不延长等待或改系统设置。
+
+恢复顺序：先取得PR20与PR21真实结果、核对失败瞬间SystemUI移除记录；稳定核心后正常汇合各分支，按最终源码做一次主线R8/完整回归→确切原包双引擎跨应用→相应Release。尚无新公开APK，0.3.2不改。本地[PR17](https://github.com/SturgeonIsSleepy/codex-source/pull/17)界面/模块/签名/登录不覆盖，Android Cloud固定入口和无关项目不动。
+
+### 主线失败原记录
+
+[主线CI41104525573](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41104525573)普通/自用R8构建通过，但47项45通过/1 EQ启动失败/1登录跳过（93.272秒）。18:22:05.171原始SystemUI发出Stop，原生被停止在80ms；三轮交接断言本轮通过，说明消除人为PAUSED仍不足以解决全部停止问题。R8冷启动未执行，确切新包检查/Release未执行；不重跑同源码凑绿色、不屏蔽真实Stop。设备artifact13000628932已下载核对8e5e8b1903c478430dd1ef10a789bc014a950d7f6c2efe28eabfd6396ca9369d。
+
+下一步优先取SystemUI媒体日志缓冲中的移除原因，评估保持唯一公开Player代理、原子切换实际引擎，替换临时反复session.setPlayer；该方案尚未实现/验证，不称根因已解决。0.5.1公开包仍没有发布。
+
+### 原候选与后续分支
+
+PR16已正常合入main `493a9a0f0d73b859d64b28e4343d46e3e3ef048c`，保留PR11/PR14/PR15父历史；[主线CI41104525573](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41104525573)已构建普通/自用R8，独立47项失败，冷启动未执行。下方候选绿色不代替本轮主线结果。0.5.1交付源码冻结，仍未发布新APK。
+
+后续纯歌词核心/缓存拆分独立在[PR18](https://github.com/SturgeonIsSleepy/codex-source/pull/18)，本地32 JVM/应用与设备包编译通过，36d5c87的48项47通过/1登录跳过（108.620秒）；后续9b76ed3同步R8保留规则后的设备仍待验收；不混入0.5.1。另有本地开发者的[PR17](https://github.com/SturgeonIsSleepy/codex-source/pull/17)界面成果，尚未合入；保留其模块、固定签名和原成果，不在此覆盖。
+
+### 0.5.1候选绿色（历史门槛）
+
+[PR #16](https://github.com/SturgeonIsSleepy/codex-source/pull/16)正常汇合PR11/PR14/PR15，保留完整父历史。固定应用候选`8dbc4d658dbe0643ec988d116120eee0ec57afd1`；1070706仅合并主线文档，应用不变。已正常合入main；继续主线R8、独立47项和确切原始包跨应用验收。
 
 [CI40761643034](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40761643034)完成47项：46通过/1真实登录条件跳过，94.027秒。三轮交接不发布NONE/STOPPED/PAUSED，真实EQ幅度、正常外部失焦暂停、合法framework Stop及之后1秒不复活、延迟旧下载不得抢占、缓冲暂停与新导航/歌词流程通过。28 JVM/31仓库检查通过；R8/确切新包未执行，0.5.1未发布。
 

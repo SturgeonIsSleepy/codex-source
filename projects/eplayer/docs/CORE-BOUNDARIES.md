@@ -1,14 +1,14 @@
 # 核心边界与能力核对
 
-## 当前0.5.1开发架构（验收结果另见计划）
+## 当前0.5.2核心集成架构（验收结果另见计划）
 
-PR16正常汇合PR11/PR14/PR15，以下描述实际调用边界；8dbc4d6组合47项已通过（46通过/1登录跳过），主线R8与确切包待执行。当前设备门槛以[实施计划](DEVELOPMENT-PLAN.md)与[验证索引](VALIDATION-2026-10-25.md)为准；下方编号内容保留历史时态。
+PR16已汇合PR11/PR14/PR15；当前继续汇合PR18/PR20/PR21。以下是实际调用边界，最终51项组合设备/R8/确切包尚待执行，不能沿用0.5.1失败主线或独立绿色代替。当前设备门槛以[实施计划](DEVELOPMENT-PLAN.md)与[验证索引](VALIDATION-2026-10-25.md)为准；下方编号内容保留历史时态。
 
 | 范围 | 当前实现与职责 | 仍需遵守的边界 |
 | --- | --- | --- |
 | 系统/原生播放、DSP | CPPlayerManager、FlickPlayer、RustEngine、ExoAudioFxManager | JNI命令/事件读取同一调度器；普通系统路由保留。原生库复用已校验基线，不能把未重编的Rust Trace修改或USB可选导出删除写成已完成 |
 | MediaSession/通知/焦点 | MusicService、RustAudioFocus、PlaybackFocusOwner | 唯一公开会话，不靠Compose维持后台；真实Stop正常处理，不能按来源屏蔽 |
-| 引擎交接 | core/playback/PlaybackHandoverPlayer | 短期ForwardingPlayer只投影已准备队列的BUFFERING/原播放请求，无第二队列/解码器/输出；解除旧player发布后才pause/release，随后激活实际新player |
+| 引擎交接 | core/playback/SessionPlayer（当前候选） | 持续同一的ForwardingSimpleBasePlayer只代理当前实际Player，无第二队列/解码器/输出；交接时解除旧delegate监听后pause/release，保持原请求/BUFFERING再激活新delegate；此候选设备待验收，不能宣称停止根因解决 |
 | 播放缓存 | PlaybackCache、DataSourceFactoryProvider、StreamProxy | 进程所有、远端首次open懒加载；本地/content直读。取消只清自己未完成文件，不能release仍被数据源引用的Cache或删用户曲库 |
 | 音乐源/账号 | provider、SourceStore、SourceAccount、MusicRepository | 0.4协议/云端曲库/评论/写操作路径保留；真实账号写入未由云端验收，不复制模块或凭据。服务对app.SourceStore的引用是数据层，不是Compose依赖 |
 | 曲库/队列/下载 | LibraryStore、QueueStore、Downloads、DownloadRegistry | 导入和默认双曲并存，Source/remoteId/质量/断点保留；后台下载由系统持有。QueueStore仍在app包，可后续移动数据接口，不能因为包名就删除 |
