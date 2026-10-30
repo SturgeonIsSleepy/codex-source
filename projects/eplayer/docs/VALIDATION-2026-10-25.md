@@ -544,3 +544,10 @@ c83f0ae已正常合入main4202d33恢复指针，应用/测试与e4ea4cb1相同�
 PR22以正常merge进入main c17dc4a165702391b99d624ad281236bcc46240f，所有四父/后续文档父历史保留，未强推。PR18/19/20随祖先提交自动merged；队列b012298e也经merge-base确认是main祖先，旧PR21因base是歌词分支仍open，将关闭并保留分支/证据。PR17本地界面及签名/模块/登录不改。
 
 CI41112575118执行一次普通/自用R8、独立51项和普通x86_64 R8冷启动，尚无结果；确切原始universal跨应用/新Release未执行。已通过分支e4ea4cb1与main应用/测试相同，但不能借其50通过/1跳过（103.810秒）冒充主线结果。后续仅文档更新，不重复触发大构建。31根检查在此恢复提交前复核。
+
+
+## 0.5.4独立数据边界：本地33 JVM/构建通过，设备待执行
+
+从main639a19dc（应用c17dc4a/0.5.2）开agent/eplayer-data-boundaries，0.5.3本地PR17不动。梳理旧app/LibraryStore.kt四职责后，原逻辑分别移到core/library/Track、LibraryStore、RecentStore和core/queue/QueueStore；MusicService直接引用核心队列/历史，UI/source/download/设备检查更新导入。四核心文件无Compose/ViewModel/app引用，无重复持久化或旧包转发别名；SourceStore/ListeningStats边界尚未迁出，不能声称完全解耦。
+
+保留原JSON键/偏好键/文件名/内容URI与source/remoteId、原索引恢复算法。TrackSchemaTest使用旧版字面JSON而不是新实现生成输入，检查导入ID/日文标题/时长/URI/源/远端ID及原字段完整往返；原32项不删，总33 JVM全部通过。应用和设备包本地构建34秒通过，R8精确Track/LibraryStore规则同步迁移，但本阶段R8未执行，不能把规则存在当混淆通过。整轮51项设备尚未执行。固定0.5.2主线CI41112575118仍独立运行，两个版本结果不得互换。

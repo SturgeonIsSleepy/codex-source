@@ -13,7 +13,7 @@ import androidx.media3.session.SessionToken
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.google.common.util.concurrent.ListenableFuture
-import cp.player.app.RecentStore
+import cp.player.core.library.RecentStore
 import cp.player.engine.MusicPulse
 import cp.player.engine.RustEngine
 import cp.player.model.Song
