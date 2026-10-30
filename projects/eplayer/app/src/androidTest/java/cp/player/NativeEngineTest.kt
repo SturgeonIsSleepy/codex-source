@@ -107,6 +107,13 @@ class NativeEngineTest {
         var volume = 1f
         var framework: android.media.session.MediaController? = null
         val handoverStates = ConcurrentLinkedQueue<Int>()
+        val notifications = context.getSystemService(android.app.NotificationManager::class.java)
+        fun mediaNotificationPresent() = notifications.activeNotifications.any {
+            it.notification.extras.containsKey(android.app.Notification.EXTRA_MEDIA_SESSION)
+        }
+        val watchingNotifications = java.util.concurrent.atomic.AtomicBoolean(false)
+        val missingNotifications = ConcurrentLinkedQueue<Long>()
+        var notificationObserver: Thread? = null
         val observer = object : android.media.session.MediaController.Callback() {
             override fun onPlaybackStateChanged(state: PlaybackState?) {
                 state?.let { handoverStates.add(it.state) }
@@ -147,6 +154,14 @@ class NativeEngineTest {
             legacy!!.registerCallback(observer, Handler(Looper.getMainLooper()))
             instrumentation.waitForIdleSync()
             handoverStates.clear()
+            await(15000) { mediaNotificationPresent() }
+            watchingNotifications.set(true)
+            notificationObserver = Thread {
+                while (watchingNotifications.get()) {
+                    if (!mediaNotificationPresent()) missingNotifications.add(SystemClock.elapsedRealtime())
+                    SystemClock.sleep(5)
+                }
+            }.apply { name = "ePlayer-notification-check"; isDaemon = true; start() }
             repeat(3) { engine(0); engine(1) }
             await(15000) {
                 var playing = false
@@ -154,6 +169,10 @@ class NativeEngineTest {
                 playing && (native { RustEngine.getProgress()?.positionSecs } ?: 0.0) > .5
             }
             instrumentation.waitForIdleSync()
+            watchingNotifications.set(false)
+            notificationObserver?.join(2000)
+            assertFalse("Notification observer did not finish", notificationObserver?.isAlive == true)
+            assertTrue("Playing engine handover removed its real media notification: $missingNotifications", missingNotifications.isEmpty())
             assertFalse("Playing engine handover published an empty/stopped/paused framework session: $handoverStates",
                 handoverStates.any { it == PlaybackState.STATE_NONE || it == PlaybackState.STATE_STOPPED || it == PlaybackState.STATE_PAUSED })
             // The handover fix must not ignore a genuine permanent loss to another focus owner.
@@ -190,6 +209,8 @@ class NativeEngineTest {
             }
             android.util.Log.i("EPlayerTest", "Current framework Stop stopped real native playback; legacy control remains available")
         } finally {
+            watchingNotifications.set(false)
+            notificationObserver?.join(2000)
             try {
                 framework?.unregisterCallback(observer)
                 controller?.let { current ->

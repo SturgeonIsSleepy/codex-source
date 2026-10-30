@@ -1,5 +1,9 @@
 # ePlayer 当前实施计划
 
+## 通知连续性修复前断言
+
+149c5227e纯日志轮47项通过但未复现失败；缓冲已证实存在非用户触发移除，但与正常清理吻合，不能认定故障根因。当前仍保持旧应用代码，强化实际framework检查：原生真实PCM与通知已出现后，在三轮播放中切引擎期间每5ms只读本应用activeNotifications，停止观测后再进行合法失焦/Stop。若观测到通知消失则失败，不改变权限/媒体设置、不修改播放器；断言与产品候选分别验证。既有系统框架NONE/STOPPED/PAUSED保护保留，整轮仍47项。
+
 ## 当前诊断候选
 
 agent/eplayer-systemui-media-log保持应用代码不变，只扩充真实SystemUI dump中的MediaCarouselCtlrLog/MediaTimeout/MediaLog缓冲；成功与失败均保存，便于对比迟到移除。普通系统设置不改、Stop不拦截，不以新构建冒充修复。该分支不构建R8，先取得内部移除原因，再决定是否用持续同一Player代理替换交接快照。
