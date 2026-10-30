@@ -66,6 +66,9 @@
 
 -keep class cp.player.app.DownloadRecord { *; }
 
--keep class cp.player.app.LyricsText { *; }
--keep class cp.player.app.LyricParser { *; }
--keep class cp.player.app.TimedLine { *; }
+-keep class cp.player.core.lyrics.LyricsText { *; }
+-keep class cp.player.core.lyrics.LyricParser { *; }
+-keep class cp.player.core.lyrics.TimedLine { *; }
+
+# Gson cache schema must survive R8 independently of Compose presentation.
+-keep class cp.player.core.lyrics.LyricsRepository$CachedLyrics { *; }

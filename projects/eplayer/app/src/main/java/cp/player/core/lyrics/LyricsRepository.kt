@@ -33,7 +33,7 @@ class LyricsRepository(
         val text = load(source, id)
         coroutineContext.ensureActive()
         if (text.original.isNotBlank() && text.original != "暂无歌词") {
-            check(directory.isDirectory || directory.mkdirs()) { "无法创建歌词缓存" }
+            Files.createDirectories(directory.toPath())
             // Different requests must never share a half-written file.
             val temporary = File.createTempFile("$hash-", ".tmp", directory)
             try {

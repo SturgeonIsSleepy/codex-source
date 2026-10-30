@@ -450,3 +450,6 @@ build.json明确instrumentation=passed、release_start=not_requested；媒体续
 缓存以请求独占半文件和同目录ATOMIC_MOVE/REPLACE_EXISTING发布，finally只清自己的半文件；加载器吞掉取消也不能继续发布，损坏/缺字段缓存重新获取。4项新JVM测试覆盖离线跨实例、并发加载及完整JSON、取消、损坏数据/无歌词不缓存；原6项解析测试移包保留。Android新增UUID独占目录检查实际原子替换/离线读/坏缓存恢复，不碰用户歌词或源模块。
 
 最终本地32 JVM全部通过，debug应用/设备包构建24秒通过，31仓库检查通过。预计完整设备48项，尚未执行；没有新截图、R8、实机、账号或声学验收结果。0.5.1主线CI41104525573独立继续，不能用新分支结果替换它。
+
+
+歌词拆分后审计R8反射边界，原cp.player.app下三项keep同步移到core.lyrics，并精确保留Gson缓存DTO，避免只在debug/fastRelease可用。修正首次并发建目录时mkdirs返回false但另一请求已成功创建目录的竞态，使用Files.createDirectories统一处理。该增量编译/32 JVM已复核通过（20秒）；Files.createDirectories最终增量也构建通过；R8仍未执行，不因keep配置存在称混淆后通过。
