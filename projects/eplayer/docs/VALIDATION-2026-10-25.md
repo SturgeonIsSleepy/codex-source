@@ -528,3 +528,12 @@ main493a9a0 /CI41104525573为47项45通过/1 EQ系统Stop失败/1跳过（93.272
 2c3f77d89502491574cce937a18fce7dcfab479e /CI41110061129，build124249857674与device124251636642成功：47项46通过/1登录跳过，115.051秒。真实通知存在后在三轮播放交接中采样未见消失，框架NONE/STOPPED/PAUSED保护、真实EQ、永久失焦与合法Stop/1秒不复活均通过。artifact13002389697 ZIP SHA256f81930ed9aed5d018da4285df5960513eca2cdd3b971109cc62c9254685a016d已下载核对。采样通过不证明更短间隙绝不发生，也不穷尽所有历史停止根因。
 
 旧应用e1eb7fe /CI41109753203也47项46通过/1登录跳过（88.435秒），本轮未复现消失/Stop，不将其视为修复前功能红色。组合e4ea4cb1a4da92fb0c495c4a28986c4282189f4d /CI41110662240构建成功，设备51项正在执行，不能沿用两轮47绿色。已正常合并main4202d33恢复指针，双方独有结果与当前计划保留，后续仅文档变化，应用/测试仍e4ea4cb1。31根检查待本次提交复核，R8/确切包/新Release未执行。
+
+
+## 0.5.2核心最终组合51项通过，准备一次主线R8
+
+固定应用e4ea4cb1a4da92fb0c495c4a28986c4282189f4d /CI41110662240，build124251916316/device124253588193成功。51项50通过/1 SourceLoginLiveTest真实登录条件跳过，103.810秒。持续SessionPlayer的真实EQ/交接/媒体通知采样/合法失焦/Stop、原子歌词缓存与译文/暂停行定位/返回、三个队列恢复检查在同一轮通过。32 JVM及本地应用/设备包24秒、31仓库检查通过。
+
+设备artifact13003099676 ZIP SHA256a3820db126bdccc90cbea1177214238a1866ef7b888937a66f0fe4de5e0c8693已下载核对，source_commit完整匹配e4ea4cb1，instrumentation=passed、release_start=not_requested。fast APK SHA25686231f2438a1927e8dca2c450a85bcea6bc5e9aed43bcb8d2b73b2fcfacd49ad；测试APK b3fb782fee290cabc0ceb30992b001332f53e66fb025007a571591d34b085d95。已实际查看visual-check/player-rust-playing.png、player-rust-paused.png和layout-check/portrait-2.0.png，人物完整、闭眼/睁眼与主题文字在这些静态图中无新明显错位；字符/字体资产未改，不称逐帧/长时/实机听感验收。
+
+c83f0ae已正常合入main4202d33恢复指针，应用/测试与e4ea4cb1相同；后续记录仍仅文档变化。旧0.5.1 main493a9a0失败与b012298e整轮EQ失败完整保留，未将其写成通过；不宣称所有历史SystemUI Stop根因穷尽。下一步以预期head正常合入最新main→普通/自用R8与独立51项/冷启动→原始universal确切包双引擎跨应用→0.5.2 Release归档，尚未执行的新门槛不提前算成功。
