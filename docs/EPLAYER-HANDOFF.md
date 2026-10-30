@@ -1,6 +1,16 @@
 # ePlayer 转移交接
 
-## 当前恢复入口：0.5.1主线回归失败，禁止发布
+## 当前恢复入口：主线失败阻断发布，PR20/PR21候选继续
+
+- 主线应用493a9a0 /CI41104525573仍45通过/1 EQ系统Stop失败/1登录跳过，93.272秒；R8两版构建通过，但冷启动/确切包未执行，未发布0.5.1。
+- [PR20 会话连续性](https://github.com/SturgeonIsSleepy/codex-source/pull/20)：eadde4bc487ddccd82205e63e87276d9102c326b /[CI41108013086](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41108013086)，用一个持续公开的SessionPlayer替换临时交接Player/反复session.setPlayer；28 JVM/本地构建/31仓库检查通过，47项设备进行中，不能称根因已修复。
+- [PR18 歌词核心](https://github.com/SturgeonIsSleepy/codex-source/pull/18)：最终9b76ed3 /CI41105793719通过48项（47通过/1登录跳过，107.921秒），32 JVM通过，R8未执行；e364f5c仅保存文档。保持独立，不用其绿色覆盖主线失败。
+- [PR21 队列恢复](https://github.com/SturgeonIsSleepy/codex-source/pull/21)：修复前3b9641e /CI41106489854，50项46通过/3失败/1跳过（103.480秒），两个新增真实断言复现错曲/继承错误位置，另一个为已知EQ Stop。修复候选b012298e709c842000a31d400f0230d954e7be19保留原索引并新增尾部缺失回归，32 JVM/本地构建通过，51项待执行；与PR20独立。早期测试album漏填编译失败已更正，不计功能红色。
+- [PR19 媒体日志](https://github.com/SturgeonIsSleepy/codex-source/pull/19)：149c5227e /CI41107199704仅扩充只读SystemUI缓冲，应用代码不改；47项46通过/1跳过（79.036秒），本轮未复现Stop。artifact13002716783已校验，缓冲看到非用户触发移除，但不能借正常清理认定失败根因。PR21另在EQ失败当下抓媒体缓冲，固定断言结果后再取证，不延长等待或改系统设置。
+
+恢复顺序：先取得PR20与PR21真实结果、核对失败瞬间SystemUI移除记录；稳定核心后正常汇合各分支，按最终源码做一次主线R8/完整回归→确切原包双引擎跨应用→相应Release。尚无新公开APK，0.3.2不改。本地[PR17](https://github.com/SturgeonIsSleepy/codex-source/pull/17)界面/模块/签名/登录不覆盖，Android Cloud固定入口和无关项目不动。
+
+### 主线失败原记录
 
 [主线CI41104525573](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41104525573)普通/自用R8构建通过，但47项45通过/1 EQ启动失败/1登录跳过（93.272秒）。18:22:05.171原始SystemUI发出Stop，原生被停止在80ms；三轮交接断言本轮通过，说明消除人为PAUSED仍不足以解决全部停止问题。R8冷启动未执行，确切新包检查/Release未执行；不重跑同源码凑绿色、不屏蔽真实Stop。设备artifact13000628932已下载核对8e5e8b1903c478430dd1ef10a789bc014a950d7f6c2efe28eabfd6396ca9369d。
 
