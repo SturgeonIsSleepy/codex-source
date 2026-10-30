@@ -441,3 +441,12 @@ FlickPlayer去掉awaitingNativeStart附加标志，以已有用户意图统一�
 设备artifact12849017358 ZIP SHA256166c59466afc2ceabca47b02b2b68bc64d7f5e121cfa0f0f7737fae17308d1ab已下载核对。实际查看layout-check/navigation-home.png、lyrics-full-page.png、portrait-2.0.png和visual-check/player-rust-playing.png、player-rust-paused.png，完整人物/闭眼播放/睁眼暂停在静态图中无明显头帽/手错位；素材/字体未改。构建artifact12849616973 ZIP SHA25633f7deb7627e2b3c7e6b60a5451e5973103f2677e0e960f38490fb891c55a6a8未下载，不计为确切R8交付。
 
 build.json明确instrumentation=passed、release_start=not_requested；媒体续播设置为字符串null，未改OS设置，不能解释为关闭。不宣称所有历史SystemUI Stop根因穷尽，真实Stop未过滤。1070706仅合主线交接文档，应用与8dbc4d6相同。28 JVM、本地构建16秒和31根检查通过；主线普通/自用R8及独立47项、确切通用包跨应用、Release待执行。无新增实机/真实账号写入/声学听感结果。
+
+
+## 2026-10-30：0.5.2歌词核心拆分（设备待执行）
+
+以已合入main493a9a0为父，在agent/eplayer-lyrics-core独立开发，不改变冻结的0.5.1交付。LyricParser/TimedLine/LyricsText从Compose文件移入core/lyrics；LyricsRepository接收目录与suspend加载器，只负责数据缓存，不依赖Android Context、SourceStore、ViewModel或Compose。app/LyricsLoader保留原lyric/new请求和lrc/tlyric映射，缓存SHA键/JSON兼容。
+
+缓存以请求独占半文件和同目录ATOMIC_MOVE/REPLACE_EXISTING发布，finally只清自己的半文件；加载器吞掉取消也不能继续发布，损坏/缺字段缓存重新获取。4项新JVM测试覆盖离线跨实例、并发加载及完整JSON、取消、损坏数据/无歌词不缓存；原6项解析测试移包保留。Android新增UUID独占目录检查实际原子替换/离线读/坏缓存恢复，不碰用户歌词或源模块。
+
+最终本地32 JVM全部通过，debug应用/设备包构建24秒通过，31仓库检查通过。预计完整设备48项，尚未执行；没有新截图、R8、实机、账号或声学验收结果。0.5.1主线CI41104525573独立继续，不能用新分支结果替换它。

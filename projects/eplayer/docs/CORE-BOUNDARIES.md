@@ -12,7 +12,7 @@ PR16正常汇合PR11/PR14/PR15，以下描述实际调用边界；8dbc4d6组合4
 | 播放缓存 | PlaybackCache、DataSourceFactoryProvider、StreamProxy | 进程所有、远端首次open懒加载；本地/content直读。取消只清自己未完成文件，不能release仍被数据源引用的Cache或删用户曲库 |
 | 音乐源/账号 | provider、SourceStore、SourceAccount、MusicRepository | 0.4协议/云端曲库/评论/写操作路径保留；真实账号写入未由云端验收，不复制模块或凭据。服务对app.SourceStore的引用是数据层，不是Compose依赖 |
 | 曲库/队列/下载 | LibraryStore、QueueStore、Downloads、DownloadRegistry | 导入和默认双曲并存，Source/remoteId/质量/断点保留；后台下载由系统持有。QueueStore仍在app包，可后续移动数据接口，不能因为包名就删除 |
-| 歌词 | LyricsRepository、LyricParser、LyricsScreen（暂同Lyrics.kt） | 缓存/解析/全屏呈现已接通，译文与真实会话12秒点行流程已分项验收；下一阶段可按数据/呈现拆文件，不把未提供真实源等价当作已通过 |
+| 歌词 | core/lyrics的LyricsRepository/LyricParser、app/LyricsLoader与LyricsScreen | 缓存/解析/全屏呈现已接通，译文与真实会话12秒点行流程已分项验收；0.5.2已拆数据/解析/呈现，缓存以唯一半文件原子发布；Android文件系统检查待执行，不把未提供真实源等价当作已通过 |
 | 页面/状态投影 | EPlayerApp、EPlayerViewModel、CloudViewModel、MusicComponents | 自有首页/二级推荐/曲库/设置/歌词；不直接JNI、不另持队列，主题主色来自MaterialTheme，原Medium中日字体保留 |
 | 角色 | ui/artwork、EnergyAudioProcessor、MusicPulse | 共同人物/眼睛/手/发底图，实时PCM能量、阻尼运动；不逐脸换图、不增加录音权限，不删除人物/字体来减包 |
 

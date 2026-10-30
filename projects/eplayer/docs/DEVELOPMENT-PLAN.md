@@ -1,5 +1,11 @@
 # ePlayer 当前实施计划
 
+## 0.5.2独立歌词核心阶段
+
+0.5.1已正常合入main493a9a0，CI41104525573进行普通/自用R8与独立47项；其交付源码冻结。当前agent/eplayer-lyrics-core继续0.5.2：先拆分纯歌词解析/模型、缓存与Android/source适配，再验证缓存并发/取消/非法数据和实际Android原子替换，最后用完整48项检查旧歌词译文/定位/会话流程。当前本地结果另见验证索引；未取得新设备结果，不合并到0.5.1交付。
+
+## 0.5.1交付门槛（继续执行）
+
 当前分支 `agent/eplayer-050-core-integration` / [PR #16](https://github.com/SturgeonIsSleepy/codex-source/pull/16)，开发版 **0.5.1，未发布**。主线合入前为21bd595，公开[0.3.2 Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.2)及原始APK保持固定。本文是恢复入口；不从历史“待执行”段落判断当前状态。
 
 ## 已接续的功能与依赖
