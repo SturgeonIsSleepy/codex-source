@@ -1,91 +1,41 @@
 # ePlayer 当前实施计划
 
-## 当前产品修复：补齐Media3媒体按键恢复入口
+## 当前源码与阻断
 
-实际1.10.0实现MediaLibrarySessionImpl对SystemUI EXTRA_RECENT先检查canResumePlaybackOnStart；MediaSessionLegacyStub仅在找到MEDIA_BUTTON广播接收器时返回true。原清单无该接收器，故服务可见仍被拒绝。补标准androidx.media3.session.MediaButtonReceiver声明，不增加自定义接收器/权限/队列。三参数onPlaybackResumption按isForPlayback区分：浏览仅返回规范化可播放最近项，显式恢复保留实际完整队列/位置；两者都不直接prepare或play。
+主线应用0.5.2/c17dc4a的CI41112575118：两版R8构建通过；独立51项49通过/1 EQ系统Stop失败/1真实登录跳过，106.585秒。冷启动、确切原始APK检查和Release阻断，不发布该失败包。0.3.2仍是公开预览，附件不覆盖。
 
-传统浏览测试增加接收器发现断言，构造已移主线程；显式恢复测试先pause再stop/清空，因为ExoPlayer.stop按API保留playWhenReady，旧assertFalse不是正确前置条件。仍要求先真实播放、再主动恢复且双引擎进度/音频输出通过，未放宽时限。补MediaBrowser/MediaSessionImpl/legacy固定日志标签，避免只记录上层“Cannot resume”而丢具体错误。本地33 JVM/应用及设备包初轮14秒通过，最终测试增量待完成；设备/R8/确切包/Release仍未通过。
+当前开发PR24/agent/eplayer-media-resumption，0.5.5产品cbe699fca5e17f278bd034f0096443a01cf0506c，包含PR23数据边界。正在正常合并main b0220c9文档；人物、Medium中日字体、普通Android路由、源/下载/队列/歌词/DSP不删，USB独占桥接不恢复。PR17本地界面/模块/签名/登录不覆盖，Android Cloud固定入口不改。
 
-## 当前断点：53项失败保留，先修测试线程并继续定位系统停止
+## 本阶段实际改动
 
-3914ba6 /CI41118331969实际53项49通过/3失败/1真实登录跳过：EQ被系统停止、传统MediaBrowser在无Looper测试线程构造、显式恢复夹具未先建立实际播放。设备artifact13006654026已校验SHA256dcabfd2a867d8a8ab2b2e1d14c894af4ea837690244fe575e06264b393b6e3f6。MediaBrowser已被SystemUI发现并尝试连接，但失败快照仍resumeAction=null，不称恢复契约或历史停止已解决。
+- core/library接收Track、曲库与最近播放；core/queue保存队列，原JSON/偏好键/URI不变，精确Gson规则同步；TrackSchemaTest验证旧字面JSON往返。
+- 同一MusicService升级MediaLibraryService/MediaLibrarySession，保留组件/旧action/唯一SessionPlayer，onConnect仅接受同UID或平台可信控制器。
+- RecentMediaCatalog只读当前曲或已有历史，输出可浏览根/可播放子项；不prepare、不联网、不自启音频。Media3三参数onPlaybackResumption区分只读查询和主动播放，后者保留实际完整队列/位置。
+- Media3 1.10实际实现对SystemUI最近浏览要求canResumePlaybackOnStart；该值依赖MEDIA_BUTTON广播接收器。已补标准MediaButtonReceiver，避免可发现服务仍拒绝恢复；不增加自定义接收器/权限/第二队列。
+- 传统浏览测试在主线程构造Android MediaBrowser，验证发现导出服务/媒体按键接收器、连接EXTRA_RECENT、可播放子项及不自启音频。主动恢复测试先真实播放，再明确pause/stop/清空并主动Play，双引擎必须获得真实进度和AudioManager活动输出。ExoPlayer.stop按API保留playWhenReady，不能拿它冒充pause。
+- 固定只读日志补MediaBrowser/MediaSessionImpl/legacy标签，保留原真实Stop/失焦、超时、断言及失败瞬间取证，不按来源屏蔽Stop、不改系统媒体设置。
 
-14ee342只修正实际播放前置条件，其CI41119090920待结果；本次把传统MediaBrowser构造也移到Android主线程，连接/订阅本来已在主线程。产品代码未变，全部断言和原时限保持。本地33 JVM及应用/设备包16秒通过，先跑修正后53项，再根据真实连接日志修产品；R8/确切包/Release继续阻断。
+## 可复核结果
 
-## 0.5.5当前候选：恢复浏览已接入，53项待验收
-
-修复前098e2501 /CI41116950332真实52项50通过/1浏览服务发现失败/1登录跳过（109.592秒），EQ该轮通过，不称停止根因解决。artifact13007535717已校验12d6cd11b395dbb747d694aed695b529f6cb40aa3515dfb43ca9a58d48f42846。
-
-候选将原MusicService组件提升为MediaLibraryService/MediaLibrarySession，保留旧action并声明传统浏览和Library入口；只接受本UID/平台可信控制器。RecentMediaCatalog只读当前曲/最近历史，输出可播放元数据，不持新队列、不prepare/不联网；只有显式Play的onPlaybackResumption才交还实际队列/位置或最近项。原SessionPlayer、普通系统路由、真实失焦/Stop保持，系统设置不改。同步记录MediaBrowser日志。
-
-新增双引擎显式Play在清空队列后恢复真实30秒合成音频进度/AudioManager输出检查，与原浏览不自动播放分开；预计最终53项。33 JVM/主程序和设备包首轮23秒、追加检查增量6秒通过；设备/R8未执行。先取得红绿与SysUI恢复Action证据，再正常汇合main最新恢复记录，以最终0.5.5执行一次R8/完整设备/确切原包/Release，不继续重复未改的失败0.5.2。
-
-
-## 当前0.5.5恢复浏览契约：先取得真实红色
-
-agent/eplayer-media-resumption从已通过数据边界32479af接续。main c17dc4a /CI41112575118独立51项再次49通过/1 EQ失败/1登录跳过（106.585秒）；两版R8构建成功但冷启动/确切包阻断，0.5.2不发布。即时快照useMediaResumption=true、hasCheckedForResume=true而resumeAction=null；服务未声明传统MediaBrowserService且exported=false。
-
-先只增加RecentBrowserTest：按SystemUI的传统接口发现导出服务、连接EXTRA_RECENT、读取当前可播放子项，验证浏览不prepare/不联网/不自动播放；保持旧服务产品代码，预计52项设备取得缺失契约的真实红色。再接MediaLibraryService/最近项/显式恢复并只接受同UID或平台可信控制器，保留原服务组件和普通路由、真实Stop/失焦，不屏蔽来源。是否解决全部历史移除必须看实际SysUI和组合/主线结果。
-
-33 JVM及旧数据边界51项通过只属于04d60ce；此新52项与新R8均未执行，不沿用旧绿色。原候选失败和0.3.2 Release保持。
-
-
-## 独立下一阶段：0.5.4数据边界
-
-agent/eplayer-data-boundaries从main639a19dc接续，冻结应用0.5.2/c17dc4a的R8/交付继续，不混入该发布。0.5.3留给本地PR17，不覆盖其界面或模块签名登录。
-
-已实际梳理：旧app/LibraryStore.kt同时持有Track模型、MediaStore/导入、队列异步持久化、最近播放；服务经app反向引用队列/历史。当前拆为core/library的Track/LibraryStore/RecentStore和core/queue的QueueStore；服务直接引用核心，UI/源协议/下载只导入数据类型，无兼容转发类、第二队列或重复写盘。SourceStore/ListeningStats仍为后续边界，不声称完全解耦。
-
-JSON字段、偏好键、文件名、FileProvider URI/source/remoteId和恢复算法保持；同步移动精确R8规则，新增旧版字面JSON兼容检查。33 JVM/应用及设备包34秒、31根检查通过；本阶段CI41113754192的51项50通过/1真实登录跳过（103.113秒），R8未执行，不能用0.5.2通过记录代替。
-
-实施顺序：推送独立51项→主线0.5.2 R8/原始确切包/Release完成后，再正常合入这阶段并验证对应R8/旧JSON/真实导入/队列/后台。后续继续SourceStore数据接口、淡入淡出、安全缓存和原生Trace真实三ABI验证；不先删除未恢复的功能。以下保留0.5.2冻结交付门槛。
-
-
-## 最新主线R8门槛
-
-PR22已正常合入main c17dc4a165702391b99d624ad281236bcc46240f；CI41112575118正在执行一次普通/自用R8、独立51项和普通R8冷启动。尚未取得结果，不把已通过分支组合e4ea4cb1 /CI41110662240（50通过/1登录跳过，103.810秒）算作主线通过。应用/测试未变，后续正常提交只有恢复记录。
-
-继续顺序：此轮主线通过→提取确切原始universal并核对SHA/版本/签名/三ABI→双引擎跨应用真实导入/暂停定位/后台/通知返回→0.5.2 Release及新红绿证据归档。0.5.1失败包不发布，不改Android Cloud固定入口/角色字体/本地PR17模块签名账号。完成交付后继续数据边界、淡入淡出、安全缓存和真实原生Trace三ABI优化，不能因小阶段完成停止。
-
-
-## 当前恢复：0.5.2核心组合
-
-分支agent/eplayer-052-core-integration /[PR22](https://github.com/SturgeonIsSleepy/codex-source/pull/22)，固定应用e4ea4cb1a4da92fb0c495c4a28986c4282189f4d /CI41110662240已通过完整51项，50通过/1登录跳过（103.810秒）；以四个父历史保存队列b012298e、会话2c3f77d、歌词文档e364f5c与主线d9dc2dad。本地最终32 JVM、应用与设备包构建24秒和31仓库检查通过；当前最终组合51项50通过/1登录跳过（CI41110662240，103.810秒）；普通/自用R8、原始确切通用包与Release尚未执行。0.5.1失败主线不发布、不再重复为同一失败源码重建R8；后续统一交付最终0.5.2。
-
-## 代码与边界
-
-- 服务维持唯一公开SessionPlayer，Media3 ForwardingSimpleBasePlayer负责标准命令转发；只切实际引擎delegate，不另持队列/解码器/输出。旧delegate解除监听后释放输出/焦点，再激活新delegate，短期保持原请求/BUFFERING；真实Stop与永久失焦仍正常处理。
-- 歌词模型/解析与注入式缓存位于core/lyrics，Android/source适配保留LyricsLoader；JSON键/缓存键兼容。唯一半文件原子替换，取消不发布，坏缓存重新获取，R8保留精确Gson边界。
-- QueueStore恢复保留原始索引；过滤前项不换当前曲，当前缺失则后继/末尾有效曲从零开始，无prepare/自动联网。没有新建第二队列。
-- PR11/PR14已保留的源/账号/库/下载/队列/歌词译文、首页/独立曲库/最右设置/质量流程及12旧文件/UI依赖删除不回退。原人物/眼睛/手/发/帽共同素材与Medium中日字体保持，普通Android路由保持、USB独占桥接不恢复。
-
-## 可复核结果（不得用分项代替组合）
-
-| 源码/CI | 实际结果 |
+| 源码 / CI | 实际结果 |
 | --- | --- |
-| main493a9a0 /41104525573 | R8两版构建通过；47项45通过/1 EQ系统Stop失败/1登录跳过，93.272秒；R8冷启动因前置失败未执行 |
-| eadde4bc /41108013086 | 持续SessionPlayer现有47项46通过/1登录跳过，92.607秒；28 JVM通过；强化通知采样尚未覆盖 |
-| 2c3f77d /41110061129 | 强化47项46通过/1跳过，115.051秒；三轮真实通知/框架/合法失焦/Stop通过，28 JVM与本地构建通过 |
-| e1eb7fe /41109753203 | 旧应用同一通知观测47项46通过/1跳过，88.435秒；本轮未复现，不能认定触发原因红绿 |
-| 9b76ed3 /41105793719 | 歌词48项47通过/1登录跳过，107.921秒；32 JVM通过，R8未执行 |
-| 3b9641e /41106489854 | 修复前50项46通过/3失败/1跳过，103.480秒；两个队列断言及EQ停止失败 |
-| b012298e /41108850985 | 修复后51项49通过/1 EQ失败/1跳过，110.748秒；原两个队列检查与新增尾部缺失均通过 |
-| 149c5227e /41107199704 | 纯媒体日志基线47项46通过/1跳过，79.036秒；旧应用本轮未复现Stop，不算修复 |
+| 数据边界04d60ce /41113754192 | 33 JVM与构建通过；51项50通过/1登录跳过，103.113秒；R8未请求 |
+| 浏览修复前098e2501 /41116950332 | 52项50通过/1导出浏览服务发现失败/1登录跳过，109.592秒；EQ本轮通过不代表历史停止已修复 |
+| 初次产品3914ba6 /41118331969 | 53项49通过/3失败/1登录跳过，118.318秒；EQ系统Stop、MediaBrowser构造线程、恢复前置状态失败；artifact13006654026 SHA256已核对dcabfd2a867d8a8ab2b2e1d14c894af4ea837690244fe575e06264b393b6e3f6 |
+| 夹具14ee342 /41119090920 | 构建通过、设备失败；日志和artifact下载接口内部错误，具体项数尚未取得，不推测通过范围 |
+| 线程修正1d18d3b /41120075599 | 本地33 JVM/构建16秒通过；远端构建与设备待结果 |
+| 接收器/查询修正cbe699f | 本地33 JVM及应用/设备包14秒、最终增量2秒、31仓库测试通过；远端待结果，R8/确切包/Release未执行 |
 
-即时媒体快照已将非用户移除→SystemUI Stop→原生停止对齐，但未穷尽触发状态。通知采样只在真实通知已存在后的播放交接区间每5ms读取本应用通知，不改权限/系统媒体设置；合法失焦/Stop前结束观察。EQ失败先固定原断言结果/时限，再只读媒体缓冲，不重试凑绿。
+3914失败现场已确认SystemUI发现并尝试连接服务，但resumeAction仍null。实际补齐接收器是否解决全部停止原因，必须看新设备/SysUI恢复动作及正常Stop结果，不能提前认定。所有红绿、跳过、未执行保留在[验证索引](VALIDATION-2026-10-25.md)；集成前完整规划归入[历史](history/DEVELOPMENT-STAGES-2026-10-30.md)，不从其中旧“待执行”继续。
 
-## 实施顺序
+## 接续顺序
 
-1. 已完成最终32 JVM/本地构建和51项组合（50通过/1登录跳过，103.810秒）；artifact13003099676已核对a3820db126bdccc90cbea1177214238a1866ef7b888937a66f0fe4de5e0c8693。已查看播放/暂停/2倍字体完整人物，来源/歌词/队列新检查同时通过；历史失败仍保留，不宣称所有根因穷尽。
-2. 最终组合通过后，正常合入最新main（保留他人更改、无强推），只执行一次该最终源码普通/自用R8、完整51项和普通R8冷启动；不与同机慢速模拟器争资源，不反复完整speed预编译。
-3. 从成功main CI提取未经重签/打包的universal APK，实际核对SHA/版本/证书/三ABI。相同字节执行双引擎系统文件选择器导入、播放/暂停/12秒定位、Home后台进度、实际通知点击返回；静态签名不是播放通过。
-4. 通过后用既有发布门禁创建0.5.2预览Release，归档APK/原生库/新成功与失败artifact/无artifact的失败job原始日志及摘要收据。源码/规划/变更/截图索引进Git，不上传模块/密钥/凭据/SDK/AVD/缓存/用户录音，不覆盖0.3.2。
-5. 继续核心精简与能力恢复：逐步抽离Track/QueueStore/SourceStore数据边界，设计单会话淡入淡出与安全缓存入口。原生Trace热路径须真正重编三ABI并验证后才声称改善；角色保持共同底图与真实PCM能量，不逐脸换帧或堆补丁。
+1. 取得最终53项真实结果及MediaBrowser/SystemUI恢复Action证据；失败先检查具体回调/元数据/原始Stop时序，修产品或有证据的夹具错误，不重跑同源码凑绿色。
+2. 通过后正常汇合主线，执行最终版本一次普通/自用R8、完整设备与R8冷启动；不能借旧分支绿色代替主线。
+3. 提取未经重签/重打包的原始universal APK，核对版本/证书/SHA/三ABI，再执行双引擎跨应用文件选择器导入、播放/暂停、12秒定位、后台与实际通知点击返回；检查全页视觉证据。
+4. 所有门槛真实通过才按最终版本发布Release，归档APK/原生库/红绿日志/截图索引/已知缺口；不把产物写入Git，0.3.2资产不动。
+5. 持续推进SourceStore协议数据接口、ListeningStats边界、淡入淡出与安全缓存入口，以及原生Trace真实三ABI构建验证。先梳理依赖再迁移，保留完整能力；不恢复无人调用的旧双播放器。
 
-## 约束与后续恢复
+## 未完成与验证边界
 
-projects/eplayer为主线，witch-player仅参考，Android Cloud固定入口和无关项目不改。保留默认双曲/导入，不附未提供的录音。测试只用合成音频与UUID专用偏好/缓存/loopback。实机路由/听感、真实账号写入、既有模块/登录和固定本地签名仍由本地开发者负责，不用CI临时签名覆盖自用版。PR17界面成果未合入，不覆盖其源码或签名。
-
-淡入淡出、安全缓存入口、长时稳定性/逐帧动画、物理路由和真实账号写入仍有缺口。核心素材未改，不以静态截图称实机验收完成。每天北京时间02:00任务既已配置，不重复创建；平台资源/时长/额度允许则继续，遇真实限制先保存具体断点。
-
-[完整验证索引](VALIDATION-2026-10-25.md)、[当前核心边界](CORE-BOUNDARIES.md)、[本日各阶段规划原文](history/DEVELOPMENT-STAGES-2026-10-30.md)、[更早规划](history/DEVELOPMENT-THROUGH-2026-10-28.md)保留真实失败、未执行与独立交付边界。历史通过不能替代当前源码。
+当前新版R8、确切原包和Release未执行；设备53项尚未通过。实机/耳机/音质/长时/真实账号写入尚未验收，不把合成WAV或模拟器AudioManager当实机听感。原生库沿用已校验0.1.0，没有本轮Rust重建或Trace优化通过证据。Crossfade与安全缓存管理入口仍有缺口。角色素材未改；已往轮检查的静态截图不代表新版本逐帧动画验收。

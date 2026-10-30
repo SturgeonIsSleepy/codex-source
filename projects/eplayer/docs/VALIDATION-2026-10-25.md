@@ -575,3 +575,20 @@ agent/eplayer-media-resumption从数据边界32479af开0.5.5。RecentBrowserTest
 
 
 显式恢复夹具补强：两引擎均先让30秒合成WAV真正推进且AudioManager输出激活，再停止/清空，随后显式Play并再次要求真实进度/输出。避免把尚未实际播放、其RecentStore过渡事件可能被合并的队列项当成“最近播放”。共用同一等待 helper，不延长15秒期限、不重试失败；产品代码与3914ba6相同，53项设备待执行。
+
+## 0.5.2主线独立失败：恢复浏览契约缺口已确认，发布继续阻断
+
+c17dc4a165702391b99d624ad281236bcc46240f /CI41112575118：build124258420042普通/自用R8成功（8分28秒），device124264682607为51项49通过/1 LiveEqualizer失败/1登录跳过，106.585秒。不是SDK离线准备失败；前期adb离线属于开机等待，实际51项已运行。普通R8冷启动因仪表失败未执行，原始包跨应用未执行，未发布0.5.2。
+
+设备artifact13004693255 ZIP SHA25621fa42fb93ac61bd1ec63d6059f1793f6094e9cf6d16c9015abe2bb77feac283已核对。即时system-media-check/equalizer-1e9959c6-d640-4abc-a9af-62e81b24264a.txt对齐19:24:26.078非用户移除、26.084原始SystemUI Stop、26.088原生Stop，position1100ms；useMediaResumption=true/hasCheckedForResume=true/resumeAction=null。源Manifest未声明android.media.browse.MediaBrowserService且MusicService exported=false，明确缺少SystemUI所查的恢复入口。补齐MediaLibraryService/最近项浏览与显式恢复的效果仍需红绿与正常Stop验证，不直接断言穷尽根因。
+
+已下载构建artifact13004232952并核对ZIP SHA2567ca7909c2d001698accf5e54027897c1ebdb276d39d924b30dbba57407d010ba。原始通用APK44,773,259字节，0.5.2/code164，SHA2565c259827cafff31d2d8c933e2cc449d66a9e3aa04a803bcd0d77cbf431d6eaac；证书bc19ace988ec3ff6381851c4699039ebd137a2f6819880e2d7f1aa91514dc5bf，V2有效，min28/target36、三ABI。静态签名不是播放验收；准备的blackbox manifest只在Git外，未用失败main触发确切包门禁。GitHub步骤字段曾前后不一致，按完成日志确认实际R8构建成功，未把步骤滞后误计失败或重跑。
+
+
+## 0.5.5第一轮真实失败与接收器修正
+
+3914ba6 /[CI41118331969](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41118331969)：53项49通过/3失败/1真实登录跳过，118.318秒。EQ被系统Stop，传统浏览构造发生在无Looper测试线程，显式恢复前置assertFalse与Exo.stop保留playWhenReady语义不符。设备artifact13006654026 ZIP SHA256dcabfd2a867d8a8ab2b2e1d14c894af4ea837690244fe575e06264b393b6e3f6已下载校验；SystemUI发现并连接服务，但resumeAction仍null。截图可用不代表整轮通过；本轮未修改图像或字体。
+
+14ee342 /CI41119090920构建通过/设备失败，artifact13007288524服务端digest dcfba0fd5fd1a1e18be61fd2e666497acf92922909445372d903e15c77be0590；下载与原始job日志接口返回内部错误，未核验ZIP或取得项数。1d18d3b只修主线程构造，不能代替后续产品候选。
+
+cbe699f补标准MediaButtonReceiver：实际Media3 1.10的canResumePlaybackOnStart依赖Manifest接收器，因此此前SystemUI EXTRA_RECENT在到达自定义浏览前已被拒绝。三参数恢复回调按isForPlayback规范化只读最近项/保留主动恢复队列，固定日志增加MediaBrowser/legacy/MediaSessionImpl。测试先实际播放，再pause/stop/清空/主动Play，不放宽时限或输出要求。33 JVM及应用/设备包14秒、最终增量2秒、31仓库测试通过。远端53项/R8/确切原包/Release待真实结果，未宣称Stop根因解决。
