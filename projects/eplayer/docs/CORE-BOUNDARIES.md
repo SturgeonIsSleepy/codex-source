@@ -1,5 +1,11 @@
 # 核心边界与能力核对
 
+## 0.5.6存储维护候选
+
+PlaybackCache持有唯一进程缓存，新增IO线程上的size/clear；clear通过Cache.removeResource逐项移除当前资源，保留读句柄和活跃缓存，不release/重建缓存或递归删目录。StorageSettings只做异步操作与状态呈现，不持有解码器、源、账号或第二套缓存。原生解码临时文件仍由原播放任务管理，不归此入口删除。缓存上限保持原256 MiB，容量格式由系统本地化。
+
+增加真实SimpleCache/磁盘/读流回归与真实设置入口检查：前者仅使用UUID独立目录并在清理后继续写入/重开验证，后者只查看缓存而不清理用户数据。当前编译通过不算设备行为已验收，最终结果看实施计划。
+
 ## 下载持久化独立于呈现
 
 Downloads/DownloadRecord/DownloadProgress移至core/download，EPlayerViewModel仅调用并展示状态；DownloadsStatus仍留在app做进度/重试/取消呈现。实际下载仍由Android DownloadManager持有，没有新增后台轮询服务。保留eplayer_downloads/jobs、来源+远端ID键、UUID下载目标、成功后LibraryStore原子导入/移除系统副本和失败重试/取消语义。唯一DownloadRecord的R8精确保留规则同步更新；真实DownloadManager的404→重试→文件保存→取消检查也移到相同核心测试包，未删除检查或更改超时。最终R8/设备结果待取得。

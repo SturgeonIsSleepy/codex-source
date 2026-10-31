@@ -1,5 +1,13 @@
 # ePlayer 转移交接
 
+## 最新：主线0.5.5已合入，最终R8在途；独立0.5.6存储阶段
+
+PR25已正常合入main1e83505a406ffd84ab5ccbfb3a7f325dbe282906，AndroidCloud17和固定入口不变。组合3c3ff189 /CI41235777918已68项67通过/1真实登录跳过（113.354秒），52 JVM和33仓库检查通过。只读浏览清理后的显式双引擎恢复实际执行，CI拒绝额外跳过。[主线最终CI41236539316](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41236539316)运行一次普通/自用R8、68项和R8冷启动；确切未重签原包跨应用与新Release尚未执行，不沿用旧0.5.2失败或0f398714额外跳过作通过。
+
+当前agent/eplayer-cache-management为独立0.5.6候选，增加设置的存储空间与共享缓存安全清理。只用Cache API，不释放活跃缓存/递归删除用户目录，原生临时解码文件仍由播放所有者管理；真实磁盘/打开读流/重新写入及设置返回检查已加入，预计70设备项尚未执行。52 JVM/应用与设备包版本化19秒通过。主线0.5.5原包验收不包含此功能，继续按[当前计划](../projects/eplayer/docs/DEVELOPMENT-PLAN.md)分阶段推进。
+
+已确认0.3.2发布后新增的33份待归档CI证据下载可用；最终归档仍需Release完成。模块/签名/账号与私有内置音源APK不公开，旧私有包/公开0.3.2资产不覆盖。下方为保留历史断点。
+
 ## 当前恢复：PR25组合核心已推送，补队列清理与非登录跳过门槛
 
 最新产品主线仍PR25/agent/eplayer-internal-055，已正常合入main0851ab并保留AndroidCloud17及固定入口。当前[完整计划](../projects/eplayer/docs/DEVELOPMENT-PLAN.md)优先于下方历史。SourceStore归core/source、Downloads及持久化类型归core/download，只有唯一对象，原账号/模块/偏好/文件数据保持；实际协议与下载检查及精确R8规则同步。两阶段各52 JVM/应用及设备包通过，尚未取得迁移后的设备/R8结果。
