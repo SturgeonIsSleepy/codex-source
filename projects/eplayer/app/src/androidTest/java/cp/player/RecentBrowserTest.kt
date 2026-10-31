@@ -159,7 +159,12 @@ class RecentBrowserTest {
                 assertFalse("Setting an unprepared item must retain pause", current.playWhenReady)
                 assertEquals(Player.STATE_IDLE, current.playbackState)
             }
-            assertFalse("Browser fixture must not already own an audio output", context.getSystemService(AudioManager::class.java).isMusicActive)
+            // Player commands precede the native output's asynchronous shutdown. Wait only before browsing.
+            val audio = context.getSystemService(AudioManager::class.java)
+            val silentDeadline = android.os.SystemClock.elapsedRealtime() + 5000
+            while (audio.isMusicActive && android.os.SystemClock.elapsedRealtime() < silentDeadline)
+                android.os.SystemClock.sleep(25)
+            assertFalse("Browser fixture output must finish stopping before connection", audio.isMusicActive)
             val connected = CountDownLatch(1)
             val loaded = CountDownLatch(1)
             val error = AtomicReference<String?>(null)

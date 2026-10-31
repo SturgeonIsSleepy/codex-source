@@ -2,6 +2,7 @@ package cp.player.app
 
 import cp.player.core.listening.ListeningStatsStore
 
+import cp.player.manager.WitchPlaylist
 import cp.player.core.library.Track
 import cp.player.core.library.LibraryStore
 import cp.player.core.library.RecentStore
@@ -142,6 +143,18 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         _library.value = withContext(Dispatchers.IO) {
             val oldDownloads = DownloadRegistry.downloadedSongsFlow.value.mapNotNull { item -> item.filePath?.let { Track(item.song, if (it.startsWith("content:")) it else Uri.fromFile(File(it)).toString()) } }
             (catalog.imported() + oldDownloads + scanned).distinctBy { it.song.id }
+        }
+    }
+    fun witchTracks(): List<Track> = WitchPlaylist.available(app).mapNotNull { song ->
+        WitchPlaylist.uri(app, song.id)?.let { Track(song, it.toString()) }
+    }
+    fun importWitch(index: Int, uri: Uri) {
+        if (importing.value) return
+        importing.value = true
+        viewModelScope.launch {
+            try { withContext(Dispatchers.IO) { WitchPlaylist.import(app, index, uri) } }
+            catch (error: Exception) { message.value = error.message ?: "音频导入失败" }
+            finally { reloadLibrary(); importing.value = false }
         }
     }
     fun importAudio(uris: List<Uri>) {

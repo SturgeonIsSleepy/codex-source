@@ -1,5 +1,7 @@
 package cp.player.app
 
+import cp.player.manager.WitchPlaylist
+
 import cp.player.core.listening.ListeningStats
 
 import cp.player.core.library.Track
@@ -72,6 +74,10 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val lists = remember { List(3) { LazyListState() } }
     val importAudio = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments(), model::importAudio)
+    var witchTarget by rememberSaveable { mutableIntStateOf(0) }
+    val importWitch = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { model.importWitch(witchTarget, it) }
+    }
     val importSource = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let(model::importSource) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) model.scanLibrary() }
     DisposableEffect(lifecycle) {
@@ -189,6 +195,21 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                                     }
                                 }
                                 1 -> {
+                                    item { Text("魔女の旅々", style = MaterialTheme.typography.titleLarge) }
+                                    items(WitchPlaylist.songs.indices.toList(), key = { "witch-slot-$it" }) { index ->
+                                        val song = WitchPlaylist.songs[index]
+                                        val available = remember(importing, library) { model.witchTracks() }
+                                        val track = available.find { it.song.id == song.id }
+                                        SongRow(Track(song), state.song?.id == song.id, {
+                                            if (track == null) { witchTarget = index; importWitch.launch(arrayOf("audio/*")) }
+                                            else { model.play(track, available); onShowPlayer(true) }
+                                        }) {
+                                            TextButton(enabled = !importing, onClick = { witchTarget = index; importWitch.launch(arrayOf("audio/*")) }) {
+                                                Text(if (track == null) "导入" else "更换")
+                                            }
+                                        }
+                                    }
+                                    item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
                                     item { Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text("本地音乐", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
                                         TextButton(onClick = { permission.launch(if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE) }) { Text("扫描") }

@@ -5,10 +5,16 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.core.content.FileProvider
 import java.io.File
+import cp.player.model.Song
 
-/** Compatibility for explicitly imported audio in older installations; no preset songs are exposed. */
+/** Default metadata and user-imported recordings; no audio or screenshot cover is bundled. */
 object WitchPlaylist {
-    private val legacyIds = listOf("witch_0", "witch_1")
+    val songs = listOf(
+        Song("witch_0", "灰色のサーガ", "ChouCho", album = "魔女の旅々"),
+        Song("witch_1", "リテラチュア", "上田麗奈", album = "魔女の旅々")
+    )
+    private val legacyIds = songs.map { it.id }
+    fun available(context: Context) = songs.filterIndexed { index, _ -> isImported(context, index) }
     private fun file(context: Context, index: Int) = File(context.filesDir, "witch/audio-$index")
     fun isImported(context: Context, index: Int) = file(context, index).isFile
     fun uri(context: Context, id: String): Uri? {
