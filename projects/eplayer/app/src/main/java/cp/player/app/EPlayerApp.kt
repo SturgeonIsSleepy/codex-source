@@ -69,6 +69,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     var pendingTrackDelete by remember { mutableStateOf<Track?>(null) }
     var logout by remember { mutableStateOf(false) }
     var playbackSettings by remember { mutableStateOf(false) }
+    var storageSettings by rememberSaveable { mutableStateOf(false) }
     var queueOpen by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -230,7 +231,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                         item { Text(home.account?.name ?: "账号与音源", style = MaterialTheme.typography.titleLarge) }
                         active?.let { source -> item { SourceLogin(source.id) } }
                         if (home.account != null) item { TextButton(onClick = { logout = true }) { Text("退出登录") } }
-                        item { QualitySetting(model); HorizontalDivider(); SettingsRow("播放与声音") { playbackSettings = true } }
+                        item { QualitySetting(model); HorizontalDivider(); SettingsRow("播放与声音") { playbackSettings = true }; SettingsRow("存储空间") { storageSettings = true } }
                         item { Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("音源", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
                             TextButton(onClick = { importSource.launch(arrayOf("application/zip", "application/octet-stream")) }) { Text("导入") }
@@ -263,6 +264,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     }
     if (queueOpen) QueueSheet(state, model::queueIndex, model::moveQueue, model::removeQueue, model::clearQueue) { queueOpen = false }
     if (playbackSettings) Settings(model) { playbackSettings = false }
+    if (storageSettings) StorageSettings { storageSettings = false }
     pendingDelete?.let { source -> TravelAlertDialog(onDismissRequest = { pendingDelete = null }, title = { Text("移除 ${source.name}？") },
         confirmButton = { TextButton(onClick = { model.removeSource(source); pendingDelete = null }) { Text("移除") } }, dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("取消") } }) }
     pendingTrackDelete?.let { track -> TravelAlertDialog(onDismissRequest = { pendingTrackDelete = null }, title = { Text("删除 ${track.song.name}？") },
