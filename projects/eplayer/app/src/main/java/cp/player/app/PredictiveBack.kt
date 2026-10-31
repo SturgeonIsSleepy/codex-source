@@ -43,11 +43,11 @@ internal fun PreviewBackHandler(preview: BackPreview, enabled: Boolean = true, o
                 preview.edge = event.swipeEdge
                 preview.progress.snapTo(event.progress)
             }
-            if (preview.progress.value > 0f) preview.progress.animateTo(1f, tween(90))
+            // Commit immediately: gesture progress has already supplied the exit preview.
             latestBack()
             preview.progress.snapTo(0f)
         } catch (cancelled: CancellationException) {
-            scope.launch { preview.progress.animateTo(0f, tween(180)) }
+            scope.launch { preview.progress.animateTo(0f, tween(100)) }
             throw cancelled
         }
     }
@@ -129,6 +129,7 @@ private fun PreviewWindow(preview: BackPreview) {
     val dim = .20f * (1f - preview.progress.value)
     SideEffect {
         window?.let {
+            it.setWindowAnimations(0)
             it.setDimAmount(dim)
             WindowCompat.getInsetsController(it, view).apply {
                 isAppearanceLightStatusBars = light

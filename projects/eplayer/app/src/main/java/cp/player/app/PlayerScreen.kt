@@ -41,6 +41,7 @@ import java.util.Locale
 internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state: Playback,
                           more: () -> Unit, comments: () -> Unit, close: () -> Unit) {
     val animate by model.animate.collectAsState()
+    val coverBlur by model.coverBlur.collectAsState()
     val context = LocalContext.current.applicationContext
     val backdrop = MaterialTheme.colorScheme.background
     val night = backdrop.luminance() < .3f
@@ -72,7 +73,7 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
             header = { PlayerHeader(close, openLyrics, if (state.source != null) comments else null, more) { queue = true } },
             artwork = { modifier ->
                 if (artworkGeneration == 0) Box(modifier, contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                else CharacterStage(state.song, modifier) { characterModifier -> AndroidView(
+                else CharacterStage(state.song, modifier, coverBlur) { characterModifier -> AndroidView(
                     factory = { WitchPlayerView(it) }, modifier = characterModifier,
                     update = { view ->
                         view.setAppearance(night, backdrop.toArgb(), artworkGeneration)

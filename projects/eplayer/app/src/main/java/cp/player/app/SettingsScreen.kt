@@ -74,13 +74,10 @@ internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
 
 @Composable
 private fun PlaybackSettings(model: EPlayerViewModel, engine: Int, openSound: () -> Unit) {
-    val animate by model.animate.collectAsState()
     Column(Modifier.verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("播放与休息", style = MaterialTheme.typography.titleLarge)
-        OutlinedButton(onClick = { openSound() }, modifier = Modifier.fillMaxWidth().testTag("open-sound-settings")) { Text("声音手记 · 均衡器与音效") }
+        OutlinedButton(onClick = { openSound() }, modifier = Modifier.fillMaxWidth().testTag("open-sound-settings")) { Text("均衡器与音效") }
         SleepTimerSetting(model)
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) { Text("角色动画", Modifier.weight(1f)); Switch(animate, model::setAnimate) }
         QualitySetting(model)
         listOf("系统音频", "Rust 音频").forEachIndexed { index, label ->
             Row(Modifier.fillMaxWidth().testTag("audio-engine-$index").clickable { model.setEngine(index) }, verticalAlignment = Alignment.CenterVertically) {
@@ -111,18 +108,40 @@ private fun SleepTimerSetting(model: EPlayerViewModel) {
 internal fun SleepTimerControl(remainingMinutes: Long, setMinutes: (Int) -> Unit) {
     var menu by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text("定时停止", style = MaterialTheme.typography.titleMedium)
-            Text(if (remainingMinutes > 0) "约 $remainingMinutes 分钟后暂停" else "让旅途在合适的时候歇一歇",
-                style = MaterialTheme.typography.bodySmall)
-        }
+        Text("定时停止", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
         Box {
-            TextButton(onClick = { menu = true }) { Text(if (remainingMinutes > 0) "调整" else "设置") }
+            TextButton(onClick = { menu = true }) { Text(if (remainingMinutes > 0) "$remainingMinutes 分钟" else "关闭") }
             TravelMenu(menu, { menu = false }) {
                 for (minutes in listOf(15, 30, 45, 60, 90, 120)) {
                     DropdownMenuItem(text = { Text("$minutes 分钟") }, onClick = { setMinutes(minutes); menu = false })
                 }
                 if (remainingMinutes > 0) DropdownMenuItem(text = { Text("关闭定时") }, onClick = { setMinutes(0); menu = false })
+            }
+        }
+    }
+}
+
+@Composable
+internal fun VisualSettings(model: EPlayerViewModel, close: () -> Unit) {
+    val animate by model.animate.collectAsState()
+    val stored by model.coverBlur.collectAsState()
+    var radius by remember(stored) { mutableFloatStateOf(stored) }
+    TravelDialog(close) {
+        Surface(Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 24.dp)) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("画面设置", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
+                    TextButton(onClick = close) { Text("完成") }
+                }
+                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("角色动画", Modifier.weight(1f)); Switch(animate, model::setAnimate)
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("封面模糊", Modifier.weight(1f))
+                    Text(if (radius < 1f) "关闭" else "${(radius / 24f * 100).toInt()}%")
+                }
+                Slider(radius, { radius = it }, valueRange = 0f..24f, steps = 23,
+                    onValueChangeFinished = { model.setCoverBlur(radius) }, modifier = Modifier.testTag("cover-blur"))
             }
         }
     }

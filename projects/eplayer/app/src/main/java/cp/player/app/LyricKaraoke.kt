@@ -1,5 +1,7 @@
 package cp.player.app
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -8,6 +10,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -48,10 +54,11 @@ internal fun KaraokeWords(line: TimedLine, clock: State<Long>, active: Boolean, 
         }
     }
     val precise = line.words.any { it.timed }
-    val fontSize = if (line.background) 22.sp else 31.sp
+    val fontSize = if (line.credit) 16.sp else if (line.background) 22.sp else 33.sp
     Box(modifier) {
-        Text(line.text, color = ink.copy(alpha = if (active && precise) .38f else if (active) 1f else .64f),
-            style = MaterialTheme.typography.headlineSmall.copy(fontSize = fontSize, lineHeight = if (line.background) 31.sp else 43.sp),
+        Text(line.text, color = ink.copy(alpha = if (active && precise) .28f else if (active) 1f else .48f),
+            style = MaterialTheme.typography.headlineSmall.copy(fontSize = fontSize, fontWeight = FontWeight.SemiBold, textMotion = TextMotion.Animated,
+                lineHeight = if (line.credit) 24.sp else if (line.background) 31.sp else 46.sp),
             textAlign = if (line.right) TextAlign.End else TextAlign.Start,
             modifier = Modifier.fillMaxWidth().testTag("lyric-text"), onTextLayout = { layout = it })
         if (active && precise) Canvas(Modifier.matchParentSize().testTag("karaoke-highlight")) {
@@ -91,14 +98,18 @@ internal fun InterludeDots(clock: State<Long>, start: Long, end: Long?, active: 
 @Composable
 internal fun LyricVerse(line: TimedLine, clock: State<Long>, active: Boolean, duet: Boolean,
     showTranslation: Boolean, showRomanized: Boolean, ink: Color, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth(), contentAlignment = if (line.right) Alignment.CenterEnd else Alignment.CenterStart) {
-        Column(Modifier.fillMaxWidth(if (duet) .88f else 1f)
+    val emphasis by animateFloatAsState(if (active) 1f else .96f, tween(220), label = "verse-emphasis")
+    Box(modifier.fillMaxWidth().graphicsLayer {
+        scaleX = emphasis; scaleY = emphasis
+        transformOrigin = TransformOrigin(if (line.right) 1f else 0f, .5f)
+    }, contentAlignment = if (line.right) Alignment.CenterEnd else Alignment.CenterStart) {
+        Column(Modifier.fillMaxWidth(if (duet) .86f else 1f)
             .testTag(if (line.right) "lyric-response" else "lyric-lead"),
             horizontalAlignment = if (line.right) Alignment.End else Alignment.Start) {
             if (line.instrumental || line.text.isBlank()) InterludeDots(clock, line.time, line.end, active, ink)
             else KaraokeWords(line, clock, active, ink, Modifier.fillMaxWidth())
             if (showTranslation && line.translation.isNotBlank()) Text(line.translation,
-                color = ink.copy(alpha = if (active) .86f else .62f), fontSize = 18.sp, lineHeight = 27.sp,
+                color = ink.copy(alpha = if (active) .86f else .45f), fontSize = 18.sp, lineHeight = 28.sp,
                 textAlign = if (line.right) TextAlign.End else TextAlign.Start,
                 modifier = Modifier.fillMaxWidth().padding(top = 7.dp))
             if (showRomanized && line.romanized.isNotBlank()) Text(line.romanized,

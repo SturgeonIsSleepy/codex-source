@@ -169,7 +169,7 @@ internal fun MusicDock(state: Playback, page: Int, discovery: Boolean, choose: (
 
 /** The album replaces only the old sky panel; the full character stays in front of it. */
 @Composable
-internal fun CharacterStage(song: Song?, modifier: Modifier = Modifier, portrait: @Composable (Modifier) -> Unit) {
+internal fun CharacterStage(song: Song?, modifier: Modifier = Modifier, coverBlur: Float = 6f, portrait: @Composable (Modifier) -> Unit) {
     BoxWithConstraints(modifier) {
         val scale = minOf(maxWidth.value / 865f, maxHeight.value / 1280f)
         val left = (maxWidth.value - 865f * scale) / 2f
@@ -178,7 +178,7 @@ internal fun CharacterStage(song: Song?, modifier: Modifier = Modifier, portrait
         Box(Modifier.offset(x = (left + 80f * scale).dp, y = (top + 100f * scale).dp)
             .size((705f * scale).dp).clip(RoundedCornerShape((24f * scale).dp))
             .background(MaterialTheme.colorScheme.primaryContainer).testTag("stage-cover")) {
-            TrackArtwork(song, Modifier.matchParentSize(), 512)
+            SoftStageCover(song, coverBlur, Modifier.matchParentSize())
         }
         portrait(Modifier.fillMaxSize())
         }
@@ -189,7 +189,7 @@ private data class ArtworkKey(val id: String?, val url: String?)
 
 /** Only the cover transitions; the live portrait and transport stay mounted. */
 @Composable
-private fun TrackArtwork(song: Song?, modifier: Modifier, size: Int, fallback: String? = null) {
+internal fun TrackArtwork(song: Song?, modifier: Modifier, size: Int, fallback: String? = null) {
     val context = LocalContext.current
     AnimatedContent(ArtworkKey(song?.id, songArtwork(song)), modifier = modifier,
         transitionSpec = { (fadeIn(tween(240)) + scaleIn(tween(240), initialScale = .97f)) togetherWith fadeOut(tween(160)) },

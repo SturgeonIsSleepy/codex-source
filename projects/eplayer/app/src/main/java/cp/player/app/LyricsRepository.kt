@@ -20,7 +20,8 @@ class LyricsRepository(private val context: Context) {
     companion object {
         private const val MAX_TEXT = 2_000_000
         private const val CACHE_AGE = 7L * 24 * 60 * 60 * 1000
-        private val client = OkHttpClient.Builder().callTimeout(3, TimeUnit.SECONDS)
+        private val client = OkHttpClient.Builder().connectTimeout(3, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.SECONDS).callTimeout(8, TimeUnit.SECONDS)
             .retryOnConnectionFailure(false).build()
     }
     suspend fun get(source: String, id: String, update: (LyricsText) -> Unit = {}): LyricsText = withContext(Dispatchers.IO) {
@@ -34,7 +35,7 @@ class LyricsRepository(private val context: Context) {
         val sourceFresh = cached != null && cached.cacheVersion >= 2 && now - cached.fetchedAt.takeIf { it > 0 }.orFileTime(file) < CACHE_AGE
         val communityEligible = source == "netease-cloudmusic-rs" && id.matches(Regex("[0-9]{1,20}"))
         val communityFresh = !communityEligible || (cached != null && cached.communityCheckedAt > 0 &&
-            now - cached.communityCheckedAt < if (cached.ttml.isNotBlank()) CACHE_AGE else 15 * 60 * 1000)
+            now - cached.communityCheckedAt < if (cached.ttml.isNotBlank()) CACHE_AGE else 60 * 1000)
         if (cached != null && cached.ttml.isNotBlank() && communityFresh) return@withContext cached
         if (cached != null && (sourceFresh && communityFresh || cached.cacheVersion < 2 && cached.communityCheckedAt > 0 && now - cached.communityCheckedAt < 60_000))
             return@withContext cached

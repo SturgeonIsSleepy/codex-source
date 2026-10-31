@@ -62,6 +62,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     var pendingDelete by remember { mutableStateOf<BackendProvider?>(null) }
     var pendingTrackDelete by remember { mutableStateOf<Track?>(null) }
     var logout by remember { mutableStateOf(false) }
+    var visualSettings by remember { mutableStateOf(false) }
     var playbackSettings by remember { mutableStateOf(false) }
     var queueOpen by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
@@ -102,7 +103,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
 
     var revealingBack by remember { mutableStateOf(false) }
     val revealBack: (Boolean) -> Unit = remember { { revealingBack = it } }
-    val chromeVisible = (!showPlayer && detailPages.isEmpty() && !playbackSettings) || revealingBack
+    val chromeVisible = (!showPlayer && detailPages.isEmpty() && !playbackSettings && !visualSettings) || revealingBack
     @Composable
     fun RootContents(destination: Boolean) {
         val screenPage = page
@@ -202,10 +203,10 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                     }
                     else -> {
                         item { MusicHeading("设置") }
-                        item { Text(home.account?.name ?: "账号与音源", style = MaterialTheme.typography.titleLarge) }
+                        home.account?.let { account -> item { Text(account.name, style = MaterialTheme.typography.titleLarge) } }
                         active?.let { source -> item { SourceLogin(source.id) } }
                         if (home.account != null) item { TextButton(onClick = { logout = true }) { Text("退出登录") } }
-                        item { QualitySetting(model); HorizontalDivider(); SettingsRow("播放与声音") { playbackSettings = true } }
+                        item { QualitySetting(model); HorizontalDivider(); SettingsRow("播放与声音") { playbackSettings = true }; SettingsRow("画面设置") { visualSettings = true } }
                         item { Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("音源", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
                             TextButton(onClick = { importSource.launch(arrayOf("application/zip", "application/octet-stream")) }) { Text("导入") }
@@ -237,6 +238,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 180.dp))
     }
     if (queueOpen) QueueSheet(state, model::queueIndex, model::moveQueue, model::removeQueue, model::clearQueue) { queueOpen = false }
+    if (visualSettings) VisualSettings(model) { visualSettings = false }
     if (playbackSettings) Settings(model) { playbackSettings = false }
     pendingDelete?.let { source -> TravelAlertDialog(onDismissRequest = { pendingDelete = null }, title = { Text("移除 ${source.name}？") },
         confirmButton = { TextButton(onClick = { model.removeSource(source); pendingDelete = null }) { Text("移除") } }, dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("取消") } }) }

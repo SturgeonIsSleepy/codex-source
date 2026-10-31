@@ -48,7 +48,6 @@ internal fun MusicEntryRow(entry: MusicEntry, open: () -> Unit) {
         AsyncImage(entry.image, null, Modifier.size(64.dp).clip(RoundedCornerShape(12.dp)), contentScale = ContentScale.Crop)
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(if (entry.special) "我喜欢的音乐" else entry.name, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
-            if (entry.subtitle.isNotBlank()) Text(entry.subtitle, maxLines = 1, style = MaterialTheme.typography.bodySmall)
         }
         Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.outline)
     }
@@ -113,7 +112,6 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                             AsyncImage(target.image, null, Modifier.size(112.dp).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Crop)
                             Column(Modifier.weight(1f).padding(start = 16.dp)) {
                                 Text(target.name, style = MaterialTheme.typography.titleLarge)
-                                if (target.subtitle.isNotBlank()) Text(target.subtitle, style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }

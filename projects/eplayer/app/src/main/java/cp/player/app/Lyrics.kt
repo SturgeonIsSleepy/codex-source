@@ -2,6 +2,8 @@ package cp.player.app
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -21,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -28,6 +31,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -41,6 +45,7 @@ internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, close: () 
         value = withContext(Dispatchers.Default) { text?.let { LyricParser.document(it, duration) }.orEmpty() }
     }
     val list = rememberLazyListState()
+    var located by remember(playback.song?.id) { mutableStateOf(false) }
     val dragged by list.interactionSource.collectIsDraggedAsState()
     var follow by remember(playback.song?.id) { mutableStateOf(true) }
     var translate by remember { mutableStateOf(true) }
@@ -72,20 +77,27 @@ internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, close: () 
     val timed = remember(lines) { lines.any { it.time > 0 || it.words.any(TimedWord::timed) } }
     val duet = remember(lines) { lines.any { it.right } }
     LaunchedEffect(dragged) { if (dragged) follow = false }
-    LaunchedEffect(active, follow) {
-        if (follow && timed && active >= 0) list.animateScrollToItem(active, -(list.layoutInfo.viewportEndOffset / 3))
+    LaunchedEffect(active, follow, timed) {
+        if (follow && timed && active >= 0) {
+            snapshotFlow { list.layoutInfo.viewportEndOffset }.first { it > 0 }
+            val anchor = (list.layoutInfo.viewportEndOffset * .24f).toInt()
+            val item = list.layoutInfo.visibleItemsInfo.firstOrNull { it.index == active }
+            if (!located || item == null) list.scrollToItem(active, -anchor)
+            else list.animateScrollBy((item.offset - anchor).toFloat(), tween(320))
+            located = true
+        }
     }
     TravelDialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val ink = MaterialTheme.colorScheme.onBackground
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).testTag("lyrics-page")) {
             LyricFrostBackground(playback.song, Modifier.matchParentSize())
-            Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 24.dp)) {
+            Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 22.dp)) {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = close) { Icon(Icons.Default.KeyboardArrowDown, "关闭歌词", tint = ink) }
-                    MusicCover(playback.song, Modifier.size(42.dp))
+                    MusicCover(playback.song, Modifier.size(44.dp))
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                        Text(playback.song?.name.orEmpty(), color = ink, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(playback.song?.artist.orEmpty(), color = ink.copy(alpha = .65f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(playback.song?.name.orEmpty(), color = ink, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(playback.song?.artist.orEmpty(), color = ink.copy(alpha = .65f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     if (lines.any { it.translation.isNotBlank() }) TextButton(onClick = { translate = !translate }) {
                         Text("译", color = ink.copy(alpha = if (translate) 1f else .5f))
@@ -93,8 +105,9 @@ internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, close: () 
                     IconButton(onClick = { options = true }) { Icon(Icons.Default.MoreHoriz, "歌词选项", tint = ink) }
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) {
-                    if (text == null || lines.isEmpty()) CircularProgressIndicator(Modifier.align(Alignment.Center).size(28.dp), color = ink, strokeWidth = 2.dp)
-                    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(top = 70.dp, bottom = 160.dp)) {
+                    if (text == null) CircularProgressIndicator(Modifier.align(Alignment.Center).size(28.dp), color = ink, strokeWidth = 2.dp)
+                    if (text != null && lines.isEmpty()) Text("暂无歌词", Modifier.align(Alignment.Center), color = ink.copy(alpha = .65f))
+                    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(top = 80.dp, bottom = 260.dp)) {
                         itemsIndexed(lines, key = { index, line -> "${line.time}:${line.speaker}:$index" }) { index, line ->
                             val highlighted by remember(line, index, clock, timed, activeState) { derivedStateOf {
                                 val now = clock.longValue
@@ -103,7 +116,7 @@ internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, close: () 
                             LyricVerse(line, clock, highlighted, duet, translate, romanized, ink,
                                 Modifier.clip(RoundedCornerShape(10.dp))
                                     .then(if (timed && !line.credit) Modifier.clickable { model.seek(line.time); follow = true } else Modifier)
-                                    .padding(horizontal = 6.dp, vertical = if (line.background) 7.dp else 15.dp))
+                                    .padding(horizontal = 6.dp, vertical = if (line.credit) 6.dp else if (line.background) 9.dp else 22.dp))
                         }
                     }
                     if (!follow && timed) TextButton(onClick = { follow = true }, modifier = Modifier.align(Alignment.BottomEnd)) {
@@ -127,7 +140,7 @@ internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, close: () 
     TravelMenu(options, { options = false }) {
         if (lines.any { it.romanized.isNotBlank() }) DropdownMenuItem(text = { Text(if (romanized) "隐藏音译" else "显示音译") },
             onClick = { romanized = !romanized; options = false })
-        if (!text?.ttmlSource.isNullOrBlank()) DropdownMenuItem(text = { Text("歌词来源 · AMLL TTML") }, onClick = {
+        if (!text?.ttmlSource.isNullOrBlank()) DropdownMenuItem(text = { Text("歌词来源") }, onClick = {
             val url = text!!.ttmlSource
             if (url.startsWith("https://github.com/amll-dev/amll-ttml-db/")) context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
             options = false
