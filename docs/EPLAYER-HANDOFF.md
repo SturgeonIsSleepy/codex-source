@@ -1,5 +1,15 @@
 # ePlayer 转移交接
 
+## 当前恢复：PR25组合0780028，恢复功能验收
+
+本轮用户重新授权持续开发和验证；上轮仅打包指令已完成，不再按它跳过功能检查。当前[PR25](https://github.com/SturgeonIsSleepy/codex-source/pull/25)产品0780028af1c0c2a5cfd65f130cf73d1e2f71f03e，正常保留最新main 3e681fc的Android17工具工作和入口。先读[当前实施计划](https://github.com/SturgeonIsSleepy/codex-source/blob/0780028af1c0c2a5cfd65f130cf73d1e2f71f03e/projects/eplayer/docs/DEVELOPMENT-PLAN.md)。main应用仍0.5.2，未借分支结果发布。
+
+实际修复丰富歌词离线缓存：e1f8bff6目标6项5通过/1 TTML-only离线失败，读回变成暂无歌词；候选用可空缓存DTO统一内容验证/归一旧JSON，保留原子替换/并发/取消，精确R8规则同步。时钟可注入，覆盖刷新时间/过期/丰富字段。完整51 JVM零失败零跳过、应用和设备包36秒及31仓库测试通过；当前[Android16组合CI41227861235](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41227861235)进行中，设备/新R8/确切原包/Release仍待验收。
+
+旧cbe699f /CI41120514646为53项51通过/1浏览暂停断言失败/1登录跳过，109.435秒；artifact13007919336已核验373287ab3993d3ccad9d6cd71a3280217aeb33d96e30f01abb0df7b3f5bfdf67。真实SysUI resumeAction已非null，双引擎显式最近播放推进；本轮浏览夹具先明确暂停/停止并在连接前后断言PWR=false/IDLE/无输出，不能拿旧事后断言证明浏览副作用，也不宣称全部停止根因穷尽。
+
+私有内置音源APK、模块、签名与用户数据仍不上传公开Git/Release；上次私有包摘要不改，0.3.2公共资产不覆盖。后续优先取得组合真实播放/拖动/后台/通知和全页视觉，再主线R8/确切原始APK；不从下方历史“仅打包/待执行”恢复。
+
 ## 2026-10-31最新交付：内置音源0.5.5，自用包仅构建未测功能
 
 用户已提供原NCM 1.1.0模块，随后说明有Root且无需沿用旧签名，覆盖下方原“文件缺失”断点。本轮要求仅打包、不检查功能。最新[PR25](https://github.com/SturgeonIsSleepy/codex-source/pull/25)正常汇合PR17界面与PR24核心，保留两条父历史与源分支，未合main。固定产品28ab907c27afa97a6f6af0eb920909e97d7f615a，internal release/R8构建4分53秒通过；源与[交付记录](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-internal-055/projects/eplayer/docs/INTERNAL-0.5.5.md)已推送。
