@@ -25,12 +25,25 @@ class LyricsRepository(private val directory: File, private val now: () -> Long 
         private val client = OkHttpClient.Builder().callTimeout(3, TimeUnit.SECONDS)
             .retryOnConnectionFailure(false).build()
     }
+    // Nullable DTO: Gson may read older or damaged files without calling Kotlin constructors.
+    private data class CachedLyrics(val original: String?, val translated: String?, val wordTimed: String?,
+        val romanized: String?, val ttml: String?, val ttmlSource: String?, val cacheVersion: Int,
+        val fetchedAt: Long, val communityCheckedAt: Long)
+
+    private fun hasContent(text: LyricsText) =
+        text.original.isNotBlank() && text.original != "暂无歌词" || text.wordTimed.isNotBlank() || text.ttml.isNotBlank()
+
+    private fun readCache(file: File): LyricsText? = runCatching {
+        val value = Gson().fromJson(file.readText(), CachedLyrics::class.java) ?: return@runCatching null
+        LyricsText(value.original ?: return@runCatching null, value.translated ?: return@runCatching null,
+            value.wordTimed.orEmpty(), value.romanized.orEmpty(), value.ttml.orEmpty(), value.ttmlSource.orEmpty(),
+            value.cacheVersion, value.fetchedAt, value.communityCheckedAt).takeIf(::hasContent)
+    }.getOrNull()
+
     suspend fun get(source: String, id: String, update: suspend (LyricsText) -> Unit = {}): LyricsText = withContext(Dispatchers.IO) {
         val hash = MessageDigest.getInstance("SHA-256").digest("$source:$id".toByteArray()).joinToString("") { "%02x".format(it) }
         val file = File(directory, "$hash.json")
-        val cached = if (file.isFile && file.length() <= MAX_TEXT * 3L) runCatching {
-            Gson().fromJson(file.readText(), LyricsText::class.java)?.takeIf { !it.original.isNullOrBlank() && it.translated != null }?.let(LyricPayload::normalize)
-        }.getOrNull() else null
+        val cached = if (file.isFile && file.length() <= MAX_TEXT * 3L) readCache(file) else null
         if (cached != null) update(cached)
         val now = now()
         val sourceFresh = cached != null && cached.cacheVersion >= 2 && now - cached.fetchedAt.takeIf { it > 0 }.orFileTime(file) < CACHE_AGE
@@ -65,7 +78,7 @@ class LyricsRepository(private val directory: File, private val now: () -> Long 
         }
         // A network failure preserves the old cache and its opportunity to upgrade later.
         currentCoroutineContext().ensureActive()
-        if (refreshed.original.isNotBlank() && refreshed.original != "暂无歌词" || refreshed.wordTimed.isNotBlank() || refreshed.ttml.isNotBlank()) {
+        if (hasContent(refreshed)) {
             Files.createDirectories(directory.toPath())
             val temporary = File.createTempFile("$hash-", ".tmp", file.parentFile)
             try {

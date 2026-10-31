@@ -592,3 +592,12 @@ c17dc4a165702391b99d624ad281236bcc46240f /CI41112575118：build124258420042普�
 14ee342 /CI41119090920构建通过/设备失败，artifact13007288524服务端digest dcfba0fd5fd1a1e18be61fd2e666497acf92922909445372d903e15c77be0590；下载与原始job日志接口返回内部错误，未核验ZIP或取得项数。1d18d3b只修主线程构造，不能代替后续产品候选。
 
 cbe699f补标准MediaButtonReceiver：实际Media3 1.10的canResumePlaybackOnStart依赖Manifest接收器，因此此前SystemUI EXTRA_RECENT在到达自定义浏览前已被拒绝。三参数恢复回调按isForPlayback规范化只读最近项/保留主动恢复队列，固定日志增加MediaBrowser/legacy/MediaSessionImpl。测试先实际播放，再pause/stop/清空/主动Play，不放宽时限或输出要求。33 JVM及应用/设备包14秒、最终增量2秒、31仓库测试通过。远端53项/R8/确切原包/Release待真实结果，未宣称Stop根因解决。
+
+
+## 2026-10-31 PR25组合恢复验证与TTML缓存红绿
+
+基线28ab907c/62285a6首轮49 JVM为46通过/3失败，1分40秒；失败均为新增fetchedAt字段与旧零值完整对象断言不符，后续应用/设备任务未完成。注入固定时钟后，e1f8bff6目标6项5通过/1真实产品失败（24秒）：普通LRC为空但逐词/TTML有效的歌词首次写入后，离线读回变成暂无歌词。不是简单放宽字段比较。
+
+候选用可空CachedLyrics DTO验证/归一旧JSON和丰富字段，读写同一内容判断允许TTML-only；原子替换/并发唯一半文件/取消检查保留，精确R8保留规则更新。Android UUID文件夹检查也覆盖丰富缓存离线读。完整51 JVM零失败零跳过、主程序及设备测试包36秒通过；当前设备/R8/确切原包/Release未执行。浏览夹具在连接前明确pause/stop并断言PWR=false、IDLE且无音频输出，之后保持原子项/不自启断言与原超时。
+
+旧cbe699f /CI41120514646为53项51通过/1浏览暂停断言失败/1真实登录跳过（109.435秒），设备artifact13007919336已核对SHA256373287ab3993d3ccad9d6cd71a3280217aeb33d96e30f01abb0df7b3f5bfdf67。其SystemUI快照已有非null resumeAction，日志确认双引擎显式最近播放进度；不能拿该轮EQ通过证明全部历史停止根因解决。当前PR25组合仍需独立设备验收。

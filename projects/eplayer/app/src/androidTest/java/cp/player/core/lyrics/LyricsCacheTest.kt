@@ -27,6 +27,11 @@ class LyricsCacheTest {
             assertEquals(text, LyricsRepository(directory, { now }) { _, _ -> text }.get("fixture", "track"))
             assertEquals(1, directory.listFiles()!!.size)
             assertEquals(listOf(TimedLine(1500, "晴れた空")), LyricParser.parse(text.original))
+            val rich = LyricsText("", wordTimed = "[0,1000](0,1000,0)空", ttml = "<tt/>", fetchedAt = now)
+            assertEquals(rich, LyricsRepository(directory, { now }) { _, _ -> rich }.get("fixture", "ttml-only"))
+            assertEquals(rich, LyricsRepository(directory, { now }) { _, _ -> error("Offline rich cache") }
+                .get("fixture", "ttml-only"))
+            assertEquals(2, directory.listFiles()!!.size)
         } finally {
             directory.deleteRecursively() // Only the UUID-owned fixture directory.
         }

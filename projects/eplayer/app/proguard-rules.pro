@@ -71,3 +71,6 @@
 -keep class cp.player.core.lyrics.TimedLine { *; }
 
 # Gson cache schema must survive R8 independently of Compose presentation.
+
+# Nullable DTO keeps old and rich lyric cache fields stable under R8.
+-keep class cp.player.core.lyrics.LyricsRepository$CachedLyrics { *; }
