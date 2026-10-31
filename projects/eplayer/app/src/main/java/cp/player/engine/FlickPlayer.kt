@@ -987,7 +987,6 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
 
     override fun handleStop(): ListenableFuture<*> {
         stateReconcileJob?.cancel(); stateReconcileJob = null
-        awaitingNativeStart = false
         val origin = Thread.currentThread().stackTrace.filter {
             it.className.startsWith("cp.player.") || it.className.startsWith("androidx.media3.")
         }.take(6).joinToString(" <- ") { "${it.className.substringAfterLast('.')}.${it.methodName}:${it.lineNumber}" }

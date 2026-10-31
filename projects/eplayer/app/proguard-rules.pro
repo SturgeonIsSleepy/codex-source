@@ -71,4 +71,3 @@
 -keep class cp.player.core.lyrics.TimedLine { *; }
 
 # Gson cache schema must survive R8 independently of Compose presentation.
--keep class cp.player.core.lyrics.LyricsRepository$CachedLyrics { *; }

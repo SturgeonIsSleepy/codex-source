@@ -24,13 +24,13 @@ class LyricsRepository(private val directory: File, private val load: suspend (S
         private val client = OkHttpClient.Builder().callTimeout(3, TimeUnit.SECONDS)
             .retryOnConnectionFailure(false).build()
     }
-    suspend fun get(source: String, id: String, update: (LyricsText) -> Unit = {}): LyricsText = withContext(Dispatchers.IO) {
+    suspend fun get(source: String, id: String, update: suspend (LyricsText) -> Unit = {}): LyricsText = withContext(Dispatchers.IO) {
         val hash = MessageDigest.getInstance("SHA-256").digest("$source:$id".toByteArray()).joinToString("") { "%02x".format(it) }
         val file = File(directory, "$hash.json")
         val cached = if (file.isFile && file.length() <= MAX_TEXT * 3L) runCatching {
             Gson().fromJson(file.readText(), LyricsText::class.java)?.takeIf { !it.original.isNullOrBlank() && it.translated != null }?.let(LyricPayload::normalize)
         }.getOrNull() else null
-        if (cached != null) withContext(Dispatchers.Main.immediate) { update(cached) }
+        if (cached != null) update(cached)
         val now = System.currentTimeMillis()
         val sourceFresh = cached != null && cached.cacheVersion >= 2 && now - cached.fetchedAt.takeIf { it > 0 }.orFileTime(file) < CACHE_AGE
         val communityEligible = source == "netease-cloudmusic-rs" && id.matches(Regex("[0-9]{1,20}"))
@@ -43,7 +43,7 @@ class LyricsRepository(private val directory: File, private val load: suspend (S
             val sourceLyrics = async {
                 if (sourceFresh) cached else try {
                     load(source, id).copy(fetchedAt = now).also {
-                        withContext(Dispatchers.Main.immediate) { if (cached?.ttml.isNullOrBlank()) update(it) }
+                        if (cached?.ttml.isNullOrBlank()) update(it)
                     }
                 } catch (cancelled: CancellationException) { throw cancelled }
                 catch (_: Exception) { null }
