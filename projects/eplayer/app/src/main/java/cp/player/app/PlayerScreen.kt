@@ -80,7 +80,7 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
                     factory = { WitchPlayerView(it) }, modifier = characterModifier,
                     update = { view ->
                         view.setAppearance(night, backdrop.toArgb(), artworkGeneration)
-                        view.setCoverBackdropEnabled(true)
+                        view.setCoverBackdropEnabled(songArtwork(state.song) != null)
                         view.setMotionEnabled(animate)
                         view.setArtworkActive(!showLyrics && !queue)
                         view.setPlayback(state.playing, state.playRequested, position) }) }

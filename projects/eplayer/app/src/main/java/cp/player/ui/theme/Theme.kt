@@ -16,40 +16,40 @@ val TravelHand = FontFamily(Font(R.font.travel_hand, weight = FontWeight.Medium)
 
 // Shared with nested dialogs, sheets and cover wrappers: one palette throughout ePlayer.
 val PaperColors = lightColorScheme(
-    primary = Color(0xFF74538F), onPrimary = Color.White,
-    primaryContainer = Color(0xFFEADFF4), onPrimaryContainer = Color(0xFF443052),
-    secondary = Color(0xFF686275), onSecondary = Color.White,
-    secondaryContainer = Color(0xFFEAE3EE), onSecondaryContainer = Color(0xFF373040),
-    tertiary = Color(0xFF8A697A), onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFF3DFE9), onTertiaryContainer = Color(0xFF513342),
-    background = Color(0xFFF6F2F8), onBackground = Color(0xFF302A38),
-    surface = Color(0xFFFBF8FD), onSurface = Color(0xFF302A38),
-    surfaceVariant = Color(0xFFECE6F0), onSurfaceVariant = Color(0xFF686071),
-    surfaceContainerLowest = Color(0xFFFFFCFF), surfaceContainerLow = Color(0xFFF0EAF5),
-    surfaceContainer = Color(0xFFECE6F0), surfaceContainerHigh = Color(0xFFE7DEED),
-    surfaceContainerHighest = Color(0xFFE0D7E7),
-    outline = Color(0xFF81758C), outlineVariant = Color(0xFFD5CADA),
+    primary = Color(0xFF245F7D), onPrimary = Color.White,
+    primaryContainer = Color(0xFFD9EFF9), onPrimaryContainer = Color(0xFF183D52),
+    secondary = Color(0xFF526674), onSecondary = Color.White,
+    secondaryContainer = Color(0xFFE5EEF2), onSecondaryContainer = Color(0xFF293F4C),
+    tertiary = Color(0xFF486E76), onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFDDEFF1), onTertiaryContainer = Color(0xFF21474D),
+    background = Color.White, onBackground = Color(0xFF252D33),
+    surface = Color(0xFFFCFDFE), onSurface = Color(0xFF252D33),
+    surfaceVariant = Color(0xFFE7EFF3), onSurfaceVariant = Color(0xFF50616D),
+    surfaceContainerLowest = Color.White, surfaceContainerLow = Color(0xFFF1F7FA),
+    surfaceContainer = Color(0xFFEAF2F6), surfaceContainerHigh = Color(0xFFE3EDF2),
+    surfaceContainerHighest = Color(0xFFDBE7EE),
+    outline = Color(0xFF718793), outlineVariant = Color(0xFFCCDCE5),
     error = Color(0xFFA4444F), errorContainer = Color(0xFFFFDADD)
 )
 
 val NightColors = darkColorScheme(
-    primary = Color(0xFFD1B8EC), onPrimary = Color(0xFF382544),
-    primaryContainer = Color(0xFF51405F), onPrimaryContainer = Color(0xFFF1E1FF),
-    secondary = Color(0xFFD0C5DB), onSecondary = Color(0xFF332B3D),
-    secondaryContainer = Color(0xFF4B4355), onSecondaryContainer = Color(0xFFF0E8F6),
-    tertiary = Color(0xFFE4BDCF), onTertiary = Color(0xFF472C3A),
-    tertiaryContainer = Color(0xFF604450), onTertiaryContainer = Color(0xFFFFDEE9),
-    background = Color(0xFF292632), onBackground = Color(0xFFF6EFFB),
-    surface = Color(0xFF34303E), onSurface = Color(0xFFF6EFFB),
-    surfaceVariant = Color(0xFF484252), onSurfaceVariant = Color(0xFFD2C8DC),
-    surfaceContainerLowest = Color(0xFF2D2937), surfaceContainerLow = Color(0xFF393341),
-    surfaceContainer = Color(0xFF403A49), surfaceContainerHigh = Color(0xFF484150),
-    surfaceContainerHighest = Color(0xFF514958),
-    outline = Color(0xFFAB9CB8), outlineVariant = Color(0xFF60546B),
+    primary = Color(0xFFA9D7ED), onPrimary = Color(0xFF173D52),
+    primaryContainer = Color(0xFF294B60), onPrimaryContainer = Color(0xFFD8EFFB),
+    secondary = Color(0xFFBCCED9), onSecondary = Color(0xFF253A48),
+    secondaryContainer = Color(0xFF344B5A), onSecondaryContainer = Color(0xFFE1EDF5),
+    tertiary = Color(0xFFB2D6DA), onTertiary = Color(0xFF204248),
+    tertiaryContainer = Color(0xFF34555B), onTertiaryContainer = Color(0xFFD5F0F3),
+    background = Color(0xFF17212A), onBackground = Color(0xFFEDF3F8),
+    surface = Color(0xFF1E2B35), onSurface = Color(0xFFEDF3F8),
+    surfaceVariant = Color(0xFF334550), onSurfaceVariant = Color(0xFFC4D4DF),
+    surfaceContainerLowest = Color(0xFF141E26), surfaceContainerLow = Color(0xFF22313C),
+    surfaceContainer = Color(0xFF293B47), surfaceContainerHigh = Color(0xFF304450),
+    surfaceContainerHighest = Color(0xFF394F5C),
+    outline = Color(0xFF97B2C2), outlineVariant = Color(0xFF4E6573),
     error = Color(0xFFFFB4BD), onError = Color(0xFF650F23),
     errorContainer = Color(0xFF77303E), onErrorContainer = Color(0xFFFFDADD),
-    inverseSurface = Color(0xFFEDE4F2), inverseOnSurface = Color(0xFF342D3D),
-    inversePrimary = Color(0xFF74538F), surfaceTint = Color.Transparent
+    inverseSurface = Color(0xFFE9F2F8), inverseOnSurface = Color(0xFF263A48),
+    inversePrimary = Color(0xFF245F7D), surfaceTint = Color.Transparent
 )
 
 @Composable
