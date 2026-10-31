@@ -4,25 +4,25 @@
 
 | 工具 | 用途 | 入口 |
 | --- | --- | --- |
-| [Android Cloud](tools/android-cloud/) | Android 16 一键配置、自动选择 KVM 或软件模拟、后台启动 | [说明](tools/android-cloud/README.md) · [Skill](tools/android-cloud/SKILL.md) · [部署脚本](tools/android-cloud/android-cloud) |
+| [Android Cloud](tools/android-cloud/) | Android 16 / 17 一键配置、自动选择 KVM 或软件模拟、后台启动 | [说明](tools/android-cloud/README.md) · [Skill](tools/android-cloud/SKILL.md) · [部署脚本](tools/android-cloud/android-cloud) |
 | [ePlayer](projects/eplayer/) | 0.5.5 音乐核心与手绘交互重构、普通版/自用版隔离 | [交接与验收](docs/EPLAYER-HANDOFF.md) · [源码](projects/eplayer/) · [实施计划](projects/eplayer/docs/DEVELOPMENT-PLAN.md) · [0.5.0 界面记录](projects/eplayer/docs/LIGHT-0.5.0.md) · [0.3.2 预览包](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.3.2) |
 | [Witch Player](projects/witch-player/) | 1.8 独立双曲播放器与角色动画参考 | [说明](projects/witch-player/README.md) · [历史产物](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/witch-player-v1.8.0) |
 
-## Android 16：其他 cloud 会话直接用
+## Android 17（兼容 16）：其他 cloud 会话直接用
 
 ```sh
 mkdir -p "$HOME/.local/bin"
 curl --fail --silent --show-error --location \
   https://raw.githubusercontent.com/SturgeonIsSleepy/codex-source/main/tools/android-cloud/android-cloud \
   --output "$HOME/.local/bin/android-cloud"
-python3 "$HOME/.local/bin/android-cloud" up --accept-licenses
+python3 "$HOME/.local/bin/android-cloud" up --android 17 --accept-licenses
 ```
 
-此操作接受 Android SDK 许可。配置完成后返回 `starting`，模拟器继续在后台启动，用户可先做其他操作；不会等待 Android 开机。`starting` 不表示系统已就绪。需要使用时再执行 `python3 "$HOME/.local/bin/android-cloud" status`。
+省略 `--android 17` 仍部署 Android 16；其他生命周期命令也用相同的版本选项。此操作接受 Android SDK 许可。配置完成后返回 `starting`，模拟器继续在后台启动，用户可先做其他操作；不会等待 Android 开机。`starting` 不表示系统已就绪。需要使用时再执行 `python3 "$HOME/.local/bin/android-cloud" status --android 17`。
 
 给助手的提示词：
 
-> 从 SturgeonIsSleepy/codex-source 的 tools/android-cloud/android-cloud 下载部署脚本并用 python3 执行 up --accept-licenses；配置完成后让它后台启动并结束，不等开机、不轮询、不截图，不必读取源码。
+> 从 SturgeonIsSleepy/codex-source 的 tools/android-cloud/android-cloud 下载部署脚本并用 python3 执行 up --android 17 --accept-licenses；配置完成后让它后台启动并结束，不等开机、不轮询、不截图，不必读取源码。
 
 `main` 获取维护中的最新版本；需要固定行为时，将下载 URL 中的 `main` 换成经过验证的完整 commit SHA。工具版本记录在各自的 `VERSION` 文件中。新环境首次下载 SDK 与镜像仍需要时间，复用持久缓存可避免重复下载。后台进程的生命周期取决于平台是否保留运行环境。
 

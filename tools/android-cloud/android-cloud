@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small, dependency-free Android 16 cloud emulator controller."""
+"""Small, dependency-free Android 16/17 cloud emulator controller."""
 import argparse
 import contextlib
 import fcntl
@@ -19,9 +19,13 @@ import urllib.parse
 import urllib.request
 import zipfile
 
-IMAGE = 'system-images;android-36;default;x86_64'
-TOOLS_URL = 'https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip'
-TOOLS_SHA1 = '5fdcc763663eefb86a5b8879697aa6088b041e70'
+ANDROID = 16
+API = 36
+PLATFORM = 'android-36'
+IMAGE = f'system-images;{PLATFORM};default;x86_64'
+TOOLS_VERSION = '23.0'
+TOOLS_URL = 'https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip'
+TOOLS_SHA1 = 'e025545c62a8e64c7559119566a569fb1dec5f60'
 ROOT = Path(os.environ.get('ANDROID_CLOUD_HOME', '~/.cache/android-cloud')).expanduser().resolve()
 SDK = ROOT / 'sdk'
 AVDS = ROOT / 'avd'
@@ -31,6 +35,25 @@ ENV = dict(os.environ, ANDROID_HOME=str(SDK), ANDROID_SDK_ROOT=str(SDK),
            ANDROID_AVD_HOME=str(AVDS), ANDROID_USER_HOME=str(ROOT / 'user'))
 ADB = str(SDK / 'platform-tools/adb')
 AVD = 'cloud_android_16'
+
+
+def configure(android):
+    """Share SDK downloads while preserving legacy Android 16 state paths."""
+    global ANDROID, API, PLATFORM, IMAGE, AVD, STATE, LOG
+    ANDROID = android
+    API, PLATFORM = {16: (36, 'android-36'), 17: (37, 'android-37.0')}[android]
+    IMAGE = f'system-images;{PLATFORM};default;x86_64'
+    AVD = f'cloud_android_{android}'
+    STATE = ROOT / ('state.json' if android == 16 else f'state-{android}.json')
+    LOG = ROOT / ('android-cloud.log' if android == 16 else f'android-cloud-{android}.log')
+
+
+def image_path():
+    return SDK / 'system-images' / PLATFORM / 'default/x86_64/system.img'
+
+
+def cli_dir():
+    return SDK / 'cmdline-tools' / TOOLS_VERSION
 
 
 class Failure(Exception):
@@ -96,20 +119,20 @@ def kvm():
 
 def preflight(software=False):
     if platform.system() != 'Linux' or platform.machine() != 'x86_64':
-        raise Failure('unsupported_host', 'Local mode requires Linux x86_64; use connect for a remote Android 16 device.')
+        raise Failure('unsupported_host', 'Local mode requires Linux x86_64; use connect for a remote Android 16/17 device.')
     if not software and not kvm():
         raise Failure('kvm_required', 'Enable /dev/kvm with read/write access, use connect HOST:PORT, or explicitly use --software (slow).')
     if not shutil.which('java'):
         raise Failure('java_required', 'Install JDK 17+ in the base image.')
-    if shutil.disk_usage(ROOT).free < 8 * 1024**3 and not (SDK / 'system-images/android-36/default/x86_64/system.img').exists():
-        raise Failure('disk_space', 'At least 8 GiB free is required for initial setup.')
+    if shutil.disk_usage(ROOT).free < 6 * 1024**3 and not image_path().exists():
+        raise Failure('disk_space', 'At least 6 GiB free is required for initial setup.')
 
 
 def bootstrap():
-    manager = SDK / 'cmdline-tools/latest/bin/sdkmanager'
+    manager = cli_dir() / 'bin/sdkmanager'
     if manager.exists():
         return manager
-    archive = ROOT / 'commandline-tools.zip'
+    archive = ROOT / f'commandline-tools-{TOOLS_VERSION}.zip'
     if not archive.exists() or hashlib.sha1(archive.read_bytes()).hexdigest() != TOOLS_SHA1:
         part = archive.with_suffix('.part')
         try:
@@ -120,7 +143,7 @@ def bootstrap():
             part.replace(archive)
         finally:
             part.unlink(missing_ok=True)
-    target = SDK / 'cmdline-tools/latest'
+    target = cli_dir()
     target.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
         with zipfile.ZipFile(archive) as z:
@@ -144,7 +167,7 @@ def proxy_args():
 def setup(args):
     preflight(args.software)
     needed = [SDK / 'emulator/emulator', Path(ADB),
-              SDK / 'system-images/android-36/default/x86_64/system.img']
+              image_path()]
     if not all(p.exists() for p in needed):
         if not args.accept_licenses:
             raise Failure('licenses_required', 'Review Android SDK terms, then rerun with --accept-licenses: https://developer.android.com/studio/terms')
@@ -157,14 +180,15 @@ def setup(args):
             raise Failure('incomplete_sdk', f'SDK install incomplete; see {LOG}')
     AVDS.mkdir(parents=True, exist_ok=True)
     if not (AVDS / f'{AVD}.ini').exists():
-        run([SDK / 'cmdline-tools/latest/bin/avdmanager', 'create', 'avd',
+        bootstrap()
+        run([cli_dir() / 'bin/avdmanager', 'create', 'avd',
              '--name', AVD, '--package', IMAGE], data='no\n', timeout=90, log=True)
         config = AVDS / f'{AVD}.avd/config.ini'
         values = dict(line.split('=', 1) for line in config.read_text().splitlines() if '=' in line)
         values.update({'hw.lcd.width': '480', 'hw.lcd.height': '800', 'hw.lcd.density': '160',
                        'hw.keyboard': 'yes', 'showDeviceFrame': 'no'})
         config.write_text(''.join(f'{key}={value}\n' for key, value in values.items()))
-    return {'status': 'installed', 'api': 36, 'sdk': str(SDK)}
+    return {'status': 'installed', 'api': API, 'sdk': str(SDK)}
 
 
 def adb(serial, *args, check=False):
@@ -179,19 +203,19 @@ def adb(serial, *args, check=False):
 def inspect(saved=None):
     saved = state() if saved is None else saved
     if not saved:
-        return {'status': 'stopped', 'api': 36}
+        return {'status': 'stopped', 'api': API}
     serial = saved['serial']
     if not Path(ADB).exists():
-        return {'status': 'offline', 'serial': serial, 'api': 36}
+        return {'status': 'offline', 'serial': serial, 'api': API}
     if adb(serial, 'get-state') != 'device':
-        return {'status': 'starting' if owned_running(saved) else 'offline', 'serial': serial, 'api': 36, 'mode': saved['mode']}
+        return {'status': 'starting' if owned_running(saved) else 'offline', 'serial': serial, 'api': API, 'mode': saved['mode']}
     api = adb(serial, 'shell', 'getprop', 'ro.build.version.sdk')
     boot = adb(serial, 'shell', 'getprop', 'sys.boot_completed')
-    if boot == '1' and api == '36' and saved['mode'] != 'remote':
+    if boot == '1' and api == str(API) and saved['mode'] != 'remote':
         name = adb(serial, 'emu', 'avd', 'name').splitlines()
         if not name or name[0] != AVD:
-            return {'status': 'device_mismatch', 'serial': serial, 'api': 36}
-    return {'status': 'ready' if boot == '1' and api == '36' else 'booting' if boot != '1' else 'wrong_android_version',
+            return {'status': 'device_mismatch', 'serial': serial, 'api': API}
+    return {'status': 'ready' if boot == '1' and api == str(API) else 'booting' if boot != '1' else 'wrong_android_version',
             'serial': serial, 'api': int(api) if api.isdigit() else api,
             'mode': saved['mode']}
 
@@ -205,7 +229,7 @@ def wait_ready(saved, timeout):
         if result['status'] == 'device_mismatch':
             raise Failure('device_mismatch', 'Selected port belongs to another AVD; use a different --port.')
         if result['status'] == 'wrong_android_version':
-            raise Failure('wrong_android_version', f'Expected API 36, got {result["api"]}')
+            raise Failure('wrong_android_version', f'Expected API {API}, got {result["api"]}')
         if saved['mode'] != 'remote' and adb(saved['serial'], 'get-state') != 'device':
             # Poll the owned child when this is the process that launched it.
             child = saved.get('_child')
@@ -270,11 +294,11 @@ def up(args):
     with LOG.open('a') as log:
         child = subprocess.Popen([str(c) for c in cmd], env=ENV, stdin=subprocess.DEVNULL,
                                  stdout=log, stderr=log, start_new_session=True)
-    saved = {'mode': 'software' if args.software else 'kvm', 'serial': f'emulator-{port}', 'pid': child.pid, 'birth': process_birth(child.pid)}
+    saved = {'mode': 'software' if args.software else 'kvm', 'serial': f'emulator-{port}', 'pid': child.pid, 'birth': process_birth(child.pid), 'android': ANDROID, 'api': API}
     save(saved)
     if args.wait:
         return wait_ready(dict(saved, _child=child), args.timeout)
-    return {'status': 'starting', 'serial': saved['serial'], 'api': 36, 'mode': saved['mode']}
+    return {'status': 'starting', 'serial': saved['serial'], 'api': API, 'mode': saved['mode']}
 
 
 def connect(args):
@@ -331,6 +355,7 @@ def down():
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--android', type=int, choices=(16, 17), default=16, help='Android release (default: 16)')
     sub = p.add_subparsers(dest='command', required=True)
     sub.add_parser('doctor')
     sub.add_parser('status')
@@ -344,25 +369,32 @@ def main():
         q.add_argument('--accept-licenses', action='store_true', help='accept Google Android SDK license terms')
         if name == 'up':
             q.add_argument('--wait', action='store_true', help='wait for Android boot completion; default is background startup')
-            q.add_argument('--port', type=int, default=5554)
+            q.add_argument('--port', type=int, default=None)
             q.add_argument('--memory', type=int, default=2048)
             q.add_argument('--timeout', type=int, default=None)
     q = sub.add_parser('connect')
     q.add_argument('address')
     q.add_argument('--accept-licenses', action='store_true')
     q.add_argument('--timeout', type=int, default=60)
+    for command_parser in sub.choices.values():
+        command_parser.add_argument('--android', type=int, choices=(16, 17), default=argparse.SUPPRESS, help='Android release (default: 16)')
     args = p.parse_args()
+    configure(args.android)
     if args.command in ('setup', 'up'):
         args.software = args.software or not kvm()
-        if args.command == 'up' and args.timeout is None:
-            args.timeout = 900 if args.software else 240
+        if args.command == 'up':
+            if args.port is None:
+                args.port = 5556 if ANDROID == 17 else 5554
+            if args.timeout is None:
+                args.timeout = 900 if args.software else 240
     try:
         ROOT.mkdir(parents=True, exist_ok=True)
         if args.command == 'doctor':
             emit(status='checked', host=platform.system() + '/' + platform.machine(),
                  kvm=kvm(), java=bool(shutil.which('java')), installed=Path(ADB).exists(),
                  free_gib=round(shutil.disk_usage(ROOT).free / 1024**3, 1), home=str(ROOT),
-                 next='up --accept-licenses')
+                 android=ANDROID, api=API, image=IMAGE, image_installed=image_path().exists(),
+                 next=f'up --android {ANDROID} --accept-licenses')
         elif args.command == 'status':
             emit(**inspect())
         elif args.command == 'adb':
@@ -391,3 +423,4 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+

@@ -16,6 +16,7 @@ loader.exec_module(m)
 
 class ControllerTests(unittest.TestCase):
     def setUp(self):
+        m.configure(16)
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         root = Path(self.tmp.name)
@@ -30,6 +31,76 @@ class ControllerTests(unittest.TestCase):
         p = Path(m.ADB)
         p.parent.mkdir(parents=True, exist_ok=True)
         p.touch()
+
+    def test_android17_cli_selects_official_package_and_background_port(self):
+        with patch('sys.argv', ['android-cloud', 'up', '--android', '17', '--accept-licenses']), \
+                patch.object(m, 'kvm', return_value=False), \
+                patch.object(m, 'up', return_value={'status': 'starting'}) as up, \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(m.main(), 0)
+            args = up.call_args.args[0]
+            self.assertEqual(m.API, 37)
+            self.assertEqual(m.IMAGE, 'system-images;android-37.0;default;x86_64')
+            self.assertEqual(args.port, 5556)
+            self.assertFalse(args.wait)
+            self.assertTrue(args.software)
+
+    def test_version_states_are_isolated_and_legacy_paths_preserved(self):
+        m.save({'serial': 'emulator-5554', 'mode': 'software'})
+        legacy_state, legacy_log, shared_sdk = m.STATE, m.LOG, m.SDK
+        m.configure(17)
+        self.assertEqual(m.state(), {})
+        self.assertNotEqual(m.STATE, legacy_state)
+        self.assertNotEqual(m.LOG, legacy_log)
+        self.assertEqual(m.SDK, shared_sdk)
+        self.assertEqual(m.AVD, 'cloud_android_17')
+        self.assertIn('android-37.0', str(m.image_path()))
+        m.save({'serial': 'emulator-5556', 'mode': 'software'})
+        m.configure(16)
+        self.assertEqual(m.STATE.name, 'state.json')
+        self.assertEqual(m.state()['serial'], 'emulator-5554')
+        m.configure(17)
+        self.assertEqual(m.state()['serial'], 'emulator-5556')
+
+    def test_android17_readiness_rejects_api36(self):
+        self.fake_adb_file()
+        m.configure(17)
+        saved = {'serial': 'emulator-5556', 'mode': 'software'}
+        for api, expected in [('37', 'ready'), ('36', 'wrong_android_version')]:
+            with patch.object(m, 'adb', side_effect=['device', api, '1', m.AVD + '\nOK']):
+                self.assertEqual(m.inspect(saved)['status'], expected)
+
+    def test_android17_setup_installs_exact_official_image(self):
+        m.configure(17)
+        m.AVDS.mkdir(parents=True)
+        (m.AVDS / (m.AVD + '.ini')).touch()
+        args = SimpleNamespace(software=True, accept_licenses=True)
+        def install(command, **kwargs):
+            if m.IMAGE in command:
+                for p in [m.SDK / 'emulator/emulator', Path(m.ADB), m.image_path()]:
+                    p.parent.mkdir(parents=True, exist_ok=True)
+                    p.touch()
+        with patch.object(m, 'preflight'), patch.object(m, 'bootstrap', return_value=m.cli_dir() / 'bin/sdkmanager'), \
+                patch.object(m, 'run', side_effect=install) as run:
+            self.assertEqual(m.setup(args)['api'], 37)
+            self.assertIn('system-images;android-37.0;default;x86_64', run.call_args.args[0])
+
+    def test_global_android_option_works_for_status(self):
+        with patch('sys.argv', ['android-cloud', '--android', '17', 'status']), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(m.main(), 0)
+        self.assertIn('"api":37', out.getvalue())
+        self.assertIn('"status":"stopped"', out.getvalue())
+
+    def test_old_latest_cli_does_not_shadow_versioned_cli(self):
+        old = m.SDK / 'cmdline-tools/latest/bin/sdkmanager'
+        old.parent.mkdir(parents=True)
+        old.touch()
+        with patch.object(m.urllib.request, 'urlopen', side_effect=m.Failure('download_attempt', 'need new CLI')):
+            with self.assertRaises(m.Failure) as cm:
+                m.bootstrap()
+        self.assertEqual(cm.exception.code, 'download_attempt')
+        self.assertEqual(m.cli_dir().name, '23.0')
 
     def test_fresh_status_is_stopped(self):
         self.assertEqual(m.inspect()['status'], 'stopped')
@@ -169,3 +240,4 @@ class ControllerTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

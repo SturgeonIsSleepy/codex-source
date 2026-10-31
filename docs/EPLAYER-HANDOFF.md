@@ -1,12 +1,26 @@
 # ePlayer 转移交接
 
-## 当前恢复：PR24媒体按键入口修正，53项仍待通过
+## 2026-10-31恢复开发：PR25组合源码开始实际验证
 
-当前产品cbe699fca5e17f278bd034f0096443a01cf0506c，正常汇合main b0220c9。补Media3标准MediaButtonReceiver；实际1.10实现要求它才允许SystemUI最近浏览/恢复。三参数onPlaybackResumption区分只读浏览与主动播放，不直接prepare/play；正常Stop/焦点保留。构造MediaBrowser移主线程，恢复夹具先明确pause/stop再清空（Exo.stop保留播放请求）。本地33 JVM/应用/设备包与31仓库测试通过。
+本轮用户重新要求持续开发/构建/验证，恢复此前仅打包时暂停的功能检查。以PR25/62285a6（产品28ab907c）为组合基线，正常合入最新main的Android Cloud 17工作，保留其固定入口和全部更改；不改无关项目。先执行组合JVM/应用与设备包编译、核对旧媒体恢复候选的真实失败，再推送独立Android16/KVM整页与真实播放检查；不拿已交付内置音源包的R8构建成功代替功能验收。
 
-3914ba6 /CI41118331969真实53项49通过/3失败/1登录跳过（118.318秒）：EQ系统停止、浏览构造线程、恢复前置状态；device artifact13006654026已核对dcabfd2a867d8a8ab2b2e1d14c894af4ea837690244fe575e06264b393b6e3f6。14ee342 /CI41119090920设备失败，下载接口内部错误、具体项数未取得；1d18d3b线程修正与cbe699f产品修正远端待结果。不能称恢复契约或历史停止已解决，新R8/确切原始APK/Release均未通过。
+私有NCM模块/本地签名/用户数据不上传Git或公开Release。原自用包保持原摘要，不重签旧附件；验证只使用自己生成的音频、UUID临时项和无账号的隔离环境。当前实施计划以PR25分支为准。下方记录上一轮仅打包与更早阶段。
 
-接续以[当前实施计划](../projects/eplayer/docs/DEVELOPMENT-PLAN.md)为准，已精简当前步骤并把旧完整规划保存到项目docs/history/DEVELOPMENT-STAGES-2026-10-30.md。先通过最终53项及SysUI恢复/合法Stop，再主线一次R8、原包双引擎跨应用、Release；0.5.2失败包不发布，0.3.2不覆盖，PR17本地成果与Android Cloud入口不碰。下方全部为原阶段记录。
+## 2026-10-31最新交付：内置音源0.5.5，自用包仅构建未测功能
+
+用户已提供原NCM 1.1.0模块，随后说明有Root且无需沿用旧签名，覆盖下方原“文件缺失”断点。本轮要求仅打包、不检查功能。最新[PR25](https://github.com/SturgeonIsSleepy/codex-source/pull/25)正常汇合PR17界面与PR24核心，保留两条父历史与源分支，未合main。固定产品28ab907c27afa97a6f6af0eb920909e97d7f615a，internal release/R8构建4分53秒通过；源与[交付记录](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-internal-055/projects/eplayer/docs/INTERNAL-0.5.5.md)已推送。
+
+成品ePlayer-v0.5.5-internal.apk，52,349,471字节，SHA256 4b16461a019a7414710c2248ac30e11f58c899ee1d13da2693be42bbc6719b3e；包名app.eplayer.music.internal、versionCode194、min28/target36、三ABI。内置模块f885009aaeaa6e2aa5832101517623903832f4c4f37b352d637463025af92209与旧版一致；签名24d8e71950b064c29e91c994f3d069a23cc8a572fab06e01788a2c2d490a48ac与旧本地0.5.3不同。仅核对签名/16KiB对齐/CRC/三ABI/包名版本和模块摘要；功能、设备安装、实机登录保持均按要求未执行。用户自行Root覆盖保留数据，不能保证签名不同的普通安装器覆盖或服务端登录仍有效，不卸载/清数据。
+
+模块、私钥与内置音源APK未上传公开Git或Release，仅私有交付；0.3.2公开资产不覆盖。后续继续开发时先恢复组合源码功能验证，不拿原独立绿色代替本轮。当前实施计划在PR25分支，main应用仍0.5.2而非本自用交付。下方均为历史记录。
+
+## 2026-10-31用户最新指令：先同步工作，仅交付内置音源包
+
+用户要求本轮不检查功能。已读取main最新交接、PR17/e8e732f的0.5.3界面与固定签名交付记录，以及PR24最新7a1e968b30b09b473151a8df4230c88671aaac57（产品cbe699f）的0.5.5核心/媒体按键恢复修正；两条分支未擅自合并，未执行新的功能检查。此前已排队的CI属于旧指令，不据此称当前包已验收。
+
+内置音源交付所需NCM 1.1.0 ZIP（原模块SHA256 f885009aaeaa6e2aa5832101517623903832f4c4f37b352d637463025af92209）和最终ePlayer-v0.5.3-internal.apk（a0d894ba1e49cc4bfce027b51f42307b69de71991bfbef43206ddc268e5f3eb2）均按PR17记录仅保留在原本地环境。已搜索当前工作区、附件/临时目录和本机用户目录，未找到模块或该APK；GitHub公开Release也没有自用包。不能把未嵌入模块的internal CI包交付为内置音源成品。需用户提供原自用APK或模块ZIP/可访问位置后继续仅打包；不要求上传私钥或账号，不公开上传模块，不卸载/清除用户现有应用。
+
+PR24所有源码/规划/失败记录已推送。当前源码恢复入口为[7a1e968实施计划](https://github.com/SturgeonIsSleepy/codex-source/blob/7a1e968b30b09b473151a8df4230c88671aaac57/projects/eplayer/docs/DEVELOPMENT-PLAN.md)。原生源码还做过仓库外x86_64/API28离线release基线构建（1分59秒，12条警告），SHA2561888fef2f957d8fcdfc557890ed18870d6cc36dfa6c044b7318e78e3a4ee14d2；未替换APK原生库、未做运行或ARM验证，不计性能优化完成。下方为此前开发阶段记录。
 
 ## 最新开发恢复：PR24 /0.5.5媒体恢复契约候选
 
