@@ -1,5 +1,11 @@
 # ePlayer 转移交接
 
+## 当前恢复：PR25 0f398714，释放与取消预缓冲契约待完整设备复核
+
+已正常合入main0851ab的交接记录，保留AndroidCloud17与固定下载入口。当前产品和完整规划见[PR25](https://github.com/SturgeonIsSleepy/codex-source/pull/25)及[实施计划](../projects/eplayer/docs/DEVELOPMENT-PLAN.md)。124547db /CI41232129032实际源码三ABI/32接口/严格来源校验和52 JVM已过；设备68项65通过/2旧原生终态断言失败/1真实登录跳过（115.629秒）。浏览无输出、显式最近恢复、默认双曲和面板Back已过；0f398714改为验证2秒内引擎移除/进度为空/无系统输出，保留公开IDLE与旧响应不恢复播放检查，[新CI41234691200](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41234691200)进行中，不能报设备全绿。
+
+本轮新纸白蓝天播放/暂停、默认双曲、夜间、横屏/大字体和半睁眼截图已实际查看；没有用静态截图证明连续动作或实机音质。52 JVM/应用及设备包与独立R8 QA编译、31仓库检查通过。最终主线R8/确切原包黑盒/新Release尚未执行；旧0.3.2和私有内置模块APK不覆盖/不公开。下方旧“进行中”均为历史，不从其恢复。
+
 ## 2026-10-31恢复开发：PR25组合源码开始实际验证
 
 本轮用户重新要求持续开发/构建/验证，恢复此前仅打包时暂停的功能检查。以PR25/62285a6（产品28ab907c）为组合基线，正常合入最新main的Android Cloud 17工作，保留其固定入口和全部更改；不改无关项目。先执行组合JVM/应用与设备包编译、核对旧媒体恢复候选的真实失败，再推送独立Android16/KVM整页与真实播放检查；不拿已交付内置音源包的R8构建成功代替功能验收。
@@ -322,3 +328,29 @@ CI40576719254成功发布Release425943718 /eplayer-v0.3.2（非draft、preview�
 21个成功/失败artifact及6个原始job日志已归档，包含SDK准备失败未执行、取消/交接修复前失败与首次发布归档失败；最终安装证据也在ZIP中。无用户录音、密钥、SDK或AVD上传。0.3.1附件未修改。交付manifest回填ReleaseID便于稳定恢复，已发布匹配版本的流程只检查不重复下载/安装/覆盖。
 
 继续0.3.3：agent/eplayer-portrait-fit修复前回归161c63f17e0b9d0a74f0c02de7d52bfff019f655 /CI40577808745已复现大字号裁切，37项35通过/1失败/1登录跳过，产品布局仍未改，修复后绿色待执行。优先让长标题/2倍字体的竖屏首屏完整人物可见，随后跨曲下载所有权/依赖剥离，再考虑真实三ABI原生重编以降低Trace日志；不因0.3.2发布就停止，也不把尚未完成项写成已验收。
+
+## 合并main0851ab时保留的历史恢复快照（已被上方结果替代）
+
+## 当前最新恢复：PR25来源修正124547d，52 JVM通过
+
+上一轮3dedfb8 /CI41230778584三ABI编译成功，但源码工作树校验失败，应用/设备跳过，不能算运行通过。旧检查未列dirty路径；本地已复现Opus13个Windows工程字节不变却因换行属性误报修改。仅修原5类工程格式为-text、保持字节，并保留严格校验/新增前置检查和路径诊断，13项时间戳刷新验证通过；依赖缓存独立保存避免重复冷编译。当前普通源TTML过期也有6项5通过/1失败红色及修复，补社区新鲜内容零请求回归，完整52 JVM/应用和设备包8秒、31仓库检查通过。当前Rust来源CLI从项目子目录通过，原生属性修正后的三ABI缓存构建0.12/0.08/0.08秒；新设备/视觉/R8/原包/Release仍待。完整规划以当前候选链接为准。
+
+用户已恢复持续开发和功能验证。最新产品124547db36b7668ca9fd6e487b0e18513adfe3b9，Rust treebf0c45a9c0c88cc9a27867c2d770141f02bc739f；读[当前完整实施计划](https://github.com/SturgeonIsSleepy/codex-source/blob/124547db36b7668ca9fd6e487b0e18513adfe3b9/projects/eplayer/docs/DEVELOPMENT-PLAN.md)，当前[CI41232129032](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41232129032)首次从对应源码编译三ABI并准备完整Android16检查。main应用仍0.5.2，未发布新公开APK，不用旧0.1.0库验证新JNI。
+
+真实断点：629d5a7 /CI41229078993设备68项64通过/3失败/1登录跳过，106.161秒；artifact13053445692已核验b4e729bb9d9b10b5092299a8afb960543975c79ee83f7c2fafd6bd2c1f6f453e。默认双曲旧导航已过，但浏览前等5秒仍有AudioManager输出；源码确认Stop只清空音源、不关闭输出线程。另两项是旧“无默认曲目”断言与当前要求冲突、Espresso误选未获焦Activity根而无法注入Back。失败保留，未记作通过。
+
+候选新增nativeShutdown接现有audio_shutdown，在串行调度器释放适配器并等待输出线程结束，正常Pause/Stop语义保留；显式恢复检查新增离开原生适配器后的无活跃输出要求。release原生Trace降Info，底部面板等实际Dialog获焦后仅注入一次真实Back，曲库保留默认双曲/独立导入且不捆绑音频。已保留纸白蓝天/夜间蓝灰、新信息架构、TTML-only原子缓存与core/listening边界，不改角色/发/帽/手纹理或逐帧换脸。
+
+本地API28三ABI源码编译通过（ARM64 7.44秒/ARMv7 7.05秒/x86_64 18.80秒，各12警告），32接口一致，来源收集器实际拒绝旧31接口库；从项目子目录运行完整来源CLI通过。完整51 JVM/应用及设备包最终7秒、31仓库检查通过；新库设备运行、新主题视觉、R8/确切原包/Release尚未执行。CI原生来源JSON、库和日志另存artifact，后续归Release，绝不把原生编译说成运行或功耗通过。
+
+私有内置音源APK/模块/签名/账号不公开，旧用户包与0.3.2公共资产不覆盖；AndroidCloud17与固定下载入口保留。后续先取得新库68项和整页截图，再最终main一次R8/完整设备/原包跨应用/Release。下方均为历史断点，勿按旧“仅打包/在途”恢复。
+
+## 当前恢复：PR25组合0780028，恢复功能验收
+
+本轮用户重新授权持续开发和验证；上轮仅打包指令已完成，不再按它跳过功能检查。当前[PR25](https://github.com/SturgeonIsSleepy/codex-source/pull/25)产品0780028af1c0c2a5cfd65f130cf73d1e2f71f03e，正常保留最新main 3e681fc的Android17工具工作和入口。先读[当前实施计划](https://github.com/SturgeonIsSleepy/codex-source/blob/0780028af1c0c2a5cfd65f130cf73d1e2f71f03e/projects/eplayer/docs/DEVELOPMENT-PLAN.md)。main应用仍0.5.2，未借分支结果发布。
+
+实际修复丰富歌词离线缓存：e1f8bff6目标6项5通过/1 TTML-only离线失败，读回变成暂无歌词；候选用可空缓存DTO统一内容验证/归一旧JSON，保留原子替换/并发/取消，精确R8规则同步。时钟可注入，覆盖刷新时间/过期/丰富字段。完整51 JVM零失败零跳过、应用和设备包36秒及31仓库测试通过；当前[Android16组合CI41227861235](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41227861235)进行中，设备/新R8/确切原包/Release仍待验收。
+
+旧cbe699f /CI41120514646为53项51通过/1浏览暂停断言失败/1登录跳过，109.435秒；artifact13007919336已核验373287ab3993d3ccad9d6cd71a3280217aeb33d96e30f01abb0df7b3f5bfdf67。真实SysUI resumeAction已非null，双引擎显式最近播放推进；本轮浏览夹具先明确暂停/停止并在连接前后断言PWR=false/IDLE/无输出，不能拿旧事后断言证明浏览副作用，也不宣称全部停止根因穷尽。
+
+私有内置音源APK、模块、签名与用户数据仍不上传公开Git/Release；上次私有包摘要不改，0.3.2公共资产不覆盖。后续优先取得组合真实播放/拖动/后台/通知和全页视觉，再主线R8/确切原始APK；不从下方历史“仅打包/待执行”恢复。
