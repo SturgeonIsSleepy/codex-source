@@ -1,5 +1,13 @@
 # ePlayer 转移交接
 
+## 2026-10-31用户最新指令：先同步工作，仅交付内置音源包
+
+用户要求本轮不检查功能。已读取main最新交接、PR17/e8e732f的0.5.3界面与固定签名交付记录，以及PR24最新7a1e968b30b09b473151a8df4230c88671aaac57（产品cbe699f）的0.5.5核心/媒体按键恢复修正；两条分支未擅自合并，未执行新的功能检查。此前已排队的CI属于旧指令，不据此称当前包已验收。
+
+内置音源交付所需NCM 1.1.0 ZIP（原模块SHA256 f885009aaeaa6e2aa5832101517623903832f4c4f37b352d637463025af92209）和最终ePlayer-v0.5.3-internal.apk（a0d894ba1e49cc4bfce027b51f42307b69de71991bfbef43206ddc268e5f3eb2）均按PR17记录仅保留在原本地环境。已搜索当前工作区、附件/临时目录和本机用户目录，未找到模块或该APK；GitHub公开Release也没有自用包。不能把未嵌入模块的internal CI包交付为内置音源成品。需用户提供原自用APK或模块ZIP/可访问位置后继续仅打包；不要求上传私钥或账号，不公开上传模块，不卸载/清除用户现有应用。
+
+PR24所有源码/规划/失败记录已推送。当前源码恢复入口为[7a1e968实施计划](https://github.com/SturgeonIsSleepy/codex-source/blob/7a1e968b30b09b473151a8df4230c88671aaac57/projects/eplayer/docs/DEVELOPMENT-PLAN.md)。原生源码还做过仓库外x86_64/API28离线release基线构建（1分59秒，12条警告），SHA2561888fef2f957d8fcdfc557890ed18870d6cc36dfa6c044b7318e78e3a4ee14d2；未替换APK原生库、未做运行或ARM验证，不计性能优化完成。下方为此前开发阶段记录。
+
 ## 最新开发恢复：PR24 /0.5.5媒体恢复契约候选
 
 [PR24](https://github.com/SturgeonIsSleepy/codex-source/pull/24) /agent/eplayer-media-resumption：产品候选3914ba64421d45fbdb7468a9e426c4b5870046a1，最新测试修正14ee342c6e1846c1e0813a1910f1d40c6c62da07。基于PR23已验证数据边界，MusicService升级同组件MediaLibraryService，保留旧action并新增传统浏览/Library接口；只读最近项不prepare/不联网，显式恢复才返回实际队列/位置或最近项，真实Stop/失焦仍正常处理。只接受同UID/平台可信连接，不按Stop来源筛选。
