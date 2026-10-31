@@ -84,3 +84,50 @@ class DeviceEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'did not launch'):
             self.run_checks(release='1')
         self.assertEqual({'instrumentation': 'passed', 'release_start': 'failed'}, self.metadata()['checks'])
+
+    def test_internal_universal_complete_flow(self):
+        names = ['app-internal-universal-fastRelease.apk', 'app-internal-fastRelease-androidTest.apk',
+                 'app-internal-universal-release.apk']
+        for name in names:
+            (Path('device-apks') / name).write_bytes(b'internal fixture')
+
+        def successful_adb(arguments, **kwargs):
+            result = self.run_adb(arguments, **kwargs)
+            if 'start' in arguments:
+                result.stdout = 'Status: ok\n'
+            elif 'pidof' in arguments:
+                result.stdout = '1234\n'
+            return result
+
+        with patch.dict(os.environ, {'EPLAYER_VARIANT': 'internal', 'EPLAYER_APK_ARCH': 'universal',
+                                    'EPLAYER_CHECK_RELEASE': '1', 'EPLAYER_TEST_CLASSES': ''}), \
+             patch.object(self.script.subprocess, 'run', successful_adb), \
+             patch.object(self.script.time, 'sleep'), redirect_stdout(StringIO()):
+            self.script.main()
+
+        metadata = self.metadata()
+        self.assertEqual(('internal', 'app.eplayer.music.internal', 'universal'),
+                         (metadata['variant'], metadata['package'], metadata['apk_architecture']))
+        self.assertEqual(names[0], metadata['app']['name'])
+        self.assertEqual(names[1], metadata['tests']['name'])
+        self.assertEqual(names[2], metadata['release']['name'])
+        self.assertEqual({'instrumentation': 'passed', 'release_start': 'passed'}, metadata['checks'])
+        calls = [[str(arg) for arg in call] for call in self.calls]
+        self.assertIn(['adb', 'install', '-r', str(Path('device-apks') / names[0])], calls)
+        self.assertIn(['adb', 'install', '-r', '-t', str(Path('device-apks') / names[1])], calls)
+        self.assertIn(['adb', 'install', '-r', str(Path('device-apks') / names[2])], calls)
+        self.assertTrue(any('app.eplayer.music.internal.test/androidx.test.runner.AndroidJUnitRunner' in call for call in calls))
+        self.assertTrue(any('app.eplayer.music.internal/cp.player.MainActivity' in call for call in calls))
+        self.assertIn(['adb', 'shell', 'am', 'force-stop', 'app.eplayer.music.internal'], calls)
+        self.assertIn(['adb', 'shell', 'pidof', 'app.eplayer.music.internal'], calls)
+        for folder in ['visual-check', 'art-check', 'layout-check']:
+            self.assertTrue(any(f'/sdcard/Android/data/app.eplayer.music.internal/files/{folder}' in call for call in calls))
+        self.assertFalse(any(arg == 'app.eplayer.music' or arg.startswith('app.eplayer.music/') or
+                             arg.startswith('app.eplayer.music.test/') or
+                             '/Android/data/app.eplayer.music/files/' in arg for call in calls for arg in call))
+
+    def test_invalid_variant_fails_before_device_operations(self):
+        with patch.dict(os.environ, {'EPLAYER_VARIANT': '../standard'}):
+            with self.assertRaisesRegex(RuntimeError, 'Invalid ePlayer variant'):
+                self.script.main()
+        self.assertEqual([], self.calls)

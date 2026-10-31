@@ -16,7 +16,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
@@ -49,7 +48,6 @@ internal fun MusicEntryRow(entry: MusicEntry, open: () -> Unit) {
         AsyncImage(entry.image, null, Modifier.size(64.dp).clip(RoundedCornerShape(12.dp)), contentScale = ContentScale.Crop)
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(if (entry.special) "我喜欢的音乐" else entry.name, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
-            if (entry.subtitle.isNotBlank()) Text(entry.subtitle, maxLines = 1, style = MaterialTheme.typography.bodySmall)
         }
         Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.outline)
     }
@@ -83,7 +81,9 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
     var rename by remember(target.id) { mutableStateOf(false) }
     var delete by remember(target.id) { mutableStateOf(false) }
     var name by remember(target.id, target.name) { mutableStateOf(target.name) }
-    Dialog(onDismissRequest = cloud::back, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+    TravelDialog(onDismissRequest = cloud::back,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        destination = { pages.getOrNull(pages.lastIndex - 1)?.let { CloudReturnPreview(it) } }) {
         Surface(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().systemBarsPadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -91,10 +91,17 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                     Text(target.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (own && !target.special && target.kind == MusicKind.PLAYLIST) Box {
                         IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "歌单操作") }
-                        DropdownMenu(menu, { menu = false }) {
+                        TravelMenu(menu, { menu = false }) {
                             DropdownMenuItem(text = { Text("重命名") }, onClick = { menu = false; rename = true })
                             DropdownMenuItem(text = { Text("删除歌单") }, onClick = { menu = false; delete = true })
                         }
+                    }
+                }
+                val ranked = target.kind == MusicKind.RECORD_ALL || target.kind == MusicKind.RECORD_WEEK
+                if (ranked) Box(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                    MusicSegments(listOf("所有时间", "最近一周"), if (target.kind == MusicKind.RECORD_WEEK) 1 else 0) { period ->
+                        val kind = if (period == 1) MusicKind.RECORD_WEEK else MusicKind.RECORD_ALL
+                        if (kind != target.kind) cloud.replaceTop(target.copy(kind = kind))
                     }
                 }
                 val listState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -105,7 +112,6 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                             AsyncImage(target.image, null, Modifier.size(112.dp).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Crop)
                             Column(Modifier.weight(1f).padding(start = 16.dp)) {
                                 Text(target.name, style = MaterialTheme.typography.titleLarge)
-                                if (target.subtitle.isNotBlank()) Text(target.subtitle, style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
@@ -125,7 +131,24 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                                 enabled = !busy, onClick = { cloud.subscribe(target) }) { Text(if (target.subscribed) "取消收藏" else "收藏") }
                         }
                     }
-                    items(tracks, key = { "${it.source}:${it.song.id}" }) { track ->
+                    if (ranked) {
+                        items(tracks.size) { index ->
+                            val track = tracks[index]
+                            val record = page.data?.records?.getOrNull(index)
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Text("${index + 1}", Modifier.width(30.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleMedium)
+                                Box(Modifier.weight(1f)) {
+                                    SongRow(track, playback.song?.id == track.song.id, { player.play(track, tracks); showPlayer() }) {
+                                        record?.playCount?.takeIf { it > 0 }?.let { Text("${it} 次", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                        IconButton(onClick = { songOptions(track, null) }) { Icon(Icons.Default.MoreVert, "歌曲操作") }
+                                    }
+                                }
+                            }
+                        }
+                        if (!page.loading && page.error == null && page.data != null && tracks.isEmpty()) item {
+                            Text("暂无听歌排行", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else items(tracks, key = { "${it.source}:${it.song.id}" }) { track ->
                         SongRow(track, playback.song?.id == track.song.id, { player.play(track, tracks); showPlayer() }) {
                             IconButton(onClick = { songOptions(track, if (own && target.kind == MusicKind.PLAYLIST) target else null) }) { Icon(Icons.Default.MoreVert, "歌曲操作") }
                         }
@@ -143,11 +166,11 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
             }
         }
     }
-    if (rename) AlertDialog(onDismissRequest = { rename = false }, title = { Text("重命名歌单") },
+    if (rename) TravelAlertDialog(onDismissRequest = { rename = false }, title = { Text("重命名歌单") },
         text = { OutlinedTextField(name, { name = it }, singleLine = true) },
         confirmButton = { TextButton(enabled = name.isNotBlank() && !busy, onClick = { cloud.rename(target, name); rename = false }) { Text("保存") } },
         dismissButton = { TextButton(onClick = { rename = false }) { Text("取消") } })
-    if (delete) AlertDialog(onDismissRequest = { delete = false }, title = { Text("删除 ${target.name}？") },
+    if (delete) TravelAlertDialog(onDismissRequest = { delete = false }, title = { Text("删除 ${target.name}？") },
         confirmButton = { TextButton(enabled = !busy, onClick = { cloud.delete(target); delete = false }) { Text("删除") } },
         dismissButton = { TextButton(onClick = { delete = false }) { Text("取消") } })
 }
@@ -159,7 +182,7 @@ internal fun SongOptions(track: Track, playlist: MusicEntry?, cloud: CloudViewMo
     val home by cloud.home.collectAsState()
     val likes by cloud.likes.collectAsState()
     var choosePlaylist by remember { mutableStateOf(false) }
-    ModalBottomSheet(onDismissRequest = close) {
+    TravelSheet(onDismissRequest = close) {
         Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 32.dp)) {
             Text(track.song.name, style = MaterialTheme.typography.titleLarge)
             TextButton(onClick = { player.addNext(track); close() }) { Text("下一首播放") }
@@ -175,7 +198,7 @@ internal fun SongOptions(track: Track, playlist: MusicEntry?, cloud: CloudViewMo
             if (playlist != null) TextButton(onClick = { cloud.removeFromPlaylist(playlist, track); close() }) { Text("从歌单移除") }
         }
     }
-    if (choosePlaylist) AlertDialog(onDismissRequest = { choosePlaylist = false }, title = { Text("添加到歌单") }, text = {
+    if (choosePlaylist) TravelAlertDialog(onDismissRequest = { choosePlaylist = false }, title = { Text("添加到歌单") }, text = {
         LazyColumn { items(home.playlists.filter { it.owner == home.account?.id && it.source == track.source }) { target ->
             TextButton(onClick = { cloud.addToPlaylist(target, track); choosePlaylist = false; close() }, modifier = Modifier.fillMaxWidth()) { Text(target.name) }
         } }
@@ -200,7 +223,7 @@ internal fun CommentsSheet(track: Track, close: () -> Unit) {
         try { refresh() } catch (failure: Exception) { error = failure.message }
         finally { loading = false }
     }
-    ModalBottomSheet(onDismissRequest = close) {
+    TravelSheet(onDismissRequest = close) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(.85f).imePadding().padding(horizontal = 20.dp)) {
             Text("评论", style = MaterialTheme.typography.titleLarge)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -231,6 +254,19 @@ internal fun CommentsSheet(track: Track, close: () -> Unit) {
                     catch (failure: Exception) { error = failure.message }
                     finally { loading = false }
                 } }) { Text("发送") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CloudReturnPreview(page: DetailPage) {
+    Surface(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().systemBarsPadding().padding(20.dp)) {
+            Text(page.target.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(vertical = 16.dp))
+            LazyColumn {
+                items(page.data?.entries.orEmpty()) { entry -> MusicEntryRow(entry) {} }
+                items(page.data?.tracks.orEmpty()) { track -> SongRow(track, false, {}) }
             }
         }
     }

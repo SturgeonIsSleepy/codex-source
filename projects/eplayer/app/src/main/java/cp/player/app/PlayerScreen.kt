@@ -1,10 +1,10 @@
 package cp.player.app
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,6 +15,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
@@ -26,12 +28,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import cp.player.model.Song
 import cp.player.ui.artwork.WitchPlayerView
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
@@ -41,10 +41,13 @@ import java.util.Locale
 internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state: Playback,
                           more: () -> Unit, comments: () -> Unit, close: () -> Unit) {
     val animate by model.animate.collectAsState()
+    val coverBlur by model.coverBlur.collectAsState()
     val context = LocalContext.current.applicationContext
-    val artworkReady by produceState(initialValue = false, key1 = context) {
+    val backdrop = MaterialTheme.colorScheme.background
+    val night = backdrop.luminance() < .3f
+    val artworkGeneration by produceState(initialValue = 0, key1 = context) {
         withContext(Dispatchers.IO) { WitchPlayerView.prepareAssets(context) }
-        value = true
+        value += 1
     }
     val favorites by model.favorites.collectAsState()
     val likes by cloud.likes.collectAsState()
@@ -56,26 +59,28 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
     var lyrics by remember { mutableStateOf<LyricsText?>(null) }
     var showLyrics by remember { mutableStateOf(false) }
     var seeking by remember(state.song?.id) { mutableStateOf<Float?>(null) }
-    val scope = rememberCoroutineScope()
     val liked = state.song?.let { song ->
         if (state.source == null) song.id in favorites else (state.remoteId ?: song.id) in likes[state.source].orEmpty()
     } ?: false
     LaunchedEffect(showLyrics, state.source, state.remoteId, state.song?.id) {
-        lyrics = if (showLyrics) model.lyrics() else null
+        lyrics = null
+        if (showLyrics) lyrics = model.lyrics { lyrics = it }
     }
     val openLyrics = { showLyrics = true }
-    Dialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+    TravelDialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         PlayerLayout(
             state.song, state.buffering,
             header = { PlayerHeader(close, openLyrics, if (state.source != null) comments else null, more) { queue = true } },
             artwork = { modifier ->
-                if (!artworkReady) Box(modifier, contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                else AndroidView(
-                    factory = { WitchPlayerView(it) }, modifier = modifier,
+                if (artworkGeneration == 0) Box(modifier, contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                else CharacterStage(state.song, modifier, coverBlur) { characterModifier -> AndroidView(
+                    factory = { WitchPlayerView(it) }, modifier = characterModifier,
                     update = { view ->
+                        view.setAppearance(night, backdrop.toArgb(), artworkGeneration)
+                        view.setCoverBackdropEnabled(true)
                         view.setMotionEnabled(animate)
                         view.setArtworkActive(!showLyrics && !queue)
-                        view.setPlayback(state.playing, state.playRequested, position) })
+                        view.setPlayback(state.playing, state.playRequested, position) }) }
             },
             controls = {
                 Column {
@@ -93,23 +98,7 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
             }
         )
     }
-    if (queue) ModalBottomSheet(onDismissRequest = { queue = false }) {
-        LazyColumn(contentPadding = PaddingValues(20.dp)) {
-            items(state.queue.size) { index ->
-                var options by remember { mutableStateOf(false) }
-                SongRow(Track(state.queue[index]), state.queue[index].id == state.song?.id, { model.queueIndex(index); queue = false }) {
-                    Box {
-                        IconButton(onClick = { options = true }) { Icon(Icons.Default.MoreVert, "队列操作") }
-                        DropdownMenu(options, { options = false }) {
-                            if (index > 0) DropdownMenuItem(text = { Text("上移") }, onClick = { options = false; model.moveQueue(index, index - 1) })
-                            if (index < state.queue.lastIndex) DropdownMenuItem(text = { Text("下移") }, onClick = { options = false; model.moveQueue(index, index + 1) })
-                            DropdownMenuItem(text = { Text("移除") }, onClick = { options = false; model.removeQueue(index) })
-                        }
-                    }
-                }
-            }
-        }
-    }
+    if (queue) QueueSheet(state, model::queueIndex, model::moveQueue, model::removeQueue, model::clearQueue) { queue = false }
     if (qualitySheet) QualitySheet(model) { qualitySheet = false }
     if (showLyrics) LyricsScreen(lyrics, model) { showLyrics = false }
 }
@@ -150,11 +139,15 @@ internal fun PlayerLayout(song: Song?, buffering: Boolean, header: @Composable (
 
 @Composable
 private fun PlayerMetadata(song: Song?) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp).testTag("player-metadata")) {
-        Text(song?.name ?: "未选择音乐", style = MaterialTheme.typography.headlineSmall,
-            maxLines = 3, overflow = TextOverflow.Ellipsis)
-        if (!song?.artist.isNullOrBlank()) Text(song!!.artist, style = MaterialTheme.typography.bodyMedium,
-            maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    AnimatedContent(song, contentKey = { it?.id },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp).testTag("player-metadata"),
+        transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(140)) }, label = "track-metadata") { display ->
+        Column(Modifier.fillMaxWidth()) {
+            Text(display?.name ?: "未选择音乐", style = MaterialTheme.typography.headlineSmall,
+                maxLines = 3, overflow = TextOverflow.Ellipsis)
+            if (!display?.artist.isNullOrBlank()) Text(display!!.artist, style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
