@@ -1,5 +1,6 @@
 package cp.player
 
+import android.media.AudioManager
 import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
@@ -181,6 +182,11 @@ class NativeStreamingTest {
         val body = SyntheticAudio.wav(12)
         val previousFiles = context.cacheDir.listFiles().orEmpty().map { it.name }.toSet()
         val server = DelayedAudioServer(id, body, allowClientCancellation = true)
+        val audio = context.getSystemService(AudioManager::class.java)
+        fun nativeQuiescent(): Boolean {
+            val state = nativeState()
+            return (state.equals("stopped", true) || state.equals("uninitialized", true)) && !audio.isMusicActive
+        }
         try { withNativePlayer { current ->
             main {
                 current.setMediaItem(Song(id, "缓冲停止", "Synthetic fixture", album = "Test", durationMs = 12000).toMediaItem(server.uri))
@@ -191,7 +197,7 @@ class NativeStreamingTest {
             await {
                 var stopped = false
                 main { stopped = current.playbackState == Player.STATE_IDLE && !current.playWhenReady }
-                stopped && nativeState().equals("stopped", true)
+                stopped && nativeQuiescent()
             }
             server.finish()
             repeat(10) {
@@ -199,7 +205,7 @@ class NativeStreamingTest {
                     assertEquals("Completed cancelled transfer must not turn Stop into READY", Player.STATE_IDLE, current.playbackState)
                     assertFalse(current.playWhenReady); assertFalse(current.isPlaying)
                 }
-                assertTrue(nativeState().equals("stopped", true))
+                assertTrue("Cancelled prebuffer must leave no playing engine or active output", nativeQuiescent())
                 SystemClock.sleep(100)
             }
         } } finally {

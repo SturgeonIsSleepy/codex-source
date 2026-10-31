@@ -2,6 +2,10 @@
 
 本页记录 Android 16 硬件加速模拟器检查，不能替代实机、音质、耳机或真实账号验收。源码工作分支为 `agent/eplayer-20261025-playback-layout`，汇总见 [PR #1](https://github.com/SturgeonIsSleepy/codex-source/pull/1)。
 
+## 2026-10-31当前组合：来源通过，68项仍有2个释放状态契约失败
+
+详见[当前计划](DEVELOPMENT-PLAN.md#当前设备断点源码原生构建已过释放契约校正待设备)。固定源码124547db、CI41232129032：52 JVM通过；68设备65通过/2失败/1真实登录跳过（115.629秒）。两处原生状态失败保留，后续修订尚未取得设备结果。设备artifact13054089334与原生artifact13054770497的摘要、已查看截图和日志限制均在计划列明，R8/确切原包/新Release未执行。
+
 ## 已完成的第三阶段
 
 源码 `5a6304f71f5f5d17480a142b7fae86dd082cb4fe`，[CI 40122737899](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40122737899)。构建成功；Instrumentation 用时 42.126 秒，25 项中 **24 项通过、1 项条件跳过**。跳过项为普通版的真实模块登录校验，没有联网登录成功证据。

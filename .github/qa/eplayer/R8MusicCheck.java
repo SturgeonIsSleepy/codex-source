@@ -62,6 +62,8 @@ public class R8MusicCheck extends InstrumentationTestCase {
             click(find("完成", false));
             waitFor("home after settings", () -> find("设置", true) != null);
             if (find("曲库", true) != null) click(find("曲库", true));
+            // The redesigned library enters Playlists; the fixed import slots live under Songs.
+            if (find(TITLE, false) == null && find("歌曲", false) != null) click(find("歌曲", false));
             waitFor("library import entry", () -> find(TITLE, false) != null);
             if (count("导入") > 1) {
                 String filename = "ePlayer-QA-" + UUID.randomUUID() + ".wav";
