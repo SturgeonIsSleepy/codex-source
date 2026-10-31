@@ -48,6 +48,19 @@ class RecentBrowserTest {
         assertFalse(message, audio.isMusicActive)
     }
 
+    private fun awaitOwnedQueueCleanup(current: MediaController) {
+        // The media-command reply joins the player queue, not QueueStore's separate disk writer.
+        val prefs = context.getSharedPreferences("eplayer_queue", 0)
+        val deadline = android.os.SystemClock.elapsedRealtime() + 2000
+        var empty = false
+        do {
+            main { empty = current.mediaItemCount == 0 }
+            if (empty && prefs.getString("items", null) == "[]") return
+            android.os.SystemClock.sleep(25)
+        } while (android.os.SystemClock.elapsedRealtime() < deadline)
+        assertTrue("Owned browser fixture must finish clearing the player and persisted queue", empty && prefs.getString("items", null) == "[]")
+    }
+
     private fun awaitAudio(current: MediaController, id: String) {
         val deadline = android.os.SystemClock.elapsedRealtime() + 15000
         var progressed = false
@@ -113,6 +126,7 @@ class RecentBrowserTest {
                 if (ownsQueue) {
                     main { controller?.pause(); controller?.stop(); controller?.clearMediaItems(); controller?.volume = volume }
                     engine(savedEngine)
+                    awaitOwnedQueueCleanup(controller!!)
                 }
             } finally {
                 main { controller?.release() }
@@ -206,15 +220,17 @@ class RecentBrowserTest {
         } finally {
             main { browser?.disconnect() }
             controller?.let { current ->
-                if (ownsQueue) {
-                    lateinit var barrier: com.google.common.util.concurrent.ListenableFuture<SessionResult>
-                    main {
-                        current.pause(); current.stop(); current.clearMediaItems()
-                        barrier = current.sendCustomCommand(SessionCommand("SET_ENGINE", Bundle.EMPTY), Bundle().apply { putInt("engine", engine) })
+                try {
+                    if (ownsQueue) {
+                        lateinit var barrier: com.google.common.util.concurrent.ListenableFuture<SessionResult>
+                        main {
+                            current.pause(); current.stop(); current.clearMediaItems()
+                            barrier = current.sendCustomCommand(SessionCommand("SET_ENGINE", Bundle.EMPTY), Bundle().apply { putInt("engine", engine) })
+                        }
+                        barrier.get(10, TimeUnit.SECONDS)
+                        awaitOwnedQueueCleanup(current)
                     }
-                    barrier.get(10, TimeUnit.SECONDS)
-                }
-                main { current.release() }
+                } finally { main { current.release() } }
             }
             RecentStore.remove(context, id)
             file.delete()

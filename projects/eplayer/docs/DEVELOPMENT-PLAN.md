@@ -6,6 +6,14 @@ PR25 /agent/eplayer-internal-055为完整组合主线：最新界面、歌词/�
 
 用户本轮已恢复实际功能验证；上轮私有内置音源APK只是按要求打包，不再据它跳过测试。模块/签名/账号与含私有模块APK不上传公开仓库或Release，用户的旧私有包摘要保持。
 
+## 最新设备结果：66通过/2跳过，继续修复夹具隔离
+
+[CI41234691200](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41234691200) 对0f398714构建/设备任务返回success，但实际68项是66通过/0失败/2跳过（106.003秒）：登录缺模块，以及explicitPlayCanResumeRecentAudioAfterQueueClearOnBothEngines的Preserve user queue。后者不能算恢复验收通过，也不能将OK (68 tests)写成67通过/1登录跳过。原生release的引擎移除/进度为空/系统无输出与预缓冲旧响应检查这次实际通过。
+
+前一项只读浏览夹具确实清空播放器，但其媒体命令屏障不等待QueueStore独立写线程，随后恢复测试读到未清空的持久化队列而跳过。修订仅在拥有测试队列时等待播放器和偏好items均为空（最多2秒），不清除用户队列、不移除assume保护，失败仍释放控制器。设备脚本原来只看OK，新增明确记录所有-3/-4跳过，隔离CI只容许指定真实登录项；其他跳过直接失败。两个仓库回归先得到1失败/1错误，修复后完整33项通过；原始本轮输出实际解析确认两项跳过。修订设备结果待取得。
+
+已核验本轮设备artifact13055004582 SHA256f63b022a1348cc47b6236e2647c91f4124e92dd6f69c4abf04b80fec853264f4；匹配来源的native artifact13055152840 SHA256004891ebebf48e8b25bc79314eca4630eaa1b531af7c82351840a485b0dcdfa6。新source/download迁移已推送，但它们不在这轮0f398714内；下一轮须验证全部最终组合，再正常主线R8/确切原始包，不越过额外跳过。
+
 ## 当前设备断点：源码原生构建已过，释放契约校正待设备
 
 [CI41232129032](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41232129032) 对124547db实际从源码完成API28三ABI、严格来源检查和52 JVM；Android16设备68项65通过/2失败/1真实登录跳过，115.629秒。原浏览无输出、双引擎显式恢复、默认双曲和一次Back面板检查均通过。两处失败是旧测试要求底层保留Stopped，而新Shutdown已移除引擎（uninitialized、progress=null）。不能据此将整轮写成通过。

@@ -67,6 +67,26 @@ class DeviceEvidenceTests(unittest.TestCase):
         self.assertTrue(Path('device-evidence/system-sessions.txt').exists())
         self.assertTrue(any('logcat' in call and 'MediaDataProcessor' in call for call in self.calls))
 
+    def test_unexpected_queue_assumption_cannot_mark_ci_passed(self):
+        self.result = ('INSTRUMENTATION_STATUS: class=cp.player.RecentBrowserTest\n'
+                       'INSTRUMENTATION_STATUS: test=explicitPlayCanResumeRecentAudioAfterQueueClearOnBothEngines\n'
+                       'INSTRUMENTATION_STATUS_CODE: -4\n' + self.result)
+        with self.assertRaisesRegex(RuntimeError, 'Unexpected skipped'):
+            self.run_checks()
+        self.assertEqual('failed', self.metadata()['checks']['instrumentation'])
+        self.assertEqual('cp.player.RecentBrowserTest', self.metadata()['skipped_tests'][0]['class'])
+        self.assertIn('INSTRUMENTATION_STATUS_CODE: -4', Path('device-evidence/instrumentation.txt').read_text())
+
+    def test_credential_dependent_login_skip_is_explicitly_recorded(self):
+        self.result = ('INSTRUMENTATION_STATUS: class=cp.player.SourceLoginLiveTest\n'
+                       'INSTRUMENTATION_STATUS: test=officialModuleCanCreateLocallyRenderedLoginCode\n'
+                       'INSTRUMENTATION_STATUS_CODE: -4\n' + self.result)
+        self.run_checks()
+        self.assertEqual('passed', self.metadata()['checks']['instrumentation'])
+        self.assertEqual([{'class': 'cp.player.SourceLoginLiveTest',
+                          'test': 'officialModuleCanCreateLocallyRenderedLoginCode', 'code': -4}],
+                         self.metadata()['skipped_tests'])
+
     def test_timeout_retains_partial_output_and_status(self):
         self.result = subprocess.TimeoutExpired(['adb'], 480, output=b'partial instrument output')
         with self.assertRaises(subprocess.TimeoutExpired):
