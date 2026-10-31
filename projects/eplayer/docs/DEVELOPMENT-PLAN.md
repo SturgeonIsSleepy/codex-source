@@ -1,5 +1,11 @@
 # ePlayer 当前实施计划
 
+## 最新后续：核心听歌统计边界，待最终组合设备验证
+
+ListeningClock/ListeningStatsStore/ListeningStats从app/ListeningStats.kt移到core/listening，MusicService直接引用核心，UI仅消费原StateFlow；原偏好文件/日期键/累计毫秒/歌曲去重/7天聚合不变，无兼容别名或重复存储。两个有实际时间/缓冲/切曲语义的原JVM检查同步归core/listening。完整51 JVM和应用/设备包33秒通过，主线最终设备/R8仍未验收；不把前一产品0780028的在途设备检查算作本次搬移已通过。此阶段只保存源码，避免为纯边界搬移与既有设备轮重复排队大构建；随后以最终组合恢复一次完整门槛。
+
+原生Rust tree3ee21a635d50079652c6c803b70451ffd300fa0f已在仓库外离线release编译API28三ABI：x86_64 1分59秒、ARM64 1分55秒、ARMv7 1分49秒，各12条警告；ELF架构正确且31个RustEngine/JNI入口三ABI相同。产物未替换APK、未运行，不称Trace优化完成。旧cbe设备35071行runtime中33693行来自JNI Trace，后续减少release日志并让验证管线使用对应源码新库，不能用旧0.1.0运行结果冒充新库验证。
+
 ## 当前组合候选：TTML离线缓存修复，进入设备验收
 
 从e1f8bff6目标6项5通过/1真实TTML-only离线失败接续：可空CachedLyrics DTO验证旧字段并规范化可选丰富字段，读/写共用内容判断，允许普通LRC为空但逐词或TTML有效；保留唯一临时文件、取消检查和原子替换，精确R8规则同步。注入时钟验证刷新时间/8天过期/完整丰富字段往返，非计时依赖；Android真实文件系统检查同步加入TTML-only离线读。

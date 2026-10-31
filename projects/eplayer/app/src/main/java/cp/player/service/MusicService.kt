@@ -1,5 +1,8 @@
 package cp.player.service
 
+import cp.player.core.listening.ListeningClock
+import cp.player.core.listening.ListeningStatsStore
+
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.BroadcastReceiver
@@ -47,14 +50,14 @@ class MusicService : MediaLibraryService() {
     private var rustFocus: RustAudioFocus? = null
     private var engine = 0
     private val handler = Handler(Looper.getMainLooper())
-    private val listeningClock = cp.player.app.ListeningClock()
+    private val listeningClock = ListeningClock()
     private val listeningCheckpoint = Runnable { checkpointListening(saveQueue = true) }
     private fun checkpointListening(finishing: Boolean = false, saveQueue: Boolean = false) {
         val id = player.currentMediaItem?.let { item ->
             "${item.mediaMetadata.extras?.getString("source").orEmpty()}:${item.mediaId}"
         }
         listeningClock.update(SystemClock.elapsedRealtime(), id, !finishing && player.isPlaying)?.let { (track, elapsed) ->
-            cp.player.app.ListeningStatsStore.record(this, track, elapsed)
+            ListeningStatsStore.record(this, track, elapsed)
         }
         if (saveQueue) QueueStore.save(this, player, queueChanged = false)
         handler.removeCallbacks(listeningCheckpoint)
@@ -93,7 +96,7 @@ class MusicService : MediaLibraryService() {
 
     override fun onCreate() {
         super.onCreate()
-        cp.player.app.ListeningStatsStore.refresh(this)
+        ListeningStatsStore.refresh(this)
         audio = getSystemService(AudioManager::class.java)
         ContextCompat.registerReceiver(this, noisy, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY), ContextCompat.RECEIVER_NOT_EXPORTED)
         engine = UserPreferences.getAudioEngine(this)

@@ -1,5 +1,7 @@
 package cp.player.app
 
+import cp.player.core.listening.ListeningStatsStore
+
 import cp.player.core.library.Track
 import cp.player.core.library.LibraryStore
 import cp.player.core.library.RecentStore

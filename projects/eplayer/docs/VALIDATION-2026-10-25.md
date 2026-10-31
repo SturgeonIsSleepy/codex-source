@@ -601,3 +601,18 @@ cbe699f补标准MediaButtonReceiver：实际Media3 1.10的canResumePlaybackOnSta
 候选用可空CachedLyrics DTO验证/归一旧JSON和丰富字段，读写同一内容判断允许TTML-only；原子替换/并发唯一半文件/取消检查保留，精确R8保留规则更新。Android UUID文件夹检查也覆盖丰富缓存离线读。完整51 JVM零失败零跳过、主程序及设备测试包36秒通过；当前设备/R8/确切原包/Release未执行。浏览夹具在连接前明确pause/stop并断言PWR=false、IDLE且无音频输出，之后保持原子项/不自启断言与原超时。
 
 旧cbe699f /CI41120514646为53项51通过/1浏览暂停断言失败/1真实登录跳过（109.435秒），设备artifact13007919336已核对SHA256373287ab3993d3ccad9d6cd71a3280217aeb33d96e30f01abb0df7b3f5bfdf67。其SystemUI快照已有非null resumeAction，日志确认双引擎显式最近播放进度；不能拿该轮EQ通过证明全部历史停止根因解决。当前PR25组合仍需独立设备验收。
+
+
+## 听歌统计数据归属与原生三ABI基线
+
+ListeningClock/ListeningStatsStore及模型归core/listening，唯一统计StateFlow/偏好日期键/毫秒累计与去重逻辑原样保留，MusicService不再引用app统计类。原两项实际时钟语义测试同步归核心；完整51 JVM及应用/设备包33秒通过。设备与R8未执行，不借前一0780028的在途设备检查冒充本次源码通过。
+
+Rust tree3ee21a635d50079652c6c803b70451ffd300fa0f的API28离线release基线实际三ABI编译，各12警告；31个RustEngine/JNI入口一致，ELF架构核对。以下不是APK替换或运行验收，也没有Trace优化改动。
+
+| ABI | 字节 | SHA256 | 编译耗时 |
+| --- | --- | --- | --- |
+| ARM64 | 5807552 | 58c58afeb0cb136c07e2b1e7b75076f1b7ff1e23702041c9416bebe333a40540 | 1分55秒 |
+| ARMv7 | 4367888 | a4802361349a1c5f518cbe1390e5df08246126a69b182073891a71c3248b8111 | 1分49秒 |
+| x86_64 | 5606560 | 1888fef2f957d8fcdfc557890ed18870d6cc36dfa6c044b7318e78e3a4ee14d2 | 1分59秒 |
+
+原生库/原始日志保留仓库外待相应Release归档，未提交Git；已清理先前被替代的生成app/build以释放空间，源码、用户私有包与证据压缩包均保留。

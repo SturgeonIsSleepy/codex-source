@@ -1,5 +1,7 @@
 package cp.player.app
 
+import cp.player.core.listening.ListeningStats
+
 import cp.player.core.library.Track
 
 import android.Manifest
