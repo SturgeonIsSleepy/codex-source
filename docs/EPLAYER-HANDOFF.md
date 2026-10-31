@@ -1,8 +1,10 @@
 # ePlayer 转移交接
 
-## 当前最新恢复：PR25原生输出释放3dedfb8，源码匹配CI进行中
+## 当前最新恢复：PR25来源修正124547d，52 JVM通过
 
-用户已恢复持续开发和功能验证。最新产品3dedfb843f6ece8a89f7c9907c7d575b706db0bd，Rust tree151e612001b3d3e338049eca2d8a972bbe9beb79；读[当前完整实施计划](https://github.com/SturgeonIsSleepy/codex-source/blob/3dedfb843f6ece8a89f7c9907c7d575b706db0bd/projects/eplayer/docs/DEVELOPMENT-PLAN.md)，当前[CI41230778584](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41230778584)首次从对应源码编译三ABI并准备完整Android16检查。main应用仍0.5.2，未发布新公开APK，不用旧0.1.0库验证新JNI。
+上一轮3dedfb8 /CI41230778584三ABI编译成功，但源码工作树校验失败，应用/设备跳过，不能算运行通过。旧检查未列dirty路径；本地已复现Opus13个Windows工程字节不变却因换行属性误报修改。仅修原5类工程格式为-text、保持字节，并保留严格校验/新增前置检查和路径诊断，13项时间戳刷新验证通过；依赖缓存独立保存避免重复冷编译。当前普通源TTML过期也有6项5通过/1失败红色及修复，补社区新鲜内容零请求回归，完整52 JVM/应用和设备包8秒、31仓库检查通过。当前Rust来源CLI从项目子目录通过，原生属性修正后的三ABI缓存构建0.12/0.08/0.08秒；新设备/视觉/R8/原包/Release仍待。完整规划以当前候选链接为准。
+
+用户已恢复持续开发和功能验证。最新产品124547db36b7668ca9fd6e487b0e18513adfe3b9，Rust treebf0c45a9c0c88cc9a27867c2d770141f02bc739f；读[当前完整实施计划](https://github.com/SturgeonIsSleepy/codex-source/blob/124547db36b7668ca9fd6e487b0e18513adfe3b9/projects/eplayer/docs/DEVELOPMENT-PLAN.md)，当前[CI41232129032](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41232129032)首次从对应源码编译三ABI并准备完整Android16检查。main应用仍0.5.2，未发布新公开APK，不用旧0.1.0库验证新JNI。
 
 真实断点：629d5a7 /CI41229078993设备68项64通过/3失败/1登录跳过，106.161秒；artifact13053445692已核验b4e729bb9d9b10b5092299a8afb960543975c79ee83f7c2fafd6bd2c1f6f453e。默认双曲旧导航已过，但浏览前等5秒仍有AudioManager输出；源码确认Stop只清空音源、不关闭输出线程。另两项是旧“无默认曲目”断言与当前要求冲突、Espresso误选未获焦Activity根而无法注入Back。失败保留，未记作通过。
 

@@ -1,8 +1,10 @@
 # ePlayer 当前实施计划
 
-## 当前唯一恢复入口：PR25原生释放候选3dedfb8
+## 当前唯一恢复入口：PR25来源修正候选124547d
 
-本轮恢复功能验证。最新产品3dedfb843f6ece8a89f7c9907c7d575b706db0bd /[完整规划](https://github.com/SturgeonIsSleepy/codex-source/blob/3dedfb843f6ece8a89f7c9907c7d575b706db0bd/projects/eplayer/docs/DEVELOPMENT-PLAN.md)，CI41230778584首次编译匹配源码的三ABI，准备68项Android16检查。main仍失败0.5.2，不能发布。
+上一轮3dedfb8 /CI41230778584三ABI编译成功，但源码工作树校验失败，应用/设备跳过，不能算运行通过。旧检查未列dirty路径；本地已复现Opus13个Windows工程字节不变却因换行属性误报修改。仅修原5类工程格式为-text、保持字节，并保留严格校验/新增前置检查和路径诊断，13项时间戳刷新验证通过；依赖缓存独立保存避免重复冷编译。当前普通源TTML过期也有6项5通过/1失败红色及修复，补社区新鲜内容零请求回归，完整52 JVM/应用和设备包8秒、31仓库检查通过。当前Rust来源CLI从项目子目录通过，原生属性修正后的三ABI缓存构建0.12/0.08/0.08秒；新设备/视觉/R8/原包/Release仍待。完整规划以当前候选链接为准。
+
+本轮恢复功能验证。最新产品124547db36b7668ca9fd6e487b0e18513adfe3b9 /[完整规划](https://github.com/SturgeonIsSleepy/codex-source/blob/124547db36b7668ca9fd6e487b0e18513adfe3b9/projects/eplayer/docs/DEVELOPMENT-PLAN.md)，CI41232129032首次编译匹配源码的三ABI，准备68项Android16检查。main仍失败0.5.2，不能发布。
 
 629d5a7设备68项64通过/3失败/1登录跳过（106.161秒）：默认双曲旧检查通过，但输出等5秒仍active、旧无默认曲目契约冲突、Back根窗口焦点异常。源码确认原生Stop不关闭输出线程，候选新增nativeShutdown并在适配器释放时等线程结束，关闭release Trace，CI拒绝旧31接口库而强制32接口/源码树/ABI匹配；库/来源/日志另存证据artifact。修正后本地源码三ABI、51 JVM/应用与设备包、31仓库检查通过，设备/新主题视觉/R8/确切原包/Release未验收。
 
