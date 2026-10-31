@@ -26,6 +26,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Verify pristine native sources before building
+        run: git -C ../.. diff --exit-code --name-only HEAD -- projects/eplayer/app/src/main/rust
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -43,8 +45,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
-      - name: Cache native dependencies and compiler output
-        uses: actions/cache@v4
+      - name: Restore native dependencies and compiler output
+        id: native-cache
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.cargo/registry
@@ -53,6 +56,7 @@ jobs:
             projects/eplayer/app/src/main/rust/target
           key: ${{ runner.os }}-eplayer-native-v1-ndk4.1.2-${{ hashFiles('projects/eplayer/app/src/main/rust/Cargo.lock') }}
       - name: Build matching native libraries from source
+        id: native-build
         working-directory: projects/eplayer/app/src/main/rust
         env:
           CARGO_BUILD_JOBS: '2'
@@ -62,6 +66,16 @@ jobs:
           if ! command -v cargo-ndk >/dev/null; then cargo install cargo-ndk --version 4.1.2 --locked; fi
           mkdir -p ../../../build/native-evidence
           cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -P 28 -o ../jniLibs build --locked --release 2>&1 | tee ../../../build/native-evidence/build.log
+      - name: Save successfully compiled native dependencies
+        if: always() && steps.native-build.outcome == 'success' && steps.native-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-ndk
+            projects/eplayer/app/src/main/rust/target
+          key: ${{ runner.os }}-eplayer-native-v1-ndk4.1.2-${{ hashFiles('projects/eplayer/app/src/main/rust/Cargo.lock') }}
       - name: Verify native ABI exports and source provenance
         run: |
           export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"

@@ -1,6 +1,8 @@
 package cp.player.core.lyrics
 
 import java.io.File
+import java.security.MessageDigest
+import com.google.gson.Gson
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -86,13 +88,14 @@ class LyricsRepositoryTest {
         assertEquals(text, repository(directory) { _, _ -> error("Rich cache must work offline") }.get("fixture", "rich"))
     }
 
-    @Test fun expiredCacheRefreshesWithTheInjectedClockAndKeepsWordTimings() = runBlocking {
+    @Test fun expiredSourceTtmlRefreshesWithTheInjectedClockAndKeepsRichTimings() = runBlocking {
         val directory = temporary.newFolder()
         var time = fixedNow
         var requests = 0
         val repository = LyricsRepository(directory, { time }) { _, _ ->
             requests++
-            LyricsText("[00:00]空$requests", wordTimed = "[0,1000](0,1000,0)空$requests")
+            LyricsText("[00:00]空$requests", wordTimed = "[0,1000](0,1000,0)空$requests",
+                ttml = """<tt><body><p begin="0s" end="1s">空$requests</p></body></tt>""")
         }
         val first = repository.get("fixture", "stale")
         assertEquals(fixedNow, first.fetchedAt)
@@ -101,8 +104,27 @@ class LyricsRepositoryTest {
         assertEquals(2, requests)
         assertEquals(time, refreshed.fetchedAt)
         assertTrue(refreshed.wordTimed.endsWith("空2"))
+        assertTrue(refreshed.ttml.contains("空2"))
         assertEquals(refreshed, repository.get("fixture", "stale"))
         assertEquals(2, requests)
+    }
+
+
+    @Test fun freshCommunityTtmlDoesNotRefetchAnOlderSourcePayload() = runBlocking {
+        val directory = temporary.newFolder()
+        val time = 2_000_000_000L
+        val cached = LyricsText("[00:00]原歌词", ttml = "<tt/>", fetchedAt = time - 8L * 86400000,
+            communityCheckedAt = time - 86400000)
+        val key = MessageDigest.getInstance("SHA-256").digest("netease-cloudmusic-rs:123".toByteArray())
+            .joinToString("") { "%02x".format(it) }
+        File(directory, "$key.json").writeText(Gson().toJson(cached))
+        var requests = 0
+        val repository = LyricsRepository(directory, { time }) { _, _ ->
+            requests++
+            error("Fresh community lyrics must remain usable without a source request")
+        }
+        assertEquals(cached, repository.get("netease-cloudmusic-rs", "123"))
+        assertEquals(0, requests)
     }
 
 }

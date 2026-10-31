@@ -44,7 +44,9 @@ def main():
     ndk = Path(os.environ['ANDROID_NDK_HOME'])
     nm = ndk / 'toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm'
     native_path = 'projects/eplayer/app/src/main/rust'
-    subprocess.run(['git', 'diff', '--quiet', 'HEAD', '--', f':(top){native_path}'], check=True)
+    changed = subprocess.check_output(['git', 'diff', '--name-only', 'HEAD', '--', f':(top){native_path}'], text=True).splitlines()
+    if changed:
+        raise ValueError('Native source differs from recorded commit: ' + ', '.join(changed))
     records = collect(args.native_dir, nm)
     metadata = {
         'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),

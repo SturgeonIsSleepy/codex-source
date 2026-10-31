@@ -50,7 +50,8 @@ class LyricsRepository(private val directory: File, private val now: () -> Long 
         val communityEligible = source == "netease-cloudmusic-rs" && id.matches(Regex("[0-9]{1,20}"))
         val communityFresh = !communityEligible || (cached != null && cached.communityCheckedAt > 0 &&
             now - cached.communityCheckedAt < if (cached.ttml.isNotBlank()) CACHE_AGE else 15 * 60 * 1000)
-        if (cached != null && cached.ttml.isNotBlank() && communityFresh) return@withContext cached
+        // Only community TTML has an independent freshness window; source TTML follows source expiry.
+        if (cached != null && cached.ttml.isNotBlank() && communityEligible && communityFresh) return@withContext cached
         if (cached != null && (sourceFresh && communityFresh || cached.cacheVersion < 2 && cached.communityCheckedAt > 0 && now - cached.communityCheckedAt < 60_000))
             return@withContext cached
         val refreshed = coroutineScope {
