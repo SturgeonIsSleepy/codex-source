@@ -1,5 +1,17 @@
 # ePlayer 转移交接
 
+## 当前最新恢复：PR25原生输出释放3dedfb8，源码匹配CI进行中
+
+用户已恢复持续开发和功能验证。最新产品3dedfb843f6ece8a89f7c9907c7d575b706db0bd，Rust tree151e612001b3d3e338049eca2d8a972bbe9beb79；读[当前完整实施计划](https://github.com/SturgeonIsSleepy/codex-source/blob/3dedfb843f6ece8a89f7c9907c7d575b706db0bd/projects/eplayer/docs/DEVELOPMENT-PLAN.md)，当前[CI41230778584](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41230778584)首次从对应源码编译三ABI并准备完整Android16检查。main应用仍0.5.2，未发布新公开APK，不用旧0.1.0库验证新JNI。
+
+真实断点：629d5a7 /CI41229078993设备68项64通过/3失败/1登录跳过，106.161秒；artifact13053445692已核验b4e729bb9d9b10b5092299a8afb960543975c79ee83f7c2fafd6bd2c1f6f453e。默认双曲旧导航已过，但浏览前等5秒仍有AudioManager输出；源码确认Stop只清空音源、不关闭输出线程。另两项是旧“无默认曲目”断言与当前要求冲突、Espresso误选未获焦Activity根而无法注入Back。失败保留，未记作通过。
+
+候选新增nativeShutdown接现有audio_shutdown，在串行调度器释放适配器并等待输出线程结束，正常Pause/Stop语义保留；显式恢复检查新增离开原生适配器后的无活跃输出要求。release原生Trace降Info，底部面板等实际Dialog获焦后仅注入一次真实Back，曲库保留默认双曲/独立导入且不捆绑音频。已保留纸白蓝天/夜间蓝灰、新信息架构、TTML-only原子缓存与core/listening边界，不改角色/发/帽/手纹理或逐帧换脸。
+
+本地API28三ABI源码编译通过（ARM64 7.44秒/ARMv7 7.05秒/x86_64 18.80秒，各12警告），32接口一致，来源收集器实际拒绝旧31接口库；从项目子目录运行完整来源CLI通过。完整51 JVM/应用及设备包最终7秒、31仓库检查通过；新库设备运行、新主题视觉、R8/确切原包/Release尚未执行。CI原生来源JSON、库和日志另存artifact，后续归Release，绝不把原生编译说成运行或功耗通过。
+
+私有内置音源APK/模块/签名/账号不公开，旧用户包与0.3.2公共资产不覆盖；AndroidCloud17与固定下载入口保留。后续先取得新库68项和整页截图，再最终main一次R8/完整设备/原包跨应用/Release。下方均为历史断点，勿按旧“仅打包/在途”恢复。
+
 ## 当前恢复：PR25组合0780028，恢复功能验收
 
 本轮用户重新授权持续开发和验证；上轮仅打包指令已完成，不再按它跳过功能检查。当前[PR25](https://github.com/SturgeonIsSleepy/codex-source/pull/25)产品0780028af1c0c2a5cfd65f130cf73d1e2f71f03e，正常保留最新main 3e681fc的Android17工具工作和入口。先读[当前实施计划](https://github.com/SturgeonIsSleepy/codex-source/blob/0780028af1c0c2a5cfd65f130cf73d1e2f71f03e/projects/eplayer/docs/DEVELOPMENT-PLAN.md)。main应用仍0.5.2，未借分支结果发布。

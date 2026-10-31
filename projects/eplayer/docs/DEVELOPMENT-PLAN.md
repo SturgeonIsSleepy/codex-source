@@ -1,5 +1,13 @@
 # ePlayer 当前实施计划
 
+## 当前唯一恢复入口：PR25原生释放候选3dedfb8
+
+本轮恢复功能验证。最新产品3dedfb843f6ece8a89f7c9907c7d575b706db0bd /[完整规划](https://github.com/SturgeonIsSleepy/codex-source/blob/3dedfb843f6ece8a89f7c9907c7d575b706db0bd/projects/eplayer/docs/DEVELOPMENT-PLAN.md)，CI41230778584首次编译匹配源码的三ABI，准备68项Android16检查。main仍失败0.5.2，不能发布。
+
+629d5a7设备68项64通过/3失败/1登录跳过（106.161秒）：默认双曲旧检查通过，但输出等5秒仍active、旧无默认曲目契约冲突、Back根窗口焦点异常。源码确认原生Stop不关闭输出线程，候选新增nativeShutdown并在适配器释放时等线程结束，关闭release Trace，CI拒绝旧31接口库而强制32接口/源码树/ABI匹配；库/来源/日志另存证据artifact。修正后本地源码三ABI、51 JVM/应用与设备包、31仓库检查通过，设备/新主题视觉/R8/确切原包/Release未验收。
+
+组合保留纸白蓝天/夜间蓝灰、默认双曲导入/全音乐功能、丰富歌词原子缓存/core/listening和共同人物素材。私有模块/签名/账号不公开，AndroidCloud固定入口不动。先取得新库设备/视觉，再最终main一次R8/68项/冷启动、确切原包和Release；不沿用旧库或独立绿色，不按下方历史阶段恢复。
+
 ## 当前以PR25组合源码为准
 
 用户本轮重新要求开发/构建/功能验证，恢复上次仅打包时暂停的检查。最新应用候选0780028af1c0c2a5cfd65f130cf73d1e2f71f03e，保留PR17界面与PR24核心及main最新Android17工具工作；[完整规划](https://github.com/SturgeonIsSleepy/codex-source/blob/0780028af1c0c2a5cfd65f130cf73d1e2f71f03e/projects/eplayer/docs/DEVELOPMENT-PLAN.md)。main应用仍失败0.5.2，私有0.5.5包仅曾构建，不发布为已验收版本。
