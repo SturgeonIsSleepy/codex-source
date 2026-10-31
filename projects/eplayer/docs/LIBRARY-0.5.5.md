@@ -23,3 +23,5 @@
 精简流程首轮在执行前因该项目不存在 testInternalReleaseUnitTest 任务停止（未到编译），已移除重复的 JVM 任务，仅 assembleInternalRelease；既有 JVM 与设备 26 项记录不丢弃。最终仍须安装包签名/对齐核验与队列改动点烟测。
 
 收尾源码 `e8e732f340187e38d2bdf5df58d99fdff4f72cea` / [CI 41056130720](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41056130720)。用户进一步要求非必要不检查，取消最终重复设备烟测，仅保留打包完整性验证。松手一次排序的最终改动尚未经过真实长列表复测，账号总榜仍需用户登录权限验证。
+
+最终自用通用 APK 已生成：`ePlayer-v0.5.5-internal.apk`，56,855,598 bytes，SHA256 `a5c6b51d0bb293228728934744c726a9861124201c5d43a1cd64641badb781ad`。源码 e8e732f / CI 41056130720 success；固定签名、16KiB 对齐、三 ABI、模块摘要及与 CI 原始包代码一致性核验通过。按用户要求未再做设备复测，最终拖动及真实账号总榜不宣称验收通过。文件位于本地兄弟目录 deliverables，不入 Git。
