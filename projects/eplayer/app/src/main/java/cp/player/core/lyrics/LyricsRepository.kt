@@ -17,7 +17,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /** One versioned private cache holds both source lyrics and optional role-aware TTML. */
-class LyricsRepository(private val directory: File, private val load: suspend (String, String) -> LyricsText) {
+class LyricsRepository(private val directory: File, private val now: () -> Long = System::currentTimeMillis,
+    private val load: suspend (String, String) -> LyricsText) {
     companion object {
         private const val MAX_TEXT = 2_000_000
         private const val CACHE_AGE = 7L * 24 * 60 * 60 * 1000
@@ -31,7 +32,7 @@ class LyricsRepository(private val directory: File, private val load: suspend (S
             Gson().fromJson(file.readText(), LyricsText::class.java)?.takeIf { !it.original.isNullOrBlank() && it.translated != null }?.let(LyricPayload::normalize)
         }.getOrNull() else null
         if (cached != null) update(cached)
-        val now = System.currentTimeMillis()
+        val now = now()
         val sourceFresh = cached != null && cached.cacheVersion >= 2 && now - cached.fetchedAt.takeIf { it > 0 }.orFileTime(file) < CACHE_AGE
         val communityEligible = source == "netease-cloudmusic-rs" && id.matches(Regex("[0-9]{1,20}"))
         val communityFresh = !communityEligible || (cached != null && cached.communityCheckedAt > 0 &&

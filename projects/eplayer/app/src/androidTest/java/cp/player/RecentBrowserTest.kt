@@ -141,11 +141,25 @@ class RecentBrowserTest {
             main { empty = current.mediaItemCount == 0 }
             assumeTrue("Preserve active playback", empty)
             ownsQueue = true
+            lateinit var paused: com.google.common.util.concurrent.ListenableFuture<SessionResult>
             main {
+                // stop() alone retains ExoPlayer's playWhenReady. Establish the read-only baseline first.
+                current.pause(); current.stop()
+                paused = current.sendCustomCommand(SessionCommand("SET_ENGINE", Bundle.EMPTY), Bundle().apply { putInt("engine", engine) })
+            }
+            paused.get(10, TimeUnit.SECONDS)
+            main {
+                assertFalse("Browser fixture must start paused", current.playWhenReady)
+                assertEquals(Player.STATE_IDLE, current.playbackState)
                 current.setMediaItem(MediaItem.Builder().setMediaId(id).setUri(android.net.Uri.fromFile(file))
                     .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setArtist("Offline fixture")
                         .setIsBrowsable(false).setIsPlayable(true).build()).build())
             }
+            main {
+                assertFalse("Setting an unprepared item must retain pause", current.playWhenReady)
+                assertEquals(Player.STATE_IDLE, current.playbackState)
+            }
+            assertFalse("Browser fixture must not already own an audio output", context.getSystemService(AudioManager::class.java).isMusicActive)
             val connected = CountDownLatch(1)
             val loaded = CountDownLatch(1)
             val error = AtomicReference<String?>(null)
