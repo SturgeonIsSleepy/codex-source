@@ -12,7 +12,7 @@
       "id": "eplayer",
       "path": "projects/eplayer",
       "version": "0.5.5",
-      "description": "魔女之旅音乐播放器，自用通用包；封面人物播放器与预见式返回",
+      "description": "魔女主题音乐播放器，逐词歌词、队列编辑与网易听歌排行，自用通用包",
       "entrypoint": "README.md"
     },
     {

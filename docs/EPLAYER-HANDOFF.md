@@ -1,6 +1,8 @@
 # ePlayer 转移交接
 
-0.5.4 歌词增强源码已保存于 `20871dd7bb559f0837ab834ceb1ca7b304eaf791` / `codex/eplayer-power`：真实逐词扫色、TTML 对话左右、间奏浮动点、封面缓存磨砂取色。17 项本地 JVM、24 项脚本和目录检查通过；Compose/Coil/22 项设备检查及最终包待 CI。仅做自用通用包，未完成的 APK 不交付。主 agent 编写了全部代码与测试，Terra high 只执行检查/资料读取；详细范围见 [0.5.4 记录](../projects/eplayer/docs/LYRICS-0.5.4.md)。
+0.5.5 首轮候选 `ba7584957537aa190d5be771397aeb2a39a23198` 的 26 项检查通过；后续两轮各 26 项检查也通过但真实长列表发现连续排序问题；最终应用逻辑 `b33b8997752d87cb8e3892f7a874ea1e73eda290` 改为松手一次提交，并按 UID 保持原生当前项 已接续：默认歌单、去双曲预设与重复喜欢、云盘底部、根页直接退出保留Tab、弹层一次返回、切歌过渡、直接队列编辑、网易账号总排行。交付源码 `e8e732f340187e38d2bdf5df58d99fdff4f72cea` / CI 41056130720 仅构建一次 Release。按用户最新要求不再额外执行设备检查或重复测试；最终自用通用包待构建产物到达。用户明确选择根页不回首页，后续不要恢复自动跳首页。详见 [0.5.5 记录](../projects/eplayer/docs/LIBRARY-0.5.5.md)。
+
+0.5.4 歌词增强源码已保存于 `20871dd7bb559f0837ab834ceb1ca7b304eaf791` / `codex/eplayer-power`：真实逐词扫色、TTML 对话左右、间奏浮动点、封面缓存磨砂取色。17 项本地 JVM、24 项脚本和目录检查通过；[CI 40892756066](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40892756066) 已于接续时确认完整构建与 22 项设备通过（43.883 秒），未单独交付该版最终包。仅做自用通用包，未完成的 APK 不交付。主 agent 编写了全部代码与测试，Terra high 只执行检查/资料读取；详细范围见 [0.5.4 记录](../projects/eplayer/docs/LYRICS-0.5.4.md)。
 
 0.5.3 已在 `codex/eplayer-power` / [PR #17](https://github.com/SturgeonIsSleepy/codex-source/pull/17) 完成。应用源码 `9f8e22311a866172ad2e2a072eee54e5024afa2a` / [CI 40881431196](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/40881431196)：灰紫魔女主题、播放栏与导航共用连续底板，歌曲封面只替代人物后的蓝天，伊蕾娜在前景且腿脚伸出封面；全屏页、确认框与底部面板接入预见式返回。18 项检查（56.383 秒）、R8 冷启动、最终同签名覆盖、匿名云真实封面/歌词/进度暂停和实际系统返回手势均按范围通过。只交付自用通用包，人物/动作/字体/音质保留。首轮参考图虚影和状态栏问题已修，首轮证据仍保留；恢复未准备队列的临时时长显示另有记录。完整来源、摘要和测试边界见 [0.5.3 记录](../projects/eplayer/docs/TRAVEL-0.5.3.md)。
 
