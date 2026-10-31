@@ -1,5 +1,13 @@
 # ePlayer 转移交接
 
+## 2026-10-31最新交付：内置音源0.5.5，自用包仅构建未测功能
+
+用户已提供原NCM 1.1.0模块，随后说明有Root且无需沿用旧签名，覆盖下方原“文件缺失”断点。本轮要求仅打包、不检查功能。最新[PR25](https://github.com/SturgeonIsSleepy/codex-source/pull/25)正常汇合PR17界面与PR24核心，保留两条父历史与源分支，未合main。固定产品28ab907c27afa97a6f6af0eb920909e97d7f615a，internal release/R8构建4分53秒通过；源与[交付记录](https://github.com/SturgeonIsSleepy/codex-source/blob/agent/eplayer-internal-055/projects/eplayer/docs/INTERNAL-0.5.5.md)已推送。
+
+成品ePlayer-v0.5.5-internal.apk，52,349,471字节，SHA256 4b16461a019a7414710c2248ac30e11f58c899ee1d13da2693be42bbc6719b3e；包名app.eplayer.music.internal、versionCode194、min28/target36、三ABI。内置模块f885009aaeaa6e2aa5832101517623903832f4c4f37b352d637463025af92209与旧版一致；签名24d8e71950b064c29e91c994f3d069a23cc8a572fab06e01788a2c2d490a48ac与旧本地0.5.3不同。仅核对签名/16KiB对齐/CRC/三ABI/包名版本和模块摘要；功能、设备安装、实机登录保持均按要求未执行。用户自行Root覆盖保留数据，不能保证签名不同的普通安装器覆盖或服务端登录仍有效，不卸载/清数据。
+
+模块、私钥与内置音源APK未上传公开Git或Release，仅私有交付；0.3.2公开资产不覆盖。后续继续开发时先恢复组合源码功能验证，不拿原独立绿色代替本轮。当前实施计划在PR25分支，main应用仍0.5.2而非本自用交付。下方均为历史记录。
+
 ## 2026-10-31用户最新指令：先同步工作，仅交付内置音源包
 
 用户要求本轮不检查功能。已读取main最新交接、PR17/e8e732f的0.5.3界面与固定签名交付记录，以及PR24最新7a1e968b30b09b473151a8df4230c88671aaac57（产品cbe699f）的0.5.5核心/媒体按键恢复修正；两条分支未擅自合并，未执行新的功能检查。此前已排队的CI属于旧指令，不据此称当前包已验收。
