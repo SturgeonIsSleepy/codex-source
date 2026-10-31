@@ -321,8 +321,18 @@ object RustEngine {
         Log.i(TAG, "stopEngine: Stopping Rust polling and engine")
         pollJob?.cancel()
         pollJob = null
-        val success = stop("adapter-release")
-        Log.i(TAG, "stopEngine: nativeStop returned: $success")
+        if (!isInitialized) return
+        // Stop only empties the decoder. Shutdown also joins the output thread and closes AAudio.
+        val released = try { nativeShutdown() } catch (_: UnsatisfiedLinkError) {
+            Log.w(TAG, "Legacy native library has no output shutdown API; falling back to Stop")
+            stop("legacy-adapter-release")
+            false
+        }
+        if (released) {
+            _engineState.value = "stopped"
+            _engineProgress.value = AudioEvent.Progress(0.0, 0.0, 0.0)
+        }
+        Log.i(TAG, "Native output shutdown completed=$released")
     }
 
     // JNI external methods
@@ -337,6 +347,7 @@ object RustEngine {
     private external fun nativePause(): Boolean
     private external fun nativeResume(): Boolean
     private external fun nativeStop(): Boolean
+    private external fun nativeShutdown(): Boolean
     private external fun nativeSeek(secs: Double): Boolean
     private external fun nativeSetVolume(vol: Float): Boolean
     private external fun nativeSetEqualizer(enabled: Boolean, freqs: FloatArray, gains: FloatArray, qs: FloatArray): Boolean

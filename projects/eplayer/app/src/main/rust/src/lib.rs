@@ -57,7 +57,7 @@ fn initialize_android_app_context<'local>(
 pub extern "system" fn JNI_OnLoad(_vm: JavaVM, _reserved: *mut c_void) -> jni::sys::jint {
     android_logger::init_once(
         android_logger::Config::default()
-            .with_max_level(log::LevelFilter::Trace)
+            .with_max_level(if cfg!(debug_assertions) { log::LevelFilter::Debug } else { log::LevelFilter::Info })
             .with_tag("RustAudioEngine"),
     );
     jni::JNIVersion::V6.into()

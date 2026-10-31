@@ -40,6 +40,14 @@ class RecentBrowserTest {
         failure?.let { throw it }
     }
 
+    private fun awaitSilent(message: String) {
+        val audio = context.getSystemService(AudioManager::class.java)
+        val deadline = android.os.SystemClock.elapsedRealtime() + 5000
+        while (audio.isMusicActive && android.os.SystemClock.elapsedRealtime() < deadline)
+            android.os.SystemClock.sleep(25)
+        assertFalse(message, audio.isMusicActive)
+    }
+
     private fun awaitAudio(current: MediaController, id: String) {
         val deadline = android.os.SystemClock.elapsedRealtime() + 15000
         var progressed = false
@@ -98,6 +106,8 @@ class RecentBrowserTest {
                 main { current.pause(); current.stop(); current.clearMediaItems() }
                 engine(value)
             }
+            engine(0) // The empty native adapter must release its output when leaving this engine.
+            awaitSilent("Released native adapter must not leave an active Android output")
         } finally {
             try {
                 if (ownsQueue) {
@@ -160,11 +170,7 @@ class RecentBrowserTest {
                 assertEquals(Player.STATE_IDLE, current.playbackState)
             }
             // Player commands precede the native output's asynchronous shutdown. Wait only before browsing.
-            val audio = context.getSystemService(AudioManager::class.java)
-            val silentDeadline = android.os.SystemClock.elapsedRealtime() + 5000
-            while (audio.isMusicActive && android.os.SystemClock.elapsedRealtime() < silentDeadline)
-                android.os.SystemClock.sleep(25)
-            assertFalse("Browser fixture output must finish stopping before connection", audio.isMusicActive)
+            awaitSilent("Browser fixture output must finish stopping before connection")
             val connected = CountDownLatch(1)
             val loaded = CountDownLatch(1)
             val error = AtomicReference<String?>(null)

@@ -5,6 +5,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsActions
@@ -23,12 +24,13 @@ import org.junit.Test
 class LibraryFlowTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
-    @Test fun libraryAlwaysEntersPlaylistsAndHasNoPresetSongRows() {
+    @Test fun libraryAlwaysEntersPlaylistsAndKeepsWitchImportSlots() {
         compose.onNodeWithContentDescription("曲库").performClick()
         compose.onNodeWithTag("music-segment-歌单").assertIsSelected()
         compose.onNodeWithTag("music-segment-歌曲").performClick()
-        compose.onAllNodes(hasText("灰色のサーガ") and hasAnyAncestor(hasTestTag("library-content"))).assertCountEquals(0)
-        compose.onAllNodes(hasText("リテラチュア") and hasAnyAncestor(hasTestTag("library-content"))).assertCountEquals(0)
+        compose.onNodeWithText("魔女の旅々").assertIsDisplayed()
+        compose.onNodeWithText("灰色のサーガ").assertIsDisplayed()
+        compose.onNodeWithText("リテラチュア").assertIsDisplayed()
         compose.onNodeWithContentDescription("设置").performClick()
         compose.onNodeWithContentDescription("曲库").performClick()
         compose.onNodeWithTag("music-segment-歌单").assertIsSelected()
@@ -49,15 +51,20 @@ class LibraryFlowTest {
     }
 
     @Test fun expandedPanelDismissesOnOneBackInsteadOfCollapsingFirst() {
+        var sheetView: android.view.View? = null
         compose.runOnUiThread { compose.activity.setContent { EPlayerTheme {
             var open by remember { mutableStateOf(true) }
             Text("underlying fixture")
             if (open) TravelSheet({ open = false }) {
+                val view = LocalView.current
+                SideEffect { sheetView = view }
                 Column(Modifier.fillMaxHeight(.85f)) { Text("expanded comments fixture") }
             }
         } } }
         compose.onNodeWithText("expanded comments fixture").assertIsDisplayed()
-        Espresso.pressBack()
+        compose.waitUntil(5000) { sheetView?.hasWindowFocus() == true }
+        // Inject one real Back into the focused sheet window; Espresso's default root is the unfocused Activity.
+        Espresso.pressBackUnconditionally()
         compose.onNodeWithText("expanded comments fixture").assertDoesNotExist()
         compose.onNodeWithText("underlying fixture").assertExists()
     }

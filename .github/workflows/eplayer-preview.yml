@@ -6,6 +6,7 @@ on:
       - '!projects/eplayer/docs/**'
       - '!projects/eplayer/*.md'
       - '.github/scripts/run_eplayer_device_checks.py'
+      - '.github/scripts/collect_eplayer_native.py'
       - '.github/workflows/eplayer-preview.yml'
   workflow_dispatch:
 concurrency:
@@ -34,14 +35,46 @@ jobs:
           packages: platform-tools
       - uses: gradle/actions/setup-gradle@v4
       - name: Install compile SDK
-        run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
-      - name: Restore checksummed native libraries
+        run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0' 'ndk;28.2.13676358'
+      - name: Install native binding prerequisites
         run: |
-          base=https://github.com/SturgeonIsSleepy/codex-source/releases/download/eplayer-v0.1.0
-          curl -fLsS "$base/eplayer-v0.1.0-native-libs.tar.gz" -o "$RUNNER_TEMP/eplayer-v0.1.0-native-libs.tar.gz"
-          curl -fLsS "$base/SHA256SUMS" -o "$RUNNER_TEMP/SHA256SUMS"
-          (cd "$RUNNER_TEMP" && grep ' eplayer-v0.1.0-native-libs.tar.gz$' SHA256SUMS | sha256sum -c -)
-          tar -xzf "$RUNNER_TEMP/eplayer-v0.1.0-native-libs.tar.gz"
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libclang-dev pkg-config
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+      - name: Cache native dependencies and compiler output
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-ndk
+            projects/eplayer/app/src/main/rust/target
+          key: ${{ runner.os }}-eplayer-native-v1-ndk4.1.2-${{ hashFiles('projects/eplayer/app/src/main/rust/Cargo.lock') }}
+      - name: Build matching native libraries from source
+        working-directory: projects/eplayer/app/src/main/rust
+        env:
+          CARGO_BUILD_JOBS: '2'
+        run: |
+          set -euo pipefail
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"
+          if ! command -v cargo-ndk >/dev/null; then cargo install cargo-ndk --version 4.1.2 --locked; fi
+          mkdir -p ../../../build/native-evidence
+          cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -P 28 -o ../jniLibs build --locked --release 2>&1 | tee ../../../build/native-evidence/build.log
+      - name: Verify native ABI exports and source provenance
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"
+          python3 ../../.github/scripts/collect_eplayer_native.py --native-dir app/src/main/jniLibs --output app/build/native-evidence/provenance.json
+      - name: Preserve native build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eplayer-native-${{ github.sha }}
+          path: |
+            projects/eplayer/app/src/main/jniLibs/**/*.so
+            projects/eplayer/app/build/native-evidence/
+          if-no-files-found: warn
       - name: Build preview and device tests
         run: |
           bash tools/prepare-local-signing.sh
