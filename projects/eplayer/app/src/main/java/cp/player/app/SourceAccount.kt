@@ -1,5 +1,6 @@
 package cp.player.app
 
+import cp.player.core.source.SourceStore
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -62,7 +63,7 @@ internal fun SourceLogin(source: String) {
         } catch (error: kotlinx.coroutines.CancellationException) { throw error }
         catch (error: Exception) { status = error.message ?: "登录失败，请重试" }
     }
-    if (open) AlertDialog(onDismissRequest = ::close, title = { Text("扫码登录") }, text = {
+    if (open) TravelAlertDialog(onDismissRequest = ::close, title = { Text("扫码登录") }, text = {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             image?.let { androidx.compose.foundation.Image(it.asImageBitmap(), "登录二维码",
                 Modifier.fillMaxWidth().aspectRatio(1f), filterQuality = androidx.compose.ui.graphics.FilterQuality.None) }

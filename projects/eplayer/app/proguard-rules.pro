@@ -39,7 +39,7 @@
 -dontwarn android.os.ServiceManager
 
 # Persisted ePlayer library and queue schema.
--keep class cp.player.app.Track { *; }
+-keep class cp.player.core.library.Track { *; }
 
 # Device checks exercise the exact renderer/PCM and module core in release APKs.
 -keep class cp.player.ui.artwork.** { *; }
@@ -58,17 +58,19 @@
 
 # Public data boundary used by release integration checks.
 -keep class cp.player.app.MusicRepository { *; }
--keep class cp.player.app.LibraryStore { *; }
+-keep class cp.player.core.library.LibraryStore { *; }
 -keep class cp.player.app.MusicEntry { *; }
 -keep class cp.player.app.Account { *; }
 -keep class cp.player.app.MusicDetail { *; }
 -keep class cp.player.app.MusicSearch { *; }
 
--keep class cp.player.app.DownloadRecord { *; }
+-keep class cp.player.core.download.DownloadRecord { *; }
 
 -keep class cp.player.core.lyrics.LyricsText { *; }
 -keep class cp.player.core.lyrics.LyricParser { *; }
 -keep class cp.player.core.lyrics.TimedLine { *; }
 
 # Gson cache schema must survive R8 independently of Compose presentation.
+
+# Nullable DTO keeps old and rich lyric cache fields stable under R8.
 -keep class cp.player.core.lyrics.LyricsRepository$CachedLyrics { *; }

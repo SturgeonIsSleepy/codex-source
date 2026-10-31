@@ -16,28 +16,46 @@ val TravelHand = FontFamily(Font(R.font.travel_hand, weight = FontWeight.Medium)
 
 // Shared with nested dialogs, sheets and cover wrappers: one palette throughout ePlayer.
 val PaperColors = lightColorScheme(
-    primary = Color(0xFF2C6E89), onPrimary = Color.White,
-    primaryContainer = Color(0xFFD8EEF5), onPrimaryContainer = Color(0xFF24373F),
-    secondary = Color(0xFF695448), onSecondary = Color.White,
-    secondaryContainer = Color(0xFFF2E8DD), onSecondaryContainer = Color(0xFF40342D),
-    tertiary = Color(0xFF2C6E89), tertiaryContainer = Color(0xFFD8EEF5),
-    background = Color.White, onBackground = Color(0xFF151518),
-    surface = Color.White, onSurface = Color(0xFF151518),
-    surfaceVariant = Color(0xFFF2F2F7), onSurfaceVariant = Color(0xFF77777E),
-    surfaceContainerLowest = Color.White, surfaceContainerLow = Color(0xFFFEFDFB),
-    surfaceContainer = Color(0xFFF4F4F7), surfaceContainerHigh = Color(0xFFECECF0),
-    surfaceContainerHighest = Color(0xFFE5E5EA),
-    outline = Color(0xFF8A8278), outlineVariant = Color(0xFFDEDEE3),
-    error = Color(0xFFAB493B), errorContainer = Color(0xFFFFE6DF)
+    primary = Color(0xFF245F7D), onPrimary = Color.White,
+    primaryContainer = Color(0xFFD9EFF9), onPrimaryContainer = Color(0xFF183D52),
+    secondary = Color(0xFF526674), onSecondary = Color.White,
+    secondaryContainer = Color(0xFFE5EEF2), onSecondaryContainer = Color(0xFF293F4C),
+    tertiary = Color(0xFF486E76), onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFDDEFF1), onTertiaryContainer = Color(0xFF21474D),
+    background = Color.White, onBackground = Color(0xFF252D33),
+    surface = Color(0xFFFCFDFE), onSurface = Color(0xFF252D33),
+    surfaceVariant = Color(0xFFE7EFF3), onSurfaceVariant = Color(0xFF50616D),
+    surfaceContainerLowest = Color.White, surfaceContainerLow = Color(0xFFF1F7FA),
+    surfaceContainer = Color(0xFFEAF2F6), surfaceContainerHigh = Color(0xFFE3EDF2),
+    surfaceContainerHighest = Color(0xFFDBE7EE),
+    outline = Color(0xFF718793), outlineVariant = Color(0xFFCCDCE5),
+    error = Color(0xFFA4444F), errorContainer = Color(0xFFFFDADD)
+)
+
+val NightColors = darkColorScheme(
+    primary = Color(0xFFA9D7ED), onPrimary = Color(0xFF173D52),
+    primaryContainer = Color(0xFF294B60), onPrimaryContainer = Color(0xFFD8EFFB),
+    secondary = Color(0xFFBCCED9), onSecondary = Color(0xFF253A48),
+    secondaryContainer = Color(0xFF344B5A), onSecondaryContainer = Color(0xFFE1EDF5),
+    tertiary = Color(0xFFB2D6DA), onTertiary = Color(0xFF204248),
+    tertiaryContainer = Color(0xFF34555B), onTertiaryContainer = Color(0xFFD5F0F3),
+    background = Color(0xFF17212A), onBackground = Color(0xFFEDF3F8),
+    surface = Color(0xFF1E2B35), onSurface = Color(0xFFEDF3F8),
+    surfaceVariant = Color(0xFF334550), onSurfaceVariant = Color(0xFFC4D4DF),
+    surfaceContainerLowest = Color(0xFF141E26), surfaceContainerLow = Color(0xFF22313C),
+    surfaceContainer = Color(0xFF293B47), surfaceContainerHigh = Color(0xFF304450),
+    surfaceContainerHighest = Color(0xFF394F5C),
+    outline = Color(0xFF97B2C2), outlineVariant = Color(0xFF4E6573),
+    error = Color(0xFFFFB4BD), onError = Color(0xFF650F23),
+    errorContainer = Color(0xFF77303E), onErrorContainer = Color(0xFFFFDADD),
+    inverseSurface = Color(0xFFE9F2F8), inverseOnSurface = Color(0xFF263A48),
+    inversePrimary = Color(0xFF245F7D), surfaceTint = Color.Transparent
 )
 
 @Composable
-fun EPlayerTheme(content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
-    val colors = if (dark) darkColorScheme(primary = Color(0xFF94CFE6), onPrimary = Color(0xFF123646), tertiary = Color(0xFF94CFE6),
-        background = Color(0xFF0C0C0F), surface = Color(0xFF18181C), surfaceContainerLow = Color(0xFF1C1C20),
-        surfaceContainerHigh = Color(0xFF28282E), onSurface = Color(0xFFF7F7FA), onSurfaceVariant = Color(0xFF9D9DA5),
-        primaryContainer = Color(0xFF173E4E), outlineVariant = Color(0xFF34343B)) else PaperColors
+fun EPlayerTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+    val dark = darkTheme
+    val colors = if (dark) NightColors else PaperColors
     val base = Typography()
     val type = remember {
         Typography(
@@ -72,6 +90,9 @@ fun EPlayerTheme(content: @Composable () -> Unit) {
         typography = type,
         shapes = Shapes(RoundedCornerShape(3.dp), RoundedCornerShape(5.dp),
             RoundedCornerShape(9.dp), RoundedCornerShape(12.dp), RoundedCornerShape(16.dp)),
-        content = content
+        content = {
+            // Dialogs and layouts that draw their own background still need themed ink.
+            CompositionLocalProvider(LocalContentColor provides colors.onBackground, content = content)
+        }
     )
 }

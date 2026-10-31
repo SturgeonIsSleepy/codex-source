@@ -7,7 +7,7 @@ use jni::JNIEnv;
 use crate::api::audio_api::{
     audio_init, audio_pause, audio_play, audio_resume, audio_seek, audio_set_volume, audio_stop,
     audio_get_state, audio_get_progress, audio_poll_event,
-    audio_set_dsd_output_mode, audio_set_dap_bit_perfect_enabled,
+    audio_set_dsd_output_mode, audio_set_dap_bit_perfect_enabled, audio_shutdown,
 };
 use crate::audio::equalizer::PeqBand;
 
@@ -90,6 +90,21 @@ pub extern "system" fn Java_cp_player_engine_RustEngine_nativeStop(
         Ok(_) => 1,
         Err(e) => {
             log::error!("Audio stop failed: {}", e);
+            0
+        }
+    }
+}
+
+/// Release the output thread when an adapter leaves the native engine.
+#[no_mangle]
+pub extern "system" fn Java_cp_player_engine_RustEngine_nativeShutdown(
+    _env: JNIEnv,
+    _class: JClass,
+) -> jboolean {
+    match audio_shutdown() {
+        Ok(_) => 1,
+        Err(error) => {
+            log::error!("Audio shutdown failed: {}", error);
             0
         }
     }

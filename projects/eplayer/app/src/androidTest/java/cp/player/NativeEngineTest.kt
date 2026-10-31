@@ -2,6 +2,7 @@ package cp.player
 
 import android.content.ComponentName
 import android.content.Intent
+import android.media.AudioManager
 import android.media.session.MediaSessionManager
 import android.net.Uri
 import android.os.Bundle
@@ -52,7 +53,8 @@ class NativeEngineTest {
     @Test fun nativeLibraryInitializesWithoutUsbOwnership() = native {
         assertTrue("The packaged native audio engine must initialize on the device ABI", RustEngine.initEngine(context.applicationContext))
         try {
-            assertNotEquals("Uninitialized", RustEngine.getState())
+            val state = RustEngine.getState()
+            assertTrue("Initialization must remain quiescent before a track", state.equals("stopped", true) || state.equals("uninitialized", true))
             assertFalse("ePlayer must never create an exclusive USB session", RustEngine.isRustDirectUsbSessionActive())
         } finally { RustEngine.stopEngine() }
     }
@@ -65,6 +67,7 @@ class NativeEngineTest {
             .buildAsync().get(30, TimeUnit.SECONDS)
         var direct: FlickPlayer? = null
         val file = File.createTempFile("release-contract-", ".wav", context.cacheDir).apply { writeBytes(SyntheticAudio.wav(30)) }
+        val audio = context.getSystemService(AudioManager::class.java)
         fun engine(value: Int) {
             lateinit var future: ListenableFuture<SessionResult>
             main { future = controller.sendCustomCommand(SessionCommand("SET_ENGINE", Bundle.EMPTY), Bundle().apply { putInt("engine", value) }) }
@@ -85,11 +88,13 @@ class NativeEngineTest {
             await(15000) {
                 var playing = false
                 main { assertNull(direct!!.playerError); playing = direct!!.isPlaying }
-                playing && (native { RustEngine.getProgress()?.positionSecs } ?: 0.0) > .5
+                playing && (native { RustEngine.getProgress()?.positionSecs } ?: 0.0) > .5 && audio.isMusicActive
             }
             main { direct!!.release() }
-            await(2000) { native { RustEngine.getState().equals("Stopped", ignoreCase = true) } }
-            android.util.Log.i("EPlayerTest", "Public native Player.release stopped the 30-second fixture within two seconds")
+            await(2000) {
+                native { RustEngine.getState().equals("uninitialized", true) && RustEngine.getProgress() == null } && !audio.isMusicActive
+            }
+            android.util.Log.i("EPlayerTest", "Public native Player.release removed the engine and closed output within two seconds")
         } finally {
             main { direct?.release() }
             native { Unit } // Join queued adapter cleanup before restoring the service-owned engine.
@@ -219,7 +224,7 @@ class NativeEngineTest {
                 }
             } finally {
                 instrumentation.uiAutomation.dropShellPermissionIdentity()
-                cp.player.app.RecentStore.remove(context, id)
+                cp.player.core.library.RecentStore.remove(context, id)
                 file.delete()
             }
         }

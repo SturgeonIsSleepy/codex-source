@@ -1,4 +1,7 @@
-package cp.player.app
+package cp.player.core.download
+
+import cp.player.core.library.Track
+import cp.player.core.library.LibraryStore
 
 import android.os.SystemClock
 import androidx.test.ext.junit.runners.AndroidJUnit4

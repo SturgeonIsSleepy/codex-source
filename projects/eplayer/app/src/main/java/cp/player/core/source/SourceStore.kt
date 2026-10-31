@@ -1,4 +1,6 @@
-package cp.player.app
+package cp.player.core.source
+
+import cp.player.core.library.Track
 
 import android.content.Context
 import android.net.Uri

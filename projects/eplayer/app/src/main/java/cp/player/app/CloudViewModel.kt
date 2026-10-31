@@ -1,5 +1,8 @@
 package cp.player.app
 
+import cp.player.core.source.SourceStore
+import cp.player.core.library.Track
+
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -96,6 +99,10 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
         load(target)
     }
     fun back() { pages.update { it.dropLast(1) } }
+    fun replaceTop(target: MusicEntry) {
+        pages.update { if (it.isEmpty()) listOf(DetailPage(target)) else it.dropLast(1) + DetailPage(target) }
+        load(target)
+    }
     fun retry() { pages.value.lastOrNull()?.let { load(it.target) } }
     private fun updatePage(target: MusicEntry, transform: (DetailPage) -> DetailPage) { pages.update { list -> list.map { if (it.target == target) transform(it) else it } } }
     private fun load(target: MusicEntry) = viewModelScope.launch {

@@ -3,8 +3,9 @@
 
 update_version		export-ignore
 
-*.bat eol=crlf
-*.sln eol=crlf
-*.vcxproj eol=crlf
-*.vcxproj.filters eol=crlf
-common.props eol=crlf
+# Preserve the existing CRLF blobs without applying a second text clean filter.
+*.bat -text
+*.sln -text
+*.vcxproj -text
+*.vcxproj.filters -text
+common.props -text

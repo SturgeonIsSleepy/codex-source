@@ -19,7 +19,7 @@ class CPApplication : Application(), SingletonImageLoader.Factory {
         android.util.Log.i("CPApplication", "Application onCreate")
         cp.player.manager.DownloadRegistry.init(this)
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO).launch {
-            cp.player.app.SourceStore.initialize(this@CPApplication)
+            cp.player.core.source.SourceStore.initialize(this@CPApplication)
         }
 
     }

@@ -30,6 +30,9 @@ import java.util.concurrent.TimeUnit
 class EPlayerIntegrationTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
+    private val legacySongs = listOf(
+        cp.player.model.Song("witch_0", "ePlayer Test A", "Fixture", album = "Tests"),
+        cp.player.model.Song("witch_1", "ePlayer Test B", "Fixture", album = "Tests"))
     private fun main(action: () -> Unit) {
         var failure: Throwable? = null
         instrumentation.runOnMainSync { try { action() } catch (error: Throwable) { failure = error } }
@@ -168,7 +171,7 @@ class EPlayerIntegrationTest {
                     }
                 })
                 player.repeatMode = Player.REPEAT_MODE_ONE
-                player.setMediaItems(WitchPlaylist.songs.map { it.toMediaItem(WitchPlaylist.uri(context, it.id)) })
+                player.setMediaItems(legacySongs.map { it.toMediaItem(WitchPlaylist.uri(context, it.id)) })
                 player.prepare()
                 player.play()
             }
@@ -288,14 +291,14 @@ class EPlayerIntegrationTest {
             }
             main {
                 player.pause(); player.repeatMode = Player.REPEAT_MODE_ONE; player.shuffleModeEnabled = true
-                player.setMediaItem(WitchPlaylist.songs[0].toMediaItem(FileProvider.getUriForFile(context,
+                player.setMediaItem(legacySongs[0].toMediaItem(FileProvider.getUriForFile(context,
                     "${context.packageName}.fileprovider", File(context.cacheDir, "invalid-audio.txt"))))
                 player.prepare(); player.play()
             }
             await { var failed = false; main { failed = player.playerError != null }; failed }
             main {
                 assertFalse("Native decoder errors must clear the playback request", player.playWhenReady)
-                player.setMediaItems(WitchPlaylist.songs.map { it.toMediaItem(WitchPlaylist.uri(context, it.id)) })
+                player.setMediaItems(legacySongs.map { it.toMediaItem(WitchPlaylist.uri(context, it.id)) })
                 player.prepare() // The same retry sequence used by EPlayerViewModel.play.
             }
             await { var cleared = false; main { cleared = player.playerError == null }; cleared }
@@ -310,7 +313,7 @@ class EPlayerIntegrationTest {
             assertEquals(SessionResult.RESULT_SUCCESS, timer(0))
             android.util.Log.i("EPlayerTest", "Rust playback/seek/pause and return to ExoPlayer passed")
             backgroundApp()
-            openFromNotification(WitchPlaylist.songs[0].name)
+            openFromNotification(legacySongs[0].name)
             await(60000) { playerExpanded() }
             capture("notification-return")
         } catch (failure: Throwable) {

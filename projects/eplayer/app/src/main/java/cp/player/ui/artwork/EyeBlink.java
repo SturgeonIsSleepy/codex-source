@@ -30,6 +30,7 @@ final class EyeBlink {
         final float[] upper,lower,closed,current=new float[8];
         final Paint skin=new Paint(Paint.ANTI_ALIAS_FLAG),ink=new Paint(Paint.ANTI_ALIAS_FLAG);
         final Paint pixels=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
+        private float lastOpen = Float.NaN;
         Eye(Bitmap portrait,Rect bounds,Path window,float[] upper,float[] lower,float[] closed,int x1,int y1,int x2,int y2) {
             this.bounds=bounds; this.window=window; this.upper=upper; this.lower=lower; this.closed=closed;
             texture=Bitmap.createBitmap(portrait,bounds.left,bounds.top,bounds.width(),bounds.height());
@@ -37,6 +38,8 @@ final class EyeBlink {
             ink.setColor(Color.rgb(42,34,32)); ink.setStyle(Paint.Style.STROKE); ink.setStrokeCap(Paint.Cap.ROUND);
         }
         void draw(Canvas canvas,float open) {
+            if (open != lastOpen) {
+            lastOpen = open;
             for(int i=0;i<8;i++) current[i]=mix(closed[i],upper[i],open);
             lid.reset(); lid.moveTo(current[0],current[1]);
             lid.cubicTo(current[2],current[3],current[4],current[5],current[6],current[7]);
@@ -44,12 +47,14 @@ final class EyeBlink {
             aperture.cubicTo(mix(closed[4],lower[0],open),mix(closed[5],lower[1],open),
                 mix(closed[2],lower[2],open),mix(closed[3],lower[3],open),current[0],current[1]);
             aperture.close();
+            ink.setStrokeWidth(2.1f+.5f*open);
+            }
             canvas.save(); canvas.clipPath(window); canvas.drawPath(window,skin);
             if(open>0) {
                 canvas.save(); canvas.clipPath(aperture);
                 canvas.drawBitmap(texture,null,bounds,pixels); canvas.restore();
             }
-            ink.setStrokeWidth(2.1f+.5f*open); canvas.drawPath(lid,ink); canvas.restore();
+            canvas.drawPath(lid,ink); canvas.restore();
         }
         private static float mix(float a,float b,float t) { return a+(b-a)*t; }
         private static int skinColor(Bitmap image,int cx,int cy) {

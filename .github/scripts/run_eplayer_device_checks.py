@@ -14,7 +14,24 @@ output.mkdir(exist_ok=True)
 RUNTIME_TAGS = ['AndroidRuntime', 'EPlayerTest', 'EPlayerSession', 'FlickPlayer', 'RustEngine',
                 'RustAudioEngine', 'CPPlayerDebug', 'AudioTrack', 'AAudio', 'AudioManager',
                 'MediaSessionService', 'MediaSessionRecord', 'MediaDataManager', 'MediaDataProcessor',
-                'MediaTimeoutListener', 'MediaResumeListener', 'MediaCarouselController', 'NotificationService']
+                'MediaTimeoutListener', 'MediaResumeListener', 'MediaCarouselController', 'NotificationService',
+                'MediaBrowser', 'MediaBrowserServiceCompat', 'MLSLegacyStub', 'MSSLegacyStub', 'MediaSessionImpl']
+
+
+def skipped_tests(stdout):
+    """AndroidJUnitRunner counts assumptions in OK; preserve them before applying the CI gate."""
+    skipped, current = [], {}
+    for line in stdout.splitlines():
+        if line.startswith('INSTRUMENTATION_STATUS: '):
+            key, separator, value = line[len('INSTRUMENTATION_STATUS: '):].partition('=')
+            if separator and key in {'class', 'test'}:
+                current[key] = value
+        elif line.startswith('INSTRUMENTATION_STATUS_CODE: '):
+            code = line.partition(': ')[2].strip()
+            if code in {'-3', '-4'}:
+                skipped.append({'class': current.get('class', ''), 'test': current.get('test', ''), 'code': int(code)})
+            current = {}
+    return skipped
 
 
 def capture_runtime(name):
@@ -28,7 +45,7 @@ def capture_system_media():
     for name, arguments in [
         ('system-media.txt', ['activity', 'service', 'com.android.systemui/.SystemUIService',
                               'MediaCarouselController', 'MediaDataManager', 'MediaTimeoutListener',
-                              'MediaCarouselCtlrLog', 'MediaTimeout', 'MediaLog']),
+                              'MediaCarouselCtlrLog', 'MediaTimeout', 'MediaLog', 'MediaBrowser']),
         ('system-sessions.txt', ['media_session']),
     ]:
         result = subprocess.run(['adb', 'shell', 'dumpsys', *arguments],
@@ -98,6 +115,12 @@ def main():
         if 'FAILURES!!!' in result.stdout or 'INSTRUMENTATION_CODE: -1' not in result.stdout or 'OK (' not in result.stdout:
             metadata['checks']['instrumentation'] = 'failed'
             raise RuntimeError('Instrumentation did not report a complete passing run')
+        metadata['skipped_tests'] = skipped_tests(result.stdout)
+        allowed = ('cp.player.SourceLoginLiveTest', 'officialModuleCanCreateLocallyRenderedLoginCode')
+        unexpected = [item for item in metadata['skipped_tests'] if (item['class'], item['test']) != allowed]
+        if unexpected:
+            metadata['checks']['instrumentation'] = 'failed'
+            raise RuntimeError('Unexpected skipped device checks: ' + json.dumps(unexpected))
         metadata['checks']['instrumentation'] = 'passed'
         capture_runtime('instrumentation-runtime.txt')
         if release:

@@ -1,18 +1,21 @@
 package cp.player.app
 
+import cp.player.core.source.SourceStore
+import cp.player.core.library.Track
+
 import android.content.Context
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import cp.player.util.JsonUtils
 
-enum class MusicKind { PLAYLIST, ALBUM, ARTIST, LIKED, DAILY, CHARTS, BROWSE, CLOUD }
+enum class MusicKind { PLAYLIST, ALBUM, ARTIST, LIKED, DAILY, CHARTS, BROWSE, CLOUD, RECORD_ALL, RECORD_WEEK }
 data class Account(val id: String, val name: String, val avatar: String?)
 data class MusicEntry(val id: String, val name: String, val source: String, val kind: MusicKind,
     val subtitle: String = "", val image: String? = null, val owner: String? = null,
     val count: Int = 0, val subscribed: Boolean = false, val special: Boolean = false)
 data class MusicDetail(val entry: MusicEntry, val tracks: List<Track> = emptyList(),
-    val entries: List<MusicEntry> = emptyList(), val description: String = "", val total: Int = 0)
+    val entries: List<MusicEntry> = emptyList(), val description: String = "", val total: Int = 0, val records: List<ListeningRecord> = emptyList())
 data class MusicSearch(val tracks: List<Track> = emptyList(), val entries: List<MusicEntry> = emptyList())
 data class MusicComment(val id: String, val user: String, val text: String, val avatar: String?, val liked: Boolean, val likes: Int)
 
@@ -100,6 +103,12 @@ class MusicRepository(private val context: Context, val source: String) {
         }
         MusicKind.CHARTS -> MusicDetail(target, entries = entries(request("toplist").array("list"), MusicKind.PLAYLIST))
         MusicKind.BROWSE -> MusicDetail(target, entries = entries(request("top/playlist", mapOf("cat" to "全部", "limit" to "50")).array("playlists"), MusicKind.PLAYLIST))
+        MusicKind.RECORD_ALL, MusicKind.RECORD_WEEK -> {
+            val weekly = target.kind == MusicKind.RECORD_WEEK
+            val response = request("user/record", mapOf("uid" to target.id, "type" to if (weekly) "1" else "0"))
+            val records = ListeningRankParser.parse(response, weekly)
+            MusicDetail(target, records.map { Track(it.song, source = source) }, total = records.size, records = records)
+        }
         MusicKind.CLOUD -> {
             val response = request("user/cloud", mapOf("limit" to "200", "offset" to offset.toString()))
             val songs = response.array("data").mapNotNull { value ->

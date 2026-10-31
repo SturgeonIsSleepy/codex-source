@@ -1,6 +1,29 @@
 # 核心边界与能力核对
 
-## 当前0.5.2核心集成架构（验收结果另见计划）
+## 下载持久化独立于呈现
+
+Downloads/DownloadRecord/DownloadProgress移至core/download，EPlayerViewModel仅调用并展示状态；DownloadsStatus仍留在app做进度/重试/取消呈现。实际下载仍由Android DownloadManager持有，没有新增后台轮询服务。保留eplayer_downloads/jobs、来源+远端ID键、UUID下载目标、成功后LibraryStore原子导入/移除系统副本和失败重试/取消语义。唯一DownloadRecord的R8精确保留规则同步更新；真实DownloadManager的404→重试→文件保存→取消检查也移到相同核心测试包，未删除检查或更改超时。最终R8/设备结果待取得。
+
+## 当前0.5.5音乐源存储归属
+
+已逐项确认SourceStore只有模块初始化/导入/选择/移除、账号Cookie请求映射、搜索、URL短期缓存及修订通知，没有Compose、导航或ViewModel。唯一对象迁至core/source，启动入口CPApplication、provider、BackendDataSource、UI及实际源协议检查全部直接引用它，不保留app别名/第二份存储。原Mutex、CompletableDeferred初始化门、64项URL缓存/过期、cookie键、bundled_source安装标记和用户模块目录均未改，也不移动用户数据或附带私有模块。service/engine/provider现在无cp.player.app引用。
+
+此阶段是移清责任边界，不宣称已成为独立Gradle模块：核心仍依赖Android/ProviderManager/ModuleManager和平台JSON工具，完整源协议抽象可在明确跨平台调用方后继续；不为目录搬迁堆抽象接口。52 JVM零失败/零跳过、应用/设备包构建21秒通过。移包之后的设备源协议/登录跳过/组合R8尚需最终主线结果，不能沿用迁移前绿色。历史app/SourceStore路径仅作旧记录。
+
+## 0.5.5系统恢复浏览候选
+
+同一MusicService现为MediaLibraryService，唯一MediaLibrarySession仍绑定持续SessionPlayer；不添加第二队列/播放器。RecentMediaCatalog只投影当前曲或已有最近项并给出标准可浏览根/可播放子项，读取不prepare/不发源请求。三参数onPlaybackResumption按isForPlayback区分只读查询与主动恢复：查询仅规范化最近项，主动恢复保留当前队列/位置、空队列回读历史；播放器仍由Media3标准命令操作。补标准MediaButtonReceiver满足Media3内部SystemUI恢复能力检查。组件导出以支持系统传统浏览，但onConnect只接受同UID或平台可信控制器，普通Android路由/真实Stop不改。
+
+旧0.5.2即时快照恢复Action为空；098e2501的52项已复现浏览发现缺失。3914首轮53项49通过/3失败/1跳过（EQ停止、浏览构造线程、恢复前置状态），已保留证据。最终cbe699f补接收器及有依据的测试修正，本地33 JVM/构建通过，53项设备/R8待结果；不能将补齐契约直接写成穷尽所有SystemUI移除根因。
+
+
+## 0.5.4独立数据边界候选
+
+Track/LibraryStore/RecentStore从app混合文件移到core/library，QueueStore移到core/queue。四个核心文件无Compose、ViewModel或app包引用；服务直接使用核心队列/最近播放。所有UI/source/download及设备检查显式导入数据类型，精确R8规则同步，JSON/偏好/文件/URI不变，无旧app类型转发层。33 JVM与本地构建通过；51项50通过/1登录跳过（CI41113754192，103.113秒），R8待执行。
+
+听歌统计现归core/listening：MusicService直接使用核心ListeningClock/ListeningStatsStore，UI只投影原StateFlow；偏好文件eplayer_listening及日期键/去重计数/7天聚合原样保留，无兼容别名或新存储。服务不再反向依赖app统计类。service/BackendDataSource现调用core/source.SourceStore，唯一调度对象与账号数据不变，不因旧app包名误删音乐源。当前不宣称完成独立Gradle模块或全部CPPlayer能力迁移。
+
+## 0.5.2核心集成架构（已合入主线，R8交付中）（验收结果另见计划）
 
 PR16已汇合PR11/PR14/PR15；当前继续汇合PR18/PR20/PR21。以下是实际调用边界，最终51项组合设备/R8/确切包尚待执行，不能沿用0.5.1失败主线或独立绿色代替。当前设备门槛以[实施计划](DEVELOPMENT-PLAN.md)与[验证索引](VALIDATION-2026-10-25.md)为准；下方编号内容保留历史时态。
 
@@ -10,8 +33,8 @@ PR16已汇合PR11/PR14/PR15；当前继续汇合PR18/PR20/PR21。以下是实际
 | MediaSession/通知/焦点 | MusicService、RustAudioFocus、PlaybackFocusOwner | 唯一公开会话，不靠Compose维持后台；真实Stop正常处理，不能按来源屏蔽 |
 | 引擎交接 | core/playback/SessionPlayer（当前候选） | 持续同一的ForwardingSimpleBasePlayer只代理当前实际Player，无第二队列/解码器/输出；交接时解除旧delegate监听后pause/release，保持原请求/BUFFERING再激活新delegate；此候选设备待验收，不能宣称停止根因解决 |
 | 播放缓存 | PlaybackCache、DataSourceFactoryProvider、StreamProxy | 进程所有、远端首次open懒加载；本地/content直读。取消只清自己未完成文件，不能release仍被数据源引用的Cache或删用户曲库 |
-| 音乐源/账号 | provider、SourceStore、SourceAccount、MusicRepository | 0.4协议/云端曲库/评论/写操作路径保留；真实账号写入未由云端验收，不复制模块或凭据。服务对app.SourceStore的引用是数据层，不是Compose依赖 |
-| 曲库/队列/下载 | LibraryStore、QueueStore、Downloads、DownloadRegistry | 导入和默认双曲并存，Source/remoteId/质量/断点保留；后台下载由系统持有。QueueStore仍在app包，可后续移动数据接口，不能因为包名就删除 |
+| 音乐源/账号 | provider、SourceStore、SourceAccount、MusicRepository | 0.4协议/云端曲库/评论/写操作路径保留；真实账号写入未由云端验收，不复制模块或凭据。服务直接引用core/source，不反向依赖app |
+| 曲库/队列/下载 | core/library的LibraryStore/Track、core/queue的QueueStore、Downloads/DownloadRegistry | 导入和默认双曲并存，Source/remoteId/质量/断点保留；后台下载由系统持有。QueueStore已移到核心且JSON不变，下载编排仍由app数据适配负责，不因包名删功能 |
 | 歌词 | core/lyrics的LyricsRepository/LyricParser、app/LyricsLoader与LyricsScreen | 缓存/解析/全屏呈现已接通，译文与真实会话12秒点行流程已分项验收；0.5.2已拆数据/解析/呈现，缓存以唯一半文件原子发布；Android文件系统检查待执行，不把未提供真实源等价当作已通过 |
 | 页面/状态投影 | EPlayerApp、EPlayerViewModel、CloudViewModel、MusicComponents | 自有首页/二级推荐/曲库/设置/歌词；不直接JNI、不另持队列，主题主色来自MaterialTheme，原Medium中日字体保留 |
 | 角色 | ui/artwork、EnergyAudioProcessor、MusicPulse | 共同人物/眼睛/手/发底图，实时PCM能量、阻尼运动；不逐脸换图、不增加录音权限，不删除人物/字体来减包 |
@@ -40,8 +63,8 @@ PR16已汇合PR11/PR14/PR15；当前继续汇合PR18/PR20/PR21。以下是实际
 | --- | --- | --- |
 | Android 播放会话 | `service/MusicService.kt`、`RustAudioFocus.kt` | 唯一 MediaSession、前台通知、队列恢复、引擎切换、系统音频焦点与 noisy 广播；不能依赖 Compose 生命周期维持播放 |
 | 音频实现 | `engine/CPPlayerManager.kt`、`FlickPlayer.kt`、`RustEngine.kt` | Media3 与 Rust 的播放、解码、DSP 适配；保持 JNI 名称和普通系统路由，默认不编译 USB 独占 |
-| 音乐源协议 | `provider/`、`app/SourceStore.kt`、`MusicRepository.kt` | 模块生命周期、统一请求、平台响应映射；不能放到 UI 组件中调用或保存账号数据 |
-| 曲库与下载 | `app/LibraryStore.kt`、`Downloads.kt` | 导入校验、原子保存、手机扫描、系统 DownloadManager、失败重试；后台传输由系统持有 |
+| 音乐源协议 | `provider/`、`core/source/SourceStore.kt`、`MusicRepository.kt` | 模块生命周期、统一请求、平台响应映射；不能放到 UI 组件中调用或保存账号数据 |
+| 曲库与下载 | `core/library/LibraryStore.kt`、`core/download/Downloads.kt` | 导入校验、原子保存、手机扫描、系统 DownloadManager、失败重试；后台传输由系统持有 |
 | 队列与界面状态 | `QueueStore`、`EPlayerViewModel`、`CloudViewModel` | 会话状态投影、页面可见时进度更新、异步操作；避免每帧写盘或后台 UI 轮询 |
 | 播放呈现 | `app/PlayerScreen.kt` | 布局、元数据、进度拖动和操作回调；不持有解码器、不直接解析源、不自行维护第二套队列 |
 | 插画渲染 | `ui/artwork/` | 共用人物底图、固定眼睛纹理、阻尼动作；只读音频能量，不能申请麦克风或接管音频输出 |

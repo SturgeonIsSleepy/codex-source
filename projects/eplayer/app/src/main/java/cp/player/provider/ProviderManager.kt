@@ -214,7 +214,7 @@ object ProviderManager {
      * 自动在 [Dispatchers.IO] 上执行，避免阻塞调用线程。
      * 自动通过 [BackendProvider.apiMap] 映射方法名。
      * 如果方法被映射为 "unsupported"，返回不支持提示。
-     * 监控记录由上层 [cp.player.app.SourceStore.call] 统一处理。
+     * 监控记录由上层 [cp.player.core.source.SourceStore.call] 统一处理。
      */
     suspend fun callApi(method: String, params: Map<String, String>): String = withContext(Dispatchers.IO) {
         val provider = currentProvider ?: return@withContext """{"code": 500, "msg": "No active provider"}"""

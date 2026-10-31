@@ -1,4 +1,4 @@
-package cp.player.app
+package cp.player.core.listening
 
 import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow

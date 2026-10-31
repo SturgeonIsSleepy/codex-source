@@ -1,4 +1,4 @@
-package cp.player.app
+package cp.player.core.listening
 
 import org.junit.Assert.*
 import org.junit.Test
