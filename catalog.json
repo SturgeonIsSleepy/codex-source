@@ -4,8 +4,8 @@
     {
       "id": "android-cloud",
       "path": "tools/android-cloud",
-      "version": "1.0.0",
-      "description": "Android 16 remote cloud 配置与后台启动，自动选择 KVM 或软件模拟",
+      "version": "1.1.0",
+      "description": "Android 16 / 17 remote cloud 配置与后台启动，自动选择 KVM 或软件模拟",
       "entrypoint": "android-cloud"
     },
     {
