@@ -1,5 +1,6 @@
 package cp.player.app
 
+import cp.player.core.source.SourceStore
 import android.content.Context
 import cp.player.core.lyrics.LyricsRepository
 import cp.player.core.lyrics.LyricsText

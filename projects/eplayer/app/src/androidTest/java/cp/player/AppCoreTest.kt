@@ -3,7 +3,7 @@ package cp.player
 import android.app.Application
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import cp.player.app.SourceStore
+import cp.player.core.source.SourceStore
 import cp.player.core.library.Track
 import cp.player.app.withQuality
 import cp.player.model.Song

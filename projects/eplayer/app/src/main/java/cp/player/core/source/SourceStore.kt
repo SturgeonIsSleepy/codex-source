@@ -1,4 +1,4 @@
-package cp.player.app
+package cp.player.core.source
 
 import cp.player.core.library.Track
 

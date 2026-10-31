@@ -2,7 +2,7 @@ package cp.player
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import cp.player.app.SourceStore
+import cp.player.core.source.SourceStore
 import cp.player.provider.ModuleManager
 import cp.player.provider.ProviderManager
 import kotlinx.coroutines.runBlocking

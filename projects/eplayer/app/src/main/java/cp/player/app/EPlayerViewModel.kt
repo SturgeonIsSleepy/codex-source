@@ -1,5 +1,6 @@
 package cp.player.app
 
+import cp.player.core.source.SourceStore
 import cp.player.core.listening.ListeningStatsStore
 
 import cp.player.manager.WitchPlaylist

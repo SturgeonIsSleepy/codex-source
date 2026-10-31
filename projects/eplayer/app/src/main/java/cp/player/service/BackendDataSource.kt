@@ -7,7 +7,7 @@ import androidx.media3.datasource.ContentDataSource
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.FileDataSource
-import cp.player.app.SourceStore
+import cp.player.core.source.SourceStore
 import cp.player.manager.DownloadRegistry
 import cp.player.provider.ProviderManager
 import java.io.IOException
