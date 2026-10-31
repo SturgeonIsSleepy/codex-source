@@ -35,6 +35,10 @@ CI将成功编译的依赖缓存独立保存，使后续来源/应用检查失�
 
 唯一SourceStore由app迁至core/source，所有调用和实际协议测试直接引用新位置，无别名或第二份对象。原Mutex/初始化门/账号Cookie/模块安装标记/URL缓存与文件数据保持。52 JVM/应用及设备包21秒通过；迁移后设备、最终R8与确切包尚待。边界逐项梳理见[核心文档](CORE-BOUNDARIES.md#当前055音乐源存储归属)。
 
+## 下载持久化下一阶段已实现，待最终组合验证
+
+Downloads及Record/Progress归core/download，Android DownloadManager与持久化规则原样保留，界面仅消费状态；R8的DownloadRecord精确规则与真实404/重试/成功保存/取消检查同步迁移。没有增加轮询服务、修改超时或删除失败断言。52 JVM零失败/零跳过及应用/设备包19秒通过，设备/R8未执行。
+
 ## 已保留的组合能力
 
 - 曲库与导入/扫描、源管理与账号、下载、完整队列、歌词/译文/逐词/TTML、音质/DSP/普通音频路由不删。core/library、core/queue、core/lyrics、core/listening归属清晰，无旧app类型别名或第二份队列/统计存储。SourceStore现归core/source，服务/引擎/提供商无app包反向引用；仍保留Android和模块运行时依赖，未宣称独立Gradle模块。

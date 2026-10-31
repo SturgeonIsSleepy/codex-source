@@ -64,7 +64,7 @@
 -keep class cp.player.app.MusicDetail { *; }
 -keep class cp.player.app.MusicSearch { *; }
 
--keep class cp.player.app.DownloadRecord { *; }
+-keep class cp.player.core.download.DownloadRecord { *; }
 
 -keep class cp.player.core.lyrics.LyricsText { *; }
 -keep class cp.player.core.lyrics.LyricParser { *; }

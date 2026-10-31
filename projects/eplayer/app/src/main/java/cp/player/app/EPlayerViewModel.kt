@@ -1,5 +1,8 @@
 package cp.player.app
 
+import cp.player.core.download.Downloads
+import cp.player.core.download.DownloadRecord
+import cp.player.core.download.DownloadProgress
 import cp.player.core.source.SourceStore
 import cp.player.core.listening.ListeningStatsStore
 
