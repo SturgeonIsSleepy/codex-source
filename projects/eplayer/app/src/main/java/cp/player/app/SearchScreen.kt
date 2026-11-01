@@ -37,6 +37,7 @@ internal fun SearchScreen(query: String, change: (String) -> Unit, cloud: CloudV
     val error by cloud.searchError.collectAsState()
     val recent by player.recent.collectAsState()
     val context = LocalContext.current.applicationContext
+    TravelDialog(close) {
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
     val requester = remember { FocusRequester() }
@@ -56,7 +57,6 @@ internal fun SearchScreen(query: String, change: (String) -> Unit, cloud: CloudV
             catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { recent.map { it.song.name }.filter { it.contains(query, true) }.distinct().take(8) }
     }
-    TravelDialog({ keyboard?.hide(); close() }) {
         LaunchedEffect(Unit) {
             withFrameNanos { }
             requester.requestFocus()
