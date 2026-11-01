@@ -107,6 +107,18 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         coverBlur.value = radius
         app.getSharedPreferences("eplayer_ui", 0).edit().putFloat("cover_blur", radius).apply()
     }
+    val queueOrigin = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getString("queue_origin", null))
+    val noInterest = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getStringSet("no_interest", emptySet()).orEmpty().toSet())
+    fun notInterested() {
+        val track = currentTrack() ?: return
+        val key = "${track.source}:${track.remoteId ?: track.song.id}"
+        noInterest.value = noInterest.value.toMutableSet().apply { if (!add(key)) remove(key) }
+        app.getSharedPreferences("eplayer_ui", 0).edit().putStringSet("no_interest", noInterest.value).apply()
+    }
+    fun currentQueueTracks(): List<Track> = controller?.let { player -> (0 until player.mediaItemCount).map { index ->
+        val item = player.getMediaItemAt(index)
+        Track(item.toSong(), item.localConfiguration?.uri?.toString(), item.mediaMetadata.extras?.getString("source"), item.mediaMetadata.extras?.getString("remoteId"))
+    } }.orEmpty()
     val sleepDeadline = MutableStateFlow(0L)
     private var queueSnapshot = emptyList<Song>()
     private var controller: MediaController? = null
@@ -211,7 +223,9 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         try { scanned = withContext(Dispatchers.IO) { catalog.scan() }; reloadLibrary() }
         catch (error: Exception) { message.value = error.message ?: "读取失败" }
     }
-    fun play(track: Track, queue: List<Track>, radio: Boolean = false) {
+    fun play(track: Track, queue: List<Track>, radio: Boolean = false, origin: String? = null) {
+        queueOrigin.value = origin ?: track.song.artist.takeIf { it.isNotBlank() }
+        app.getSharedPreferences("eplayer_ui", 0).edit().putString("queue_origin", queueOrigin.value).apply()
         radioGeneration++; radioJob?.cancel(); loadingRadio = false; roaming = false
         radioSource = if (radio) track.source else null
         val action = {
@@ -227,7 +241,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     }
     internal fun startRoaming(pick: QuickPick, tracks: List<Track>) {
         if (tracks.isEmpty()) return
-        play(tracks.first(), tracks)
+        play(tracks.first(), tracks.filterIndexed { index, track -> index == 0 || "${track.source}:${track.remoteId ?: track.song.id}" !in noInterest.value }, origin = pick.title)
         radioSource = tracks.first().source; roaming = true
         rememberPick(pick)
         refillRadio(force = true)
@@ -247,7 +261,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
                 if (radioSource == source && generation == radioGeneration) {
                     val current = controller ?: return@launch
                     val existing = (0 until current.mediaItemCount).map { current.getMediaItemAt(it).toSong().id }.toSet()
-                    val fresh = next.filter { it.song.id !in existing }
+                    val fresh = next.filter { it.song.id !in existing && "${it.source}:${it.remoteId ?: it.song.id}" !in noInterest.value }
                     if (fresh.isEmpty()) { radioSource = null; return@launch }
                     current.addMediaItems(fresh.map { it.mediaItem(quality.value) })
                     if (current.currentMediaItemIndex > 20) current.removeMediaItems(0, current.currentMediaItemIndex - 5)

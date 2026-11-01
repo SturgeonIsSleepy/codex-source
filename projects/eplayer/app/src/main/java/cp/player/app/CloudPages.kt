@@ -80,6 +80,9 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
     selectedTab: Int = 2, chooseTab: (Int) -> Unit = {}, songOptions: (Track, MusicEntry?) -> Unit) {
     val pages by cloud.pages.collectAsState()
     val page = pages.lastOrNull() ?: return
+    val scrollStates = remember { mutableMapOf<String, androidx.compose.foundation.lazy.LazyListState>() }
+    SideEffect { scrollStates.keys.retainAll(pages.map { it.instanceId }.toSet()) }
+    key(page.instanceId) {
     val home by cloud.home.collectAsState()
     val playback by player.playback.collectAsState()
     val busy by cloud.busy.collectAsState()
@@ -96,13 +99,13 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
     fun toggle(id: String) { selected = if (id in selected) selected - id else selected + id }
     val tracks = page.data?.tracks.orEmpty()
     val keys = remember(tracks) { tracks.map { "track:${it.source}:${it.remoteId ?: it.song.id}" } }
-    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val listState = scrollStates.getOrPut(page.instanceId) { androidx.compose.foundation.lazy.LazyListState() }
     val reorder = rememberSongReorder(keys, listState) { from, to -> cloud.movePlaylist(target, from, to) }
     val editable = target.kind == MusicKind.PLAYLIST
 
     TravelDialog(onDismissRequest = cloud::back,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-        destination = { pages.getOrNull(pages.lastIndex - 1)?.let { CloudReturnPreview(it) } }) {
+        destination = { pages.getOrNull(pages.lastIndex - 1)?.let { previous -> val previousScroll = scrollStates[previous.instanceId]; CloudReturnPreview(previous, previousScroll?.firstVisibleItemIndex ?: 0, previousScroll?.firstVisibleItemScrollOffset ?: 0) } }) {
         Surface(Modifier.fillMaxSize()) {
           Box(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().systemBarsPadding().padding(bottom = if (playback.song != null) 128.dp else 76.dp)) {
@@ -138,7 +141,6 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                         if (kind != target.kind) cloud.replaceTop(target.copy(kind = kind))
                     }
                 }
-                LaunchedEffect(page.target) { listState.scrollToItem(0) }
                 LazyColumn(Modifier.weight(1f), state = listState, contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (target.image != null) item {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -155,7 +157,7 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                     } }
                     if (tracks.isNotEmpty()) item {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            FilledTonalButton(onClick = { player.play(tracks.first(), tracks); showPlayer() }) {
+                            FilledTonalButton(onClick = { player.play(tracks.first(), tracks, origin = target.name); showPlayer() }) {
                                 Icon(Icons.Default.PlayArrow, null); Text("播放全部")
                             }
                             Spacer(Modifier.weight(1f))
@@ -170,7 +172,7 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 Text("${index + 1}", Modifier.width(30.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleMedium)
                                 Box(Modifier.weight(1f)) {
-                                    SongRow(track, playback.song?.id == track.song.id, { player.play(track, tracks); showPlayer() }) {
+                                    SongRow(track, playback.song?.id == track.song.id, { player.play(track, tracks, origin = target.name); showPlayer() }) {
                                         record?.playCount?.takeIf { it > 0 }?.let { Text("${it} 次", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                         IconButton(onClick = { songOptions(track, null) }) { Icon(Icons.Default.MoreVert, "歌曲操作") }
                                     }
@@ -197,7 +199,7 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                             }, verticalAlignment = Alignment.CenterVertically) {
                             if (editing) Checkbox((track.remoteId ?: track.song.id) in selected, { toggle(track.remoteId ?: track.song.id) }, enabled = !busy)
                             Box(Modifier.weight(1f)) {
-                                SongRow(track, playback.song?.id == track.song.id, { if (editing) toggle(track.remoteId ?: track.song.id) else { player.play(track, tracks); showPlayer() } }, enabled = !busy || !editing) {
+                                SongRow(track, playback.song?.id == track.song.id, { if (editing) toggle(track.remoteId ?: track.song.id) else { player.play(track, tracks, origin = target.name); showPlayer() } }, enabled = !busy || !editing) {
                                     if (!editing) IconButton(onClick = { songOptions(track, if (own && target.kind == MusicKind.PLAYLIST) target else null) }) { Icon(Icons.Default.MoreVert, "歌曲操作") }
                                 }
                             }
@@ -238,6 +240,7 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
     if (delete) TravelAlertDialog(onDismissRequest = { delete = false }, title = { Text("删除 ${target.name}？") },
         confirmButton = { TextButton(enabled = !busy, onClick = { cloud.delete(target); delete = false }) { Text("删除") } },
         dismissButton = { TextButton(onClick = { delete = false }) { Text("取消") } })
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -325,11 +328,11 @@ internal fun CommentsSheet(track: Track, close: () -> Unit) {
 }
 
 @Composable
-private fun CloudReturnPreview(page: DetailPage) {
+private fun CloudReturnPreview(page: DetailPage, index: Int, offset: Int) {
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().systemBarsPadding().padding(20.dp)) {
             Text(page.target.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(vertical = 16.dp))
-            LazyColumn {
+            LazyColumn(state = androidx.compose.foundation.lazy.rememberLazyListState(index, offset)) {
                 items(page.data?.entries.orEmpty()) { entry -> MusicEntryRow(entry) {} }
                 items(page.data?.tracks.orEmpty()) { track -> SongRow(track, false, {}) }
             }

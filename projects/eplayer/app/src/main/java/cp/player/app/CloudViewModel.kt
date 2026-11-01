@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 
 data class CloudHome(val source: String? = null, val account: Account? = null, val playlists: List<MusicEntry> = emptyList(),
     val recommendations: List<MusicEntry> = emptyList(), val loading: Boolean = false, val error: String? = null)
-data class DetailPage(val target: MusicEntry, val data: MusicDetail? = null, val loading: Boolean = true, val error: String? = null)
+data class DetailPage(val target: MusicEntry, val data: MusicDetail? = null, val loading: Boolean = true, val error: String? = null, val instanceId: String = java.util.UUID.randomUUID().toString())
 
 class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
     val home = MutableStateFlow(CloudHome())
@@ -215,6 +215,18 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
         val queue = (listOf(seed) + base.filter { it.song.id != seed.song.id }.shuffled().take(8))
             .distinctBy { it.song.id to it.source }
         play(queue)
+    }
+    fun saveQueue(name: String, tracks: List<Track>, done: () -> Unit, failed: (String) -> Unit = {}) = action {
+      try {
+        require(name.isNotBlank()) { "请输入歌单名称" }
+        val source = tracks.firstOrNull()?.source ?: error("仅支持保存在线歌曲队列")
+        require(tracks.isNotEmpty() && tracks.all { it.source == source }) { "歌曲需来自同一音源" }
+        val repo = MusicRepository(app, source)
+        val created = repo.createPlaylist(name.trim(), private = true)
+        tracks.map { it.remoteId ?: it.song.id }.distinct().chunked(500).forEach { repo.changeTracks(created.id, it, true) }
+        refresh(); message.value = "已保存歌单"; done()
+      } catch (cancelled: CancellationException) { throw cancelled }
+      catch (failure: Exception) { failed(failure.message ?: "保存失败"); throw failure }
     }
     fun selectAllPlaylist(target: MusicEntry, selected: (Set<String>) -> Unit) = action {
         val ids = MusicRepository(app, target.source).playlistIds(target.id).toSet()

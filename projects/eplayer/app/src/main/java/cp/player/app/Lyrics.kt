@@ -5,11 +5,7 @@ import android.net.Uri
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
-import kotlin.math.roundToInt
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -42,9 +38,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 @Composable
-internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, coverBounds: androidx.compose.ui.geometry.Rect? = null, close: () -> Unit) {
+internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, close: () -> Unit) {
     val entrance = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { entrance.animateTo(1f, tween(360, easing = FastOutSlowInEasing)) }
+    LaunchedEffect(Unit) { entrance.animateTo(1f, tween(220, easing = FastOutSlowInEasing)) }
     val sampled by model.position.collectAsState()
     val playback by model.playback.collectAsState()
     val quality by model.quality.collectAsState()
@@ -98,24 +94,12 @@ internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, coverBound
     }
     TravelDialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val ink = MaterialTheme.colorScheme.onBackground
-        BoxWithConstraints(Modifier.fillMaxSize().testTag("lyrics-page")) {
-            val fraction = entrance.value
-            LyricFrostBackground(playback.song, Modifier.matchParentSize().graphicsLayer { alpha = fraction })
-            if (fraction < 1f) {
-                val density = LocalDensity.current
-                val screenWidth = constraints.maxWidth.toFloat()
-                val screenHeight = constraints.maxHeight.toFloat()
-                val source = coverBounds ?: androidx.compose.ui.geometry.Rect(screenWidth * .15f, screenHeight * .16f, screenWidth * .85f, screenHeight * .16f + screenWidth * .7f)
-                val width = source.width + (screenWidth - source.width) * fraction
-                val height = source.height + (screenHeight - source.height) * fraction
-                Box(Modifier.offset { IntOffset((source.left * (1 - fraction)).roundToInt(), (source.top * (1 - fraction)).roundToInt()) }
-                    .size(with(density) { width.toDp() }, with(density) { height.toDp() })
-                    .clip(RoundedCornerShape((12 * (1 - fraction)).dp))
-                    .graphicsLayer { alpha = (fraction * 6).coerceAtMost(1f) * (1 - fraction) }.blur((fraction * 26).dp)) {
-                    TrackArtwork(playback.song, Modifier.matchParentSize(), 512)
-                }
-            }
-            Column(Modifier.fillMaxSize().graphicsLayer { alpha = fraction; translationY = (1 - fraction) * 18.dp.toPx() }
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).testTag("lyrics-page").graphicsLayer {
+            alpha = entrance.value
+            translationY = (1 - entrance.value) * 20.dp.toPx()
+        }) {
+            LyricFrostBackground(playback.song, Modifier.matchParentSize())
+            Column(Modifier.fillMaxSize()
                 .systemBarsPadding().padding(horizontal = 20.dp)) {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = close) { Icon(Icons.Default.KeyboardArrowDown, "关闭歌词", tint = ink) }

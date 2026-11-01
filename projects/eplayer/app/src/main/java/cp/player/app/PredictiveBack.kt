@@ -45,8 +45,8 @@ internal fun PreviewBackHandler(preview: BackPreview, enabled: Boolean = true, o
                 preview.progress.snapTo(event.progress)
             }
             // Commit immediately: gesture progress has already supplied the exit preview.
-            latestBack()
             preview.progress.snapTo(0f)
+            latestBack()
         } catch (cancelled: CancellationException) {
             scope.launch { preview.progress.animateTo(0f, tween(100)) }
             throw cancelled

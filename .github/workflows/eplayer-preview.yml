@@ -46,7 +46,7 @@ jobs:
         run: |
           bash tools/prepare-local-signing.sh
           if [ "$GITHUB_REF" = "refs/heads/codex/eplayer-power" ]; then
-            bash gradlew testInternalDebugUnitTest --tests 'cp.player.core.playback.PlayNextOrderTest' assembleInternalRelease -PwithRust=false '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8' --console=plain
+            bash gradlew testInternalDebugUnitTest --tests 'cp.player.core.playback.PlayNextOrderTest' --tests 'cp.player.app.NavigationStateTest' assembleInternalRelease -PwithRust=false '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8' --console=plain
           else
             bash gradlew testStandardFastReleaseUnitTest assembleStandardFastRelease assembleInternalFastRelease assembleStandardFastReleaseAndroidTest -PwithRust=false -PtestBuildType=fastRelease --console=plain
           fi

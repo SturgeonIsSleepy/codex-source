@@ -61,6 +61,10 @@ class MusicRepository(private val context: Context, val source: String) {
         return tracks(response.obj("data")?.array("dailySongs") ?: response.array("recommend"))
     }
     suspend fun radio(): List<Track> = tracks(request("personal_fm").array("data"))
+    suspend fun suggestions(query: String): List<String> {
+        val result = request("search/suggest", mapOf("keywords" to query, "type" to "mobile")).obj("result") ?: return emptyList()
+        return result.array("allMatch").mapNotNull { it.takeIf { value -> value.isJsonObject }?.asJsonObject?.str("keyword") }.distinct().take(10)
+    }
     suspend fun search(query: String, type: Int): MusicSearch {
         val result = request("cloudsearch", mapOf("keywords" to query, "type" to type.toString(), "limit" to "50")).obj("result") ?: JsonObject()
         return when (type) {

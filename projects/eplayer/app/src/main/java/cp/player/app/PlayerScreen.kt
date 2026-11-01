@@ -18,6 +18,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -67,47 +68,37 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
         lyrics = null
         if (showLyrics) lyrics = model.lyrics { lyrics = it }
     }
-    var coverBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     val openLyrics = { showLyrics = true }
     TravelDialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-      Box(Modifier.fillMaxSize()) {
-        PlayerBackdrop(customBackground, Modifier.matchParentSize())
-        PlayerLayout(
-            state.song, state.buffering,
-            header = { PlayerHeader(close, openLyrics, if (state.source != null) comments else null, more) { queue = true } },
-            artwork = { modifier ->
-                if (artworkGeneration == 0) Box(modifier, contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                else CharacterStage(state.song, modifier, coverBlur, customBackground, { coverBounds = it }) { characterModifier -> AndroidView(
-                    factory = { WitchPlayerView(it) }, modifier = characterModifier,
-                    update = { view ->
-                        view.setAppearance(night, backdrop.toArgb(), artworkGeneration)
-                        view.setCoverBackdropEnabled(true)
-                        view.setMotionEnabled(animate)
-                        view.setArtworkActive(!showLyrics && !queue)
-                        view.setPlayback(state.playing, state.playRequested, position) }) }
-            },
-            controls = {
-                Column {
-                PlayerTransport(state, position, seeking, { seeking = it }, {
-                    seeking?.let { model.seek(it.toLong()) }; seeking = null
-                }, model::playPause, model::previous, model::next, model::shuffle, model::repeat, liked) {
-                    state.song?.let { song ->
-                        if (state.source == null) model.favorite(song) else model.currentTrack()?.let(cloud::like)
+        YtmPlayerPanel(model, cloud, state, customBackground,
+            artwork = { modifier, characterVisible ->
+                Box(modifier) {
+                    val art = if (customBackground != null) (state.song ?: Song("background", "", "", album = "")).copy(albumArtUrl = customBackground) else state.song
+                    Box(Modifier.fillMaxWidth().aspectRatio(1f).align(Alignment.TopCenter).padding(top = 10.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))) {
+                        SoftStageCover(art, coverBlur, Modifier.matchParentSize())
+                    }
+                    androidx.compose.animation.AnimatedVisibility(characterVisible && artworkGeneration > 0, enter = fadeIn(tween(120)), exit = fadeOut(tween(80)), modifier = Modifier.matchParentSize()) {
+                        AndroidView(factory = { WitchPlayerView(it) }, modifier = Modifier.fillMaxSize(), update = { view ->
+                            view.setAppearance(night, backdrop.toArgb(), artworkGeneration)
+                            view.setCoverBackdropEnabled(true)
+                            view.setMotionEnabled(animate)
+                            view.setArtworkActive(characterVisible && !showLyrics && !qualitySheet)
+                            view.setPlayback(state.playing, state.playRequested, position)
+                        })
                     }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TextButton(onClick = openLyrics) { Text("歌词") }
-                    TextButton(onClick = { qualitySheet = true }) { Text(qualityName(quality), style = MaterialTheme.typography.labelMedium) }
-                    TextButton(onClick = { queue = true }) { Text("播放列表") }
-                }
-                }
-            }
-        )
-      }
+            },
+            transport = { PlayerTransport(state, position, seeking, { seeking = it }, {
+                seeking?.let { model.seek(it.toLong()) }; seeking = null
+            }, model::playPause, model::previous, model::next, model::shuffle, model::repeat, liked, {
+                state.song?.let { song -> if (state.source == null) model.favorite(song) else model.currentTrack()?.let(cloud::like) }
+            }, showFavorite = false) },
+            liked = liked, like = { state.song?.let { song -> if (state.source == null) model.favorite(song) else model.currentTrack()?.let(cloud::like) } },
+            lyrics = openLyrics, comments = if (state.source != null) comments else null,
+            quality = { qualitySheet = true }, more = more, close = close)
     }
-    if (queue) QueueSheet(state, model::queueIndex, model::moveQueue, model::removeQueue, model::clearQueue, removeSelected = model::removeQueueItems) { queue = false }
     if (qualitySheet) QualitySheet(model) { qualitySheet = false }
-    if (showLyrics) LyricsScreen(lyrics, model, coverBounds = coverBounds) { showLyrics = false }
+    if (showLyrics) LyricsScreen(lyrics, model) { showLyrics = false }
 }
 
 /** Portrait keeps transport visible. Wide screens reserve a separate, unclipped artwork pane.
@@ -167,7 +158,7 @@ internal fun PlayerHeader(close: () -> Unit, lyrics: () -> Unit, comments: (() -
 @Composable
 internal fun PlayerTransport(state: Playback, position: Long, seeking: Float?, seek: (Float) -> Unit, finishSeek: () -> Unit,
                              playPause: () -> Unit, previous: () -> Unit, next: () -> Unit, shuffle: () -> Unit,
-                             repeat: () -> Unit, liked: Boolean, favorite: () -> Unit) {
+                             repeat: () -> Unit, liked: Boolean, favorite: () -> Unit, showFavorite: Boolean = true) {
     Column(Modifier.fillMaxWidth().testTag("player-transport")) {
         val limit = state.duration.coerceAtLeast(1).toFloat()
         val value = (seeking ?: position.toFloat()).coerceIn(0f, limit)
@@ -219,7 +210,7 @@ internal fun PlayerTransport(state: Playback, position: Long, seeking: Float?, s
                 }
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        if (showFavorite) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             IconToggleButton(checked = liked, onCheckedChange = { favorite() }, enabled = state.song != null, modifier = Modifier.size(40.dp)) {
                 Icon(if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "喜欢", Modifier.size(21.dp))
             }
