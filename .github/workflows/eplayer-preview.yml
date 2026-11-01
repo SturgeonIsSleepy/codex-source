@@ -46,7 +46,7 @@ jobs:
         run: |
           bash tools/prepare-local-signing.sh
           if [ "$GITHUB_REF" = "refs/heads/codex/eplayer-power" ]; then
-            bash gradlew testInternalDebugUnitTest --tests 'cp.player.core.playback.PlayNextOrderTest' --tests 'cp.player.app.NavigationStateTest' assembleInternalRelease -PwithRust=false '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8' --console=plain
+            bash gradlew testInternalFastReleaseUnitTest assembleInternalFastRelease assembleInternalFastReleaseAndroidTest assembleInternalRelease -PtestBuildType=fastRelease -PwithRust=false '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8' --console=plain
           else
             bash gradlew testStandardFastReleaseUnitTest assembleStandardFastRelease assembleInternalFastRelease assembleStandardFastReleaseAndroidTest -PwithRust=false -PtestBuildType=fastRelease --console=plain
           fi
@@ -74,6 +74,16 @@ jobs:
           name: eplayer-preview-${{ github.sha }}
           path: |
             projects/eplayer/app/build/outputs/apk/internal/release/*universal*.apk
+          if-no-files-found: error
+      - name: Upload local full-check candidates
+        if: github.ref == 'refs/heads/codex/eplayer-power'
+        uses: actions/upload-artifact@v4
+        with:
+          name: eplayer-qa-${{ github.sha }}
+          path: |
+            projects/eplayer/app/build/outputs/apk/internal/fastRelease/*universal*.apk
+            projects/eplayer/app/build/outputs/apk/androidTest/internal/fastRelease/*.apk
+            projects/eplayer/app/build/test-results/
           if-no-files-found: error
       - name: Upload preview and device tests
         if: github.ref != 'refs/heads/codex/eplayer-power'

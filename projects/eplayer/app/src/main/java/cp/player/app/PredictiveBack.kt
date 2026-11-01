@@ -74,7 +74,9 @@ internal fun TravelDialog(onDismissRequest: () -> Unit,
     Dialog(onDismissRequest, properties = properties.copyForPredictiveBack()) {
         PreviewBackHandler(preview, onBack = onDismissRequest)
         PreviewWindow(preview)
-        Box(Modifier.fillMaxSize()) {
+        val entrance = remember { Animatable(0f) }
+        LaunchedEffect(Unit) { entrance.animateTo(1f, tween(150)) }
+        Box(Modifier.fillMaxSize().graphicsLayer { translationY = (1 - entrance.value) * 5.dp.toPx() }) {
             if (preview.progress.value > 0f) destination?.invoke()
             Box(Modifier.fillMaxSize().backPreview(preview).testTag("predictive-page")) { content() }
         }

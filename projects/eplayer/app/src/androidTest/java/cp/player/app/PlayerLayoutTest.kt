@@ -72,10 +72,10 @@ class PlayerLayoutTest {
             assertTrue("Metadata must stay beside, never underneath, Elaina", artwork.right <= metadata.left)
         } else {
             compose.onNodeWithTag("player-portrait").assertExists()
-            assertTrue("The entire title block precedes the artwork", metadata.bottom <= artwork.top)
+            assertTrue("The artwork precedes the title block", artwork.bottom <= metadata.top)
             compose.onNodeWithTag("player-transport").assertIsDisplayed()
         }
-        for (description in listOf(if (requested) "暂停" else "播放", "上一首", "下一首", "随机播放", "喜欢", "循环关闭")) {
+        for (description in listOf(if (requested) "暂停" else "播放", "上一首", "下一首", "开启随机播放", "喜欢", "循环关闭")) {
             val button = compose.onNodeWithContentDescription(description)
             if (wide) button.performScrollTo()
             button.assertIsDisplayed().assertHasClickAction().performClick()

@@ -59,6 +59,10 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     var playlistName by remember { mutableStateOf("") }
     var privatePlaylist by remember { mutableStateOf(false) }
     var selectedTrack by remember { mutableStateOf<Pair<Track, MusicEntry?>?>(null) }
+    var selectedQueueIndex by remember { mutableStateOf<Int?>(null) }
+    fun openQueueOptions(index: Int) {
+        model.currentQueueTracks().getOrNull(index)?.let { selectedQueueIndex = index; selectedTrack = it to null }
+    }
     var commentTrack by remember { mutableStateOf<Track?>(null) }
     var pendingDelete by remember { mutableStateOf<BackendProvider?>(null) }
     var pendingTrackDelete by remember { mutableStateOf<Track?>(null) }
@@ -188,8 +192,8 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 180.dp))
     }
     settingsSection?.let { section ->
-      key(settingsPath.size, section) {
         SettingsPanel(when (section) { "profile" -> "账号"; "settings" -> "设置"; "account" -> "账号"; "source" -> "音源"; else -> "关于" }, ::backSettings) {
+          key(settingsPath.size, section) {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 when (section) {
                     "profile" -> {
@@ -246,7 +250,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
         searchOpen = false; query = ""; cloud.clearSearch()
     }
     roamPicker?.let { type -> RoamPicker(home.source, type, ::roam) { roamPicker = null } }
-    if (queueOpen) QueueSheet(state, model::queueIndex, model::moveQueue, model::removeQueue, model::clearQueue, removeSelected = model::removeQueueItems) { queueOpen = false }
+    if (queueOpen) QueueSheet(state, model::queueIndex, model::moveQueue, model::removeQueue, model::clearQueue, removeSelected = model::removeQueueItems, options = ::openQueueOptions) { queueOpen = false }
     if (visualSettings) VisualSettings(model) { visualSettings = false }
     if (playbackSettings) Settings(model) { playbackSettings = false }
     pendingDelete?.let { source -> TravelAlertDialog(onDismissRequest = { pendingDelete = null }, title = { Text("移除 ${source.name}？") },
@@ -258,12 +262,14 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
         Row(verticalAlignment = Alignment.CenterVertically) { Text("私密", Modifier.weight(1f)); Switch(privatePlaylist, { privatePlaylist = it }) }
     } }, confirmButton = { TextButton(enabled = playlistName.isNotBlank(), onClick = { cloud.create(playlistName, privatePlaylist); createPlaylist = false; playlistName = "" }) { Text("创建") } }, dismissButton = { TextButton(onClick = { createPlaylist = false }) { Text("取消") } })
     if (logout) TravelAlertDialog(onDismissRequest = { logout = false }, title = { Text("退出当前账号？") }, confirmButton = { TextButton(onClick = { cloud.logout(); logout = false }) { Text("退出登录") } }, dismissButton = { TextButton(onClick = { logout = false }) { Text("取消") } })
-    CloudDetailScreen(cloud, model, { onShowPlayer(true) }, selectedTab = page, chooseTab = { tab ->
+    CloudDetailScreen(cloud, model, { onShowPlayer(true) }, selectedTab = page, queueOptions = ::openQueueOptions, chooseTab = { tab ->
         page = tab; searchOpen = false; query = ""; cloud.clearSearch()
         if (tab == 2) libraryMode = 0
     }) { track, playlist -> selectedTrack = track to playlist }
-    if (showPlayer) PlayerScreen(model, cloud, state, { selectedTrack = model.currentTrack()?.let { it to null } }, { commentTrack = model.currentTrack() }) { onShowPlayer(false) }
-    selectedTrack?.let { (track, playlist) -> SongOptions(track, playlist, cloud, model, { commentTrack = it }, { entry -> onShowPlayer(false); cloud.open(entry) }) { selectedTrack = null } }
+    if (showPlayer) PlayerScreen(model, cloud, state, { selectedTrack = model.currentTrack()?.let { it to null } }, { commentTrack = model.currentTrack() }, queueOptions = ::openQueueOptions) { onShowPlayer(false) }
+    selectedTrack?.let { (track, playlist) -> SongOptions(track, playlist, cloud, model, { commentTrack = it }, { entry -> onShowPlayer(false); cloud.open(entry) }, removeFromQueue = selectedQueueIndex?.let { index -> {
+        if (model.currentQueueTracks().getOrNull(index) == track) model.removeQueue(index) else model.message.value = "播放列表已变化，请重新打开"
+    } }) { selectedTrack = null; selectedQueueIndex = null } }
     commentTrack?.let { track -> CommentsSheet(track) { commentTrack = null } }
     }
 }

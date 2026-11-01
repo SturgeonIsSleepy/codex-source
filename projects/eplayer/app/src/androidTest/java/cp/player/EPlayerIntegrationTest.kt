@@ -64,7 +64,7 @@ class EPlayerIntegrationTest {
         main {
             fun containsQueue(node: android.view.accessibility.AccessibilityNodeInfo?): Boolean {
                 if (node == null) return false
-                if (node.isVisibleToUser && node.contentDescription?.toString() == "播放队列") return true
+                if (node.isVisibleToUser && node.contentDescription?.toString() == "收起播放器") return true
                 for (index in 0 until node.childCount) if (containsQueue(node.getChild(index))) return true
                 return false
             }

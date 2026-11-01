@@ -28,9 +28,9 @@ internal class SongReorder(private val list: LazyListState) {
     }
     fun start(key: String, edit: () -> Unit) {
         if (key !in source) return
+        edit()
         val row = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key } ?: return
         dragging = key; center = row.offset + row.size / 2f
-        edit()
     }
     fun drag(dy: Float) {
         val info = list.layoutInfo

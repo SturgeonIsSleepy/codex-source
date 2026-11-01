@@ -20,6 +20,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -77,12 +78,11 @@ internal fun RecommendationRow(entries: List<MusicEntry>, open: (MusicEntry) -> 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, showPlayer: () -> Unit,
-    selectedTab: Int = 2, chooseTab: (Int) -> Unit = {}, songOptions: (Track, MusicEntry?) -> Unit) {
+    selectedTab: Int = 2, queueOptions: ((Int) -> Unit)? = null, chooseTab: (Int) -> Unit = {}, songOptions: (Track, MusicEntry?) -> Unit) {
     val pages by cloud.pages.collectAsState()
     val page = pages.lastOrNull() ?: return
     val scrollStates = remember { mutableMapOf<String, androidx.compose.foundation.lazy.LazyListState>() }
     SideEffect { scrollStates.keys.retainAll(pages.map { it.instanceId }.toSet()) }
-    key(page.instanceId) {
     val home by cloud.home.collectAsState()
     val playback by player.playback.collectAsState()
     val busy by cloud.busy.collectAsState()
@@ -106,6 +106,7 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
     TravelDialog(onDismissRequest = cloud::back,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         destination = { pages.getOrNull(pages.lastIndex - 1)?.let { previous -> val previousScroll = scrollStates[previous.instanceId]; CloudReturnPreview(previous, previousScroll?.firstVisibleItemIndex ?: 0, previousScroll?.firstVisibleItemScrollOffset ?: 0) } }) {
+        key(page.instanceId) {
         Surface(Modifier.fillMaxSize()) {
           Box(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().systemBarsPadding().padding(bottom = if (playback.song != null) 128.dp else 76.dp)) {
@@ -141,7 +142,7 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                         if (kind != target.kind) cloud.replaceTop(target.copy(kind = kind))
                     }
                 }
-                LazyColumn(Modifier.weight(1f), state = listState, contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                LazyColumn(Modifier.weight(1f).testTag("cloud-detail-list"), state = listState, contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (target.image != null) item {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             AsyncImage(target.image, null, Modifier.size(112.dp).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Crop)
@@ -228,8 +229,9 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
             }
           }
         }
+        }
     }
-    if (queue) QueueSheet(playback, player::queueIndex, player::moveQueue, player::removeQueue, player::clearQueue, removeSelected = player::removeQueueItems) { queue = false }
+    if (queue) QueueSheet(playback, player::queueIndex, player::moveQueue, player::removeQueue, player::clearQueue, removeSelected = player::removeQueueItems, options = { index -> if (queueOptions != null) queueOptions(index) else player.currentQueueTracks().getOrNull(index)?.let { songOptions(it, null) } }) { queue = false }
     if (confirmRemove) TravelAlertDialog(onDismissRequest = { confirmRemove = false }, title = { Text("从歌单移除 ${selected.size} 首歌曲？") },
         confirmButton = { TextButton(enabled = !busy, onClick = { cloud.removePlaylistTracks(target, selected); selected = emptySet(); confirmRemove = false }) { Text("移除") } },
         dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text("取消") } })
@@ -240,19 +242,19 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
     if (delete) TravelAlertDialog(onDismissRequest = { delete = false }, title = { Text("删除 ${target.name}？") },
         confirmButton = { TextButton(enabled = !busy, onClick = { cloud.delete(target); delete = false }) { Text("删除") } },
         dismissButton = { TextButton(onClick = { delete = false }) { Text("取消") } })
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SongOptions(track: Track, playlist: MusicEntry?, cloud: CloudViewModel, player: EPlayerViewModel,
-    comments: (Track) -> Unit, open: (MusicEntry) -> Unit, close: () -> Unit) {
+    comments: (Track) -> Unit, open: (MusicEntry) -> Unit, removeFromQueue: (() -> Unit)? = null, close: () -> Unit) {
     val home by cloud.home.collectAsState()
     val likes by cloud.likes.collectAsState()
     var choosePlaylist by remember { mutableStateOf(false) }
     TravelSheet(onDismissRequest = close) {
         Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 32.dp)) {
             Text(track.song.name, style = MaterialTheme.typography.titleLarge)
+            removeFromQueue?.let { action -> TextButton(onClick = { action(); close() }) { Text("从播放列表移除") } }
             TextButton(onClick = { player.addNext(track); close() }) { Text("下一首播放") }
             TextButton(onClick = { player.addQueue(track); close() }) { Text("加入播放队列") }
             if (track.source != null) {

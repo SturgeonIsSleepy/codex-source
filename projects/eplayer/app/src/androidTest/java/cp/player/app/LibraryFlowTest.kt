@@ -24,19 +24,19 @@ class LibraryFlowTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
     @Test fun libraryAlwaysEntersPlaylistsAndHasNoPresetSongRows() {
-        compose.onNodeWithContentDescription("曲库").performClick()
+        compose.onNodeWithContentDescription("媒体库").performClick()
         compose.onNodeWithTag("music-segment-歌单").assertIsSelected()
         compose.onNodeWithTag("music-segment-歌曲").performClick()
-        compose.onAllNodes(hasText("灰色のサーガ") and hasAnyAncestor(hasTestTag("library-content"))).assertCountEquals(0)
-        compose.onAllNodes(hasText("リテラチュア") and hasAnyAncestor(hasTestTag("library-content"))).assertCountEquals(0)
-        compose.onNodeWithContentDescription("设置").performClick()
-        compose.onNodeWithContentDescription("曲库").performClick()
+        compose.onAllNodes(hasText("灰色のサーガ") and hasAnyAncestor(hasTestTag("root-content-2"))).assertCountEquals(0)
+        compose.onAllNodes(hasText("リテラチュア") and hasAnyAncestor(hasTestTag("root-content-2"))).assertCountEquals(0)
+        compose.onNodeWithContentDescription("首页").performClick()
+        compose.onNodeWithContentDescription("媒体库").performClick()
         compose.onNodeWithTag("music-segment-歌单").assertIsSelected()
     }
 
     @Test fun rootSettingsBackLeavesTheTaskAndReopenRetainsTheSelectedTab() {
         val activity = compose.activity
-        compose.onNodeWithContentDescription("设置").performClick()
+        compose.onNodeWithContentDescription("媒体库").performClick()
         // A stale library search may not consume this root page's back event.
         compose.runOnIdle { ViewModelProvider(activity)[CloudViewModel::class.java].searched.value = true }
         Espresso.pressBackUnconditionally()
@@ -44,7 +44,7 @@ class LibraryFlowTest {
         compose.waitUntil(5000) { !activity.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED) }
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-        compose.onNodeWithContentDescription("设置").assertIsSelected()
+        compose.onNodeWithContentDescription("媒体库").assertIsSelected()
         compose.onNodeWithContentDescription("首页").performClick()
     }
 
@@ -81,8 +81,8 @@ class LibraryFlowTest {
                 state = state.copy(queue = queue, queueIndex = queue.indexOf(b))
             }, clear = { state = state.copy(queue = emptyList()) }, close = {})
         } } }
-        compose.onNodeWithText("编辑").performClick()
-        compose.onNodeWithContentDescription("移除第 1 首").performClick()
+        compose.onNodeWithContentDescription("第 1 首歌曲更多操作").performClick()
+        compose.onNodeWithText("从播放列表移除").performClick()
         compose.runOnIdle {
             assertEquals(listOf(b, c), latest.queue)
             assertEquals(b, latest.song)
@@ -93,8 +93,8 @@ class LibraryFlowTest {
         compose.runOnUiThread { assertTrue(actions.first { it.label == "上移" }.action()) }
         compose.runOnIdle { assertEquals(listOf(c, b), latest.queue); assertEquals(1, latest.queueIndex); assertEquals(0, selects) }
         val distance = 84f * compose.activity.resources.displayMetrics.density
-        compose.onNodeWithContentDescription("拖动第 1 首").performTouchInput {
-            swipe(center, Offset(center.x, center.y + distance), durationMillis = 600)
+        compose.onNodeWithTag("queue-row-0").performTouchInput {
+            down(center); advanceEventTime(600); moveTo(Offset(center.x, center.y + distance)); up()
         }
         compose.onNodeWithTag("queue-list").assertIsDisplayed()
         compose.runOnIdle {

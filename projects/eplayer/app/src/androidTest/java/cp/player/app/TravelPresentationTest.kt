@@ -95,7 +95,7 @@ class TravelPresentationTest {
         compose.runOnIdle { assertEquals(1, played); assertEquals(0, opened) }
         compose.onNodeWithText("测试歌曲").performClick()
         compose.runOnIdle { assertEquals(1, opened) }
-        compose.onNodeWithContentDescription("设置").performClick()
+        compose.onNodeWithContentDescription("媒体库").performClick()
         compose.runOnIdle { assertEquals(2, selected) }
     }
 

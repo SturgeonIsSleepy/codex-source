@@ -40,7 +40,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state: Playback,
-                          more: () -> Unit, comments: () -> Unit, close: () -> Unit) {
+                          more: () -> Unit, comments: () -> Unit, queueOptions: (Int) -> Unit = {}, close: () -> Unit) {
     val animate by model.animate.collectAsState()
     val coverBlur by model.coverBlur.collectAsState()
     val customBackground by model.playerBackground.collectAsState()
@@ -72,13 +72,9 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
     TravelDialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         YtmPlayerPanel(model, cloud, state, customBackground,
             artwork = { modifier, characterVisible ->
-                Box(modifier) {
-                    val art = if (customBackground != null) (state.song ?: Song("background", "", "", album = "")).copy(albumArtUrl = customBackground) else state.song
-                    Box(Modifier.fillMaxWidth().aspectRatio(1f).align(Alignment.TopCenter).padding(top = 10.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))) {
-                        SoftStageCover(art, coverBlur, Modifier.matchParentSize())
-                    }
-                    androidx.compose.animation.AnimatedVisibility(characterVisible && artworkGeneration > 0, enter = fadeIn(tween(120)), exit = fadeOut(tween(80)), modifier = Modifier.matchParentSize()) {
-                        AndroidView(factory = { WitchPlayerView(it) }, modifier = Modifier.fillMaxSize(), update = { view ->
+                CharacterStage(state.song, modifier, coverBlur, customBackground) { portrait ->
+                    AnimatedVisibility(characterVisible && artworkGeneration > 0, enter = fadeIn(tween(140)), exit = fadeOut(tween(90))) {
+                        AndroidView(factory = { WitchPlayerView(it) }, modifier = portrait.testTag("player-character"), update = { view ->
                             view.setAppearance(night, backdrop.toArgb(), artworkGeneration)
                             view.setCoverBackdropEnabled(true)
                             view.setMotionEnabled(animate)
@@ -95,7 +91,7 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
             }, showFavorite = false) },
             liked = liked, like = { state.song?.let { song -> if (state.source == null) model.favorite(song) else model.currentTrack()?.let(cloud::like) } },
             lyrics = openLyrics, comments = if (state.source != null) comments else null,
-            quality = { qualitySheet = true }, more = more, close = close)
+            quality = { qualitySheet = true }, more = more, songOptions = queueOptions, close = close)
     }
     if (qualitySheet) QualitySheet(model) { qualitySheet = false }
     if (showLyrics) LyricsScreen(lyrics, model) { showLyrics = false }

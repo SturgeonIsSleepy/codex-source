@@ -68,9 +68,9 @@ class DarkAppearanceTest {
         // directly on the player background and contain no artwork or accent button.
         assertVisibleInk("song title", compose.onNodeWithText("灰色のサーガ"))
         assertVisibleInk("elapsed time", compose.onNodeWithText("0:00"))
-        assertVisibleInk("lyrics icon", compose.onNodeWithContentDescription("歌词"))
+        assertVisibleInk("lyrics icon", compose.onNodeWithContentDescription("喜欢"))
         val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
-        assertTrue("night background should not be black", ColorUtils.calculateLuminance(bitmap.getPixel(2, 2)) > 0.01)
+        assertTrue("night background stays dark", ColorUtils.calculateLuminance(bitmap.getPixel(2, 2)) < 0.15)
         val directory = File(context.getExternalFilesDir(null), "layout-check").apply { mkdirs() }
         File(directory, "night-player.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
     }

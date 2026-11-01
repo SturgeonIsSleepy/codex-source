@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -153,10 +154,9 @@ internal fun MusicDock(state: Playback, page: Int, discovery: Boolean, choose: (
                 Column(Modifier.weight(1f).fillMaxHeight().clickable { choose(index) }
                     .semantics { contentDescription = label; role = Role.Tab; selected = page == index },
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    Box(Modifier.clip(RoundedCornerShape(14.dp)).background(if (page == index) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent).padding(horizontal = 12.dp, vertical = 2.dp)) {
-                        Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
-                    }
-                    Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 2.dp))
+                    val display = if (page == index) icon else when (index) { 0 -> Icons.Outlined.Home; 1 -> Icons.Outlined.Explore; else -> Icons.Outlined.LibraryMusic }
+                    Icon(display, null, Modifier.size(23.dp), tint = if (page == index) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(label, fontSize = 11.sp, color = if (page == index) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
                 }
             }
         }
