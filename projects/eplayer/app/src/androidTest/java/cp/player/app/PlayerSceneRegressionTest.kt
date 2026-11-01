@@ -45,6 +45,9 @@ class PlayerSceneRegressionTest {
         compose.onNodeWithTag("queue-list").assertDoesNotExist()
         compose.onNodeWithTag("player-page").performTouchInput { swipeUp() }
         compose.onNodeWithTag("queue-list").assertIsDisplayed()
+        val screen = instrumentation.uiAutomation.takeScreenshot().let { image -> val height = image.height; image.recycle(); height }
+        val bottom = compose.onNodeWithTag("queue-panel").fetchSemanticsNode().boundsInRoot.bottom
+        assertTrue("The queue must be bottom-anchored, not leave the player exposed underneath", screen - bottom <= 48 * compose.activity.resources.displayMetrics.density)
         compose.onNodeWithText("角色夹具").assertDoesNotExist()
         compose.onNodeWithContentDescription("第 2 首歌曲更多操作").assertIsDisplayed()
         compose.onAllNodes(hasContentDescription("拖动歌曲")).assertCountEquals(0)
@@ -110,6 +113,20 @@ class PlayerSceneRegressionTest {
         compose.onNodeWithText("已选 1").assertIsDisplayed()
         compose.onNodeWithText("全选").performClick()
         compose.onNodeWithText("已选 3").assertIsDisplayed()
+    }
+
+    @Test fun queueMoreMenuContainsPlaylistAndRemovesTheChosenEntry() {
+        val model = player(); val library = cloud()
+        var removed = -1
+        compose.runOnUiThread { compose.activity.setContent { EPlayerTheme {
+            var menu by remember { mutableStateOf<Int?>(null) }
+            QueueSheet(Playback(songs[0], queue = songs.take(3), queueIndex = 0), {}, { _, _ -> }, {}, {}, options = { menu = it }, close = {})
+            menu?.let { index -> SongOptions(Track(songs[index], source = "fixture"), null, library, model, {}, {}, removeFromQueue = { removed = index }) { menu = null } }
+        } } }
+        compose.onNodeWithContentDescription("第 2 首歌曲更多操作").performClick()
+        compose.onNodeWithText("添加到歌单").assertIsDisplayed()
+        compose.onNodeWithText("从播放列表移除").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(1, removed) }
     }
 
     @Test fun searchOpensFocusedWithTheKeyboardOnTheFirstEntry() {

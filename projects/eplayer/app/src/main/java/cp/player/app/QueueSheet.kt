@@ -48,7 +48,8 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
     LaunchedEffect(keys) { selected = selected.intersect(keys.toSet()) }
     val reorder = rememberSongReorder(keys, list, move)
     fun toggle(key: String) { selected = if (key in selected) selected - key else selected + key }
-    TravelSheet(close, modifier = if (expanded) Modifier.fillMaxHeight(.88f) else Modifier, gesturesEnabled = !editing) {
+    TravelSheet(close, gesturesEnabled = !editing) {
+      Column(Modifier.fillMaxWidth().then(if (expanded) Modifier.fillMaxHeight(.88f) else Modifier).testTag("queue-panel")) {
         header()
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(if (editing) "已选 ${selected.size}" else origin ?: "播放列表", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
@@ -93,6 +94,7 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
                 }
             }
         }
+    }
     }
     menuIndex?.let { index -> TravelSheet({ menuIndex = null }) {
         TextButton(onClick = { remove(index); menuIndex = null }, modifier = Modifier.fillMaxWidth()) { Text("从播放列表移除") }
