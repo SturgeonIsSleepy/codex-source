@@ -61,17 +61,32 @@ internal object LyricFrost {
         }
         return Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888)
     }
-    fun soften(source: Bitmap, amount: Int): Bitmap {
+    fun soften(source: Bitmap, amount: Float): Bitmap {
         val scale = minOf(1f, 256f / maxOf(source.width, source.height))
         val width = (source.width * scale).toInt().coerceAtLeast(1)
         val height = (source.height * scale).toInt().coerceAtLeast(1)
         val small = Bitmap.createScaledBitmap(source, width, height, true)
-        var pixels = IntArray(width * height)
+        val pixels = IntArray(width * height)
         small.getPixels(pixels, 0, width, 0, 0, width, height)
         if (small !== source) small.recycle()
-        val radius = (amount / 3f).toInt().coerceIn(1, 8)
-        repeat(3) { pixels = pass(pass(pixels, width, height, true, radius), width, height, false, radius) }
-        return Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888)
+        val radius = (amount / 3f).coerceIn(0f, 8f)
+        val low = kotlin.math.floor(radius).toInt()
+        val high = kotlin.math.ceil(radius).toInt()
+        fun blurred(r: Int): IntArray {
+            if (r == 0) return pixels
+            var result = pixels
+            repeat(3) { result = pass(pass(result, width, height, true, r), width, height, false, r) }
+            return result
+        }
+        val a = blurred(low)
+        val b = if (high == low) a else blurred(high)
+        val fraction = radius - low
+        val result = if (a === b) a else IntArray(pixels.size) { i ->
+            AndroidColor.rgb((AndroidColor.red(a[i]) + (AndroidColor.red(b[i]) - AndroidColor.red(a[i])) * fraction).toInt(),
+                (AndroidColor.green(a[i]) + (AndroidColor.green(b[i]) - AndroidColor.green(a[i])) * fraction).toInt(),
+                (AndroidColor.blue(a[i]) + (AndroidColor.blue(b[i]) - AndroidColor.blue(a[i])) * fraction).toInt())
+        }
+        return Bitmap.createBitmap(result, width, height, Bitmap.Config.ARGB_8888)
     }
     private fun pass(source: IntArray, width: Int, height: Int, horizontal: Boolean, radius: Int = 8): IntArray {
         val target = IntArray(source.size)
@@ -120,8 +135,8 @@ internal fun LyricFrostBackground(song: Song?, modifier: Modifier = Modifier) {
 /** Small CPU-blurred images are cached; character frames never run a blur shader. */
 internal object StageCoverCache {
     private val cache = LruCache<String, Bitmap>(4)
-    suspend fun load(context: android.content.Context, artwork: String, radius: Int): Bitmap? {
-        val key = "$radius:$artwork"
+    suspend fun load(context: android.content.Context, artwork: String, radius: Float): Bitmap? {
+        val key = "${radius.toBits()}:$artwork"
         synchronized(cache) { cache.get(key)?.let { return it } }
         val request = ImageRequest.Builder(context).data(artwork).size(256).allowHardware(false).build()
         val result = SingletonImageLoader.get(context).execute(request) as? SuccessResult ?: return null
@@ -135,10 +150,11 @@ internal object StageCoverCache {
 internal fun SoftStageCover(song: Song?, radius: Float, modifier: Modifier = Modifier) {
     val artwork = songArtwork(song)
     val context = LocalContext.current.applicationContext
-    val amount = radius.toInt().coerceIn(0, 24)
+    val amount = radius.coerceIn(0f, 24f)
     val image by produceState<Bitmap?>(null, artwork, amount) {
-        value = null
-        if (artwork != null && amount > 0) value = try { StageCoverCache.load(context, artwork, amount) }
+        kotlinx.coroutines.delay(24)
+        if (artwork == null || amount <= 0f) value = null
+        else value = try { StageCoverCache.load(context, artwork, amount) }
             catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
             catch (_: Exception) { null }
     }

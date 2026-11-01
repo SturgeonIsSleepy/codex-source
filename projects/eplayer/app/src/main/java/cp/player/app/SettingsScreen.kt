@@ -130,6 +130,11 @@ internal fun VisualSettings(model: EPlayerViewModel, close: () -> Unit) {
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(model::importPlayerBackground) }
     val stored by model.coverBlur.collectAsState()
     var radius by remember(stored) { mutableFloatStateOf(stored) }
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    var lastTick by remember { mutableIntStateOf(-1) }
+    var lastTickAt by remember { mutableLongStateOf(0L) }
+    val playback by model.playback.collectAsState()
+    val preview = if (background != null) (playback.song ?: cp.player.model.Song("background", "", "", album = "")).copy(albumArtUrl = background) else playback.song
     TravelDialog(close) {
         Surface(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 24.dp)) {
@@ -146,12 +151,25 @@ internal fun VisualSettings(model: EPlayerViewModel, close: () -> Unit) {
                         Text("角色动画", Modifier.weight(1f)); Switch(animate, model::setAnimate)
                     }
                 }
-                Row(Modifier.fillMaxWidth().padding(top = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("封面模糊", Modifier.weight(1f))
-                    Text(if (radius < 1f) "关闭" else "${(radius / 24f * 100).toInt()}%")
+                Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    SoftStageCover(preview, radius, Modifier.size(68.dp))
+                    Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                        Row(Modifier.fillMaxWidth()) {
+                            Text("封面模糊", Modifier.weight(1f))
+                            Text(if (radius < .01f) "关闭" else "${(radius / 24f * 100).toInt()}%")
+                        }
+                        Slider(radius, {
+                            radius = it
+                            val tick = (it / 24f * 25).toInt()
+                            val now = SystemClock.uptimeMillis()
+                            if (tick != lastTick && now - lastTickAt >= 55) {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                lastTick = tick; lastTickAt = now
+                            }
+                        }, valueRange = 0f..24f, steps = 0,
+                            onValueChangeFinished = { model.setCoverBlur(radius) }, modifier = Modifier.testTag("cover-blur"))
+                    }
                 }
-                Slider(radius, { radius = it }, valueRange = 0f..24f, steps = 23,
-                    onValueChangeFinished = { model.setCoverBlur(radius) }, modifier = Modifier.testTag("cover-blur"))
             }
         }
     }

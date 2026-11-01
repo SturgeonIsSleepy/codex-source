@@ -134,6 +134,9 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
 
     private var repeatMode = Player.REPEAT_MODE_OFF
     private var shuffleModeEnabled = false
+    private val playNextOrder = cp.player.core.playback.PlayNextOrder()
+    fun rememberPlayedNextTokens(tokens: Set<String>) { playNextOrder.remember(tokens) }
+    private fun manualNextIndex(): Int? = playNextOrder.pending(playlist.map { it.item }, currentMediaItemIndex).firstOrNull()
 
     /** 时长缓存，避免重复创建 MediaMetadataRetriever */
     private val durationCache = ConcurrentHashMap<String, Long>()
@@ -457,6 +460,12 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         // 单曲循环 → 重播当前曲目
         if (repeatMode == Player.REPEAT_MODE_ONE) {
             Log.i(TAG, "Track ended, repeat one: replaying $currentMediaItemIndex")
+            playCurrentItem()
+            return
+        }
+
+        manualNextIndex()?.let { next ->
+            currentMediaItemIndex = next
             playCurrentItem()
             return
         }
@@ -862,6 +871,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         if (wasEmpty) currentMediaItemIndex = 0
         else if (currentMediaItemIndex >= insertIndex) currentMediaItemIndex += mediaItems.size
         currentMediaItemIndex = currentMediaItemIndex.coerceIn(0, (playlist.size - 1).coerceAtLeast(0))
+        cancelPreCache()
         invalidateState()
         return Futures.immediateVoidFuture()
     }
@@ -915,12 +925,15 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
         positionMs: Long,
         seekCommand: Int
     ): ListenableFuture<*> {
+        val targetIndex = if (seekCommand == Player.COMMAND_SEEK_TO_NEXT || seekCommand == Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+            manualNextIndex() ?: mediaItemIndex else mediaItemIndex
         if (playWhenReady) {
             pauseRequested = false
         }
         val targetPosition = if (positionMs == C.TIME_UNSET) 0L else positionMs.coerceAtLeast(0)
-        if (mediaItemIndex != currentMediaItemIndex && mediaItemIndex in playlist.indices) {
-            currentMediaItemIndex = mediaItemIndex
+        if (targetIndex != currentMediaItemIndex && targetIndex in playlist.indices) {
+            currentMediaItemIndex = targetIndex
+            playNextOrder.consume(playlist.getOrNull(currentMediaItemIndex)?.item)
             cancelPreCache()
             if (playWhenReady) playCurrentItem(targetPosition)
             else parkCurrentItem(targetPosition)
@@ -1095,6 +1108,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
      * 流程：stop() 清理引擎 → play() 开始新曲目。
      */
     private fun playCurrentItem(startPositionMs: Long = 0) {
+        playNextOrder.consume(playlist.getOrNull(currentMediaItemIndex)?.item)
         if (playlist.isEmpty()) return
 
         val item = playlist[currentMediaItemIndex].item
@@ -1275,7 +1289,7 @@ class FlickPlayer(private val context: Context) : SimpleBasePlayer(Looper.getMai
     private fun startPreCacheNextTrack() {
         cancelPreCache()
         if (repeatMode == Player.REPEAT_MODE_ONE) return
-        val nextIndex = if (shuffleModeEnabled && playlist.size > 1) {
+        val nextIndex = manualNextIndex() ?: if (shuffleModeEnabled && playlist.size > 1) {
             var idx: Int
             do { idx = (0 until playlist.size).random() } while (idx == currentMediaItemIndex)
             idx

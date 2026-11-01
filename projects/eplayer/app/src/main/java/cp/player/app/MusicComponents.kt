@@ -22,6 +22,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -91,7 +93,7 @@ internal fun MusicSearch(value: String, change: (String) -> Unit, submit: () -> 
 
 @Composable
 internal fun SettingsRow(title: String, value: String? = null, click: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = click).padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = click).heightIn(min = 48.dp).padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
         value?.let { Text(it, modifier = Modifier.padding(start = 12.dp).widthIn(max = 160.dp), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(start = 4.dp).size(20.dp))
@@ -134,9 +136,9 @@ internal fun MusicDock(state: Playback, page: Int, discovery: Boolean, choose: (
     showPlayer: () -> Unit, playPause: () -> Unit, next: () -> Unit, queue: () -> Unit = {}) {
     Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).testTag("music-dock")) {
         if (state.song != null) {
-            Row(Modifier.fillMaxWidth().height(64.dp).testTag("dock-now-playing").background(MaterialTheme.colorScheme.surfaceContainerLow)
+            Row(Modifier.fillMaxWidth().height(50.dp).testTag("dock-now-playing").background(MaterialTheme.colorScheme.surfaceContainerLow)
                 .clickable { showPlayer() }.padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                MusicCover(state.song, Modifier.size(44.dp))
+                MusicCover(state.song, Modifier.size(36.dp))
                 AnimatedContent(state.song, contentKey = { it?.id }, modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
                     transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) }, label = "mini-track") { song ->
                     Text(song?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
@@ -146,15 +148,15 @@ internal fun MusicDock(state: Playback, page: Int, discovery: Boolean, choose: (
                 IconButton(onClick = queue) { Icon(Icons.Default.QueueMusic, "播放列表") }
             }
         }
-        Row(Modifier.fillMaxWidth().height(66.dp).testTag("dock-navigation"), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().height(54.dp).testTag("dock-navigation"), verticalAlignment = Alignment.CenterVertically) {
             listOf("首页" to Icons.Default.Home, "探索" to Icons.Default.Explore, "媒体库" to Icons.Default.LibraryMusic).forEachIndexed { index, (label, icon) ->
                 Column(Modifier.weight(1f).fillMaxHeight().clickable { choose(index) }
                     .semantics { contentDescription = label; role = Role.Tab; selected = page == index },
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    Box(Modifier.clip(RoundedCornerShape(14.dp)).background(if (page == index) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent).padding(horizontal = 18.dp, vertical = 4.dp)) {
-                        Icon(icon, null, Modifier.size(25.dp), tint = MaterialTheme.colorScheme.onSurface)
+                    Box(Modifier.clip(RoundedCornerShape(14.dp)).background(if (page == index) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent).padding(horizontal = 12.dp, vertical = 2.dp)) {
+                        Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
                     }
-                    Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 2.dp))
+                    Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 2.dp))
                 }
             }
         }
@@ -168,15 +170,15 @@ internal fun AppHeader(title: String, avatar: String?, account: () -> Unit, sear
         Text(title, Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
         IconButton(onClick = search) { Icon(Icons.Default.Search, "搜索", Modifier.size(27.dp)) }
         IconButton(onClick = account) {
-            if (avatar.isNullOrBlank()) Icon(Icons.Default.AccountCircle, "账号与设置", Modifier.size(32.dp))
-            else AsyncImage(avatar, "账号与设置", Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape), contentScale = ContentScale.Crop)
+            if (avatar.isNullOrBlank()) Icon(Icons.Default.AccountCircle, "账号与设置", Modifier.size(28.dp))
+            else AsyncImage(avatar, "账号与设置", Modifier.size(28.dp).clip(androidx.compose.foundation.shape.CircleShape), contentScale = ContentScale.Crop)
         }
     }
 }
 
 /** The album replaces only the old sky panel; the full character stays in front of it. */
 @Composable
-internal fun CharacterStage(song: Song?, modifier: Modifier = Modifier, coverBlur: Float = 6f, background: String? = null, portrait: @Composable (Modifier) -> Unit) {
+internal fun CharacterStage(song: Song?, modifier: Modifier = Modifier, coverBlur: Float = 6f, background: String? = null, coverBounds: (androidx.compose.ui.geometry.Rect) -> Unit = {}, portrait: @Composable (Modifier) -> Unit) {
     BoxWithConstraints(modifier) {
         val scale = minOf(maxWidth.value / 865f, maxHeight.value / 1280f)
         val left = (maxWidth.value - 865f * scale) / 2f
@@ -184,7 +186,7 @@ internal fun CharacterStage(song: Song?, modifier: Modifier = Modifier, coverBlu
         Box(Modifier.fillMaxSize().testTag("character-stage")) {
         Box(Modifier.offset(x = (left + 80f * scale).dp, y = (top + 100f * scale).dp)
             .size((705f * scale).dp).clip(RoundedCornerShape((24f * scale).dp))
-            .background(MaterialTheme.colorScheme.primaryContainer).testTag("stage-cover")) {
+            .background(MaterialTheme.colorScheme.primaryContainer).testTag("stage-cover").onGloballyPositioned { coverBounds(it.boundsInWindow()) }) {
             val art = if (background != null) (song ?: Song("background", "", "", album = "")).copy(albumArtUrl = background) else song
             SoftStageCover(art, coverBlur, Modifier.matchParentSize())
         }

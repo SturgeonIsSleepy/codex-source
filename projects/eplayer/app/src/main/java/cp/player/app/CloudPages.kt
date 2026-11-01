@@ -51,8 +51,9 @@ internal fun CloudShortcuts(cloud: CloudViewModel, playRadio: (List<Track>) -> U
 
 @Composable
 internal fun MusicEntryRow(entry: MusicEntry, open: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = open).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        AsyncImage(entry.image, null, Modifier.size(64.dp).clip(RoundedCornerShape(12.dp)), contentScale = ContentScale.Crop)
+    Row(Modifier.fillMaxWidth().clickable(onClick = open).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (entry.image.isNullOrBlank()) GenreArtwork(entry, Modifier.size(48.dp))
+        else AsyncImage(entry.image, null, Modifier.size(48.dp).clip(RoundedCornerShape(6.dp)), contentScale = ContentScale.Crop)
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(if (entry.special) "我喜欢的音乐" else entry.name, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
         }
@@ -104,7 +105,7 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
         destination = { pages.getOrNull(pages.lastIndex - 1)?.let { CloudReturnPreview(it) } }) {
         Surface(Modifier.fillMaxSize()) {
           Box(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().systemBarsPadding().padding(bottom = if (playback.song != null) 152.dp else 92.dp)) {
+            Column(Modifier.fillMaxSize().systemBarsPadding().padding(bottom = if (playback.song != null) 128.dp else 76.dp)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = cloud::back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
                     Text(if (editing) "已选 ${selected.size}" else target.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -333,5 +334,25 @@ private fun CloudReturnPreview(page: DetailPage) {
                 items(page.data?.tracks.orEmpty()) { track -> SongRow(track, false, {}) }
             }
         }
+    }
+}
+
+@Composable
+private fun GenreArtwork(entry: MusicEntry, modifier: Modifier = Modifier) {
+    val colors = listOf(Color(0xFF8A4267), Color(0xFF386A7C), Color(0xFF655092), Color(0xFF926532), Color(0xFF4D7560))
+    val tint = colors[(entry.id.hashCode() and Int.MAX_VALUE) % colors.size]
+    Box(modifier.clip(RoundedCornerShape(6.dp)).background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(tint, tint.copy(alpha = .45f))))) {
+        androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
+            drawCircle(Color.White.copy(alpha = .12f), size.minDimension * .55f, androidx.compose.ui.geometry.Offset(size.width, 0f))
+            drawCircle(Color.White.copy(alpha = .10f), size.minDimension * .28f, androidx.compose.ui.geometry.Offset(0f, size.height))
+        }
+        Icon(when {
+            entry.kind == MusicKind.ARTIST -> Icons.Default.Person
+            entry.kind == MusicKind.ALBUM -> Icons.Default.Album
+            entry.name.contains("清晨") -> Icons.Default.WbSunny
+            entry.name.contains("影视") -> Icons.Default.Movie
+            entry.name.contains("怀旧") -> Icons.Default.History
+            else -> Icons.Default.MusicNote
+        }, null, Modifier.align(Alignment.Center).size(24.dp), tint = Color.White)
     }
 }

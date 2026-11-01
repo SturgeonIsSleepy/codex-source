@@ -290,7 +290,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         controller?.let { it.pause(); it.stop(); it.clearMediaItems() }
     }
     fun moveQueue(from: Int, to: Int) { controller?.let { if (from in 0 until it.mediaItemCount && to in 0 until it.mediaItemCount) it.moveMediaItem(from, to) } }
-    fun addNext(track: Track) { controller?.let { it.addMediaItem((it.currentMediaItemIndex + 1).coerceIn(0, it.mediaItemCount), track.mediaItem(quality.value)) } }
+    fun addNext(track: Track) { controller?.let { it.addMediaItem((it.currentMediaItemIndex + 1).coerceIn(0, it.mediaItemCount), cp.player.core.playback.PlayNextOrder.mark(track.mediaItem(quality.value))) } }
     fun addQueue(track: Track) { controller?.addMediaItem(track.mediaItem(quality.value)) }
     fun removeQueueItems(indices: List<Int>) {
         val player = controller ?: return

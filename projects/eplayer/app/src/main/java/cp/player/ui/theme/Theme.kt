@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.*
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import cp.player.R
 
@@ -50,16 +51,16 @@ fun EPlayerTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composabl
             displayLarge = base.displayLarge.copy(fontFamily = TravelHand, fontWeight = FontWeight.Medium),
             displayMedium = base.displayMedium.copy(fontFamily = TravelHand, fontWeight = FontWeight.Medium),
             displaySmall = base.displaySmall.copy(fontFamily = TravelHand, fontWeight = FontWeight.Medium),
-            headlineLarge = base.headlineLarge.copy(fontFamily = TravelHand, fontWeight = FontWeight.Medium),
-            headlineMedium = base.headlineMedium.copy(fontFamily = TravelHand, fontWeight = FontWeight.Medium),
-            headlineSmall = base.headlineSmall.copy(fontFamily = TravelHand, fontWeight = FontWeight.Medium),
-            titleLarge = base.titleLarge.copy(fontFamily = TravelHand, fontWeight = FontWeight.Medium),
-            titleMedium = base.titleMedium.copy(fontFamily = TravelHand, fontWeight = FontWeight.Medium),
+            headlineLarge = base.headlineLarge.copy(fontSize = 26.sp, lineHeight = 32.sp, fontFamily = TravelHand, fontWeight = FontWeight.Medium),
+            headlineMedium = base.headlineMedium.copy(fontSize = 24.sp, lineHeight = 30.sp, fontFamily = TravelHand, fontWeight = FontWeight.Medium),
+            headlineSmall = base.headlineSmall.copy(fontSize = 21.sp, lineHeight = 27.sp, fontFamily = TravelHand, fontWeight = FontWeight.Medium),
+            titleLarge = base.titleLarge.copy(fontSize = 18.sp, lineHeight = 24.sp, fontFamily = TravelHand, fontWeight = FontWeight.Medium),
+            titleMedium = base.titleMedium.copy(fontSize = 15.sp, lineHeight = 21.sp, fontFamily = TravelHand, fontWeight = FontWeight.Medium),
             titleSmall = base.titleSmall.copy(fontFamily = TravelHand, fontWeight = FontWeight.Medium),
-            bodyLarge = base.bodyLarge.copy(fontFamily = TravelHand, fontWeight = FontWeight.Medium),
-            bodyMedium = base.bodyMedium.copy(fontFamily = TravelHand, fontWeight = FontWeight.Medium),
+            bodyLarge = base.bodyLarge.copy(fontSize = 15.sp, lineHeight = 21.sp, fontFamily = TravelHand, fontWeight = FontWeight.Medium),
+            bodyMedium = base.bodyMedium.copy(fontSize = 13.sp, lineHeight = 19.sp, fontFamily = TravelHand, fontWeight = FontWeight.Medium),
             bodySmall = base.bodySmall.copy(fontFamily = TravelHand, fontWeight = FontWeight.Medium),
-            labelLarge = base.labelLarge.copy(fontFamily = TravelHand, fontWeight = FontWeight.Medium),
+            labelLarge = base.labelLarge.copy(fontSize = 13.sp, lineHeight = 18.sp, fontFamily = TravelHand, fontWeight = FontWeight.Medium),
             labelMedium = base.labelMedium.copy(fontFamily = TravelHand, fontWeight = FontWeight.Medium),
             labelSmall = base.labelSmall.copy(fontFamily = TravelHand, fontWeight = FontWeight.Medium)
         )

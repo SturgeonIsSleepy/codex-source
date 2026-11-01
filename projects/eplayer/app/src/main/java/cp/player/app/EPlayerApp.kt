@@ -124,7 +124,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     fun RootContents(destination: Boolean) {
         val screenSearched = visibleSearch && !destination
         LazyColumn(Modifier.fillMaxSize().statusBarsPadding().testTag("root-content-$page"), state = if (destination) rememberLazyListState() else lists[page],
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = if (state.song != null) 156.dp else 96.dp),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = if (state.song != null) 132.dp else 80.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { AppHeader(when (page) { 1 -> "探索"; 2 -> "媒体库"; else -> "ePlayer" }, home.account?.avatar,
                 { settingsSection = "profile" }, { searchOpen = !searchOpen; if (!searchOpen) { query = ""; cloud.clearSearch() } }) }
@@ -213,7 +213,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     }
     settingsSection?.let { section ->
         SettingsPanel(when (section) { "profile" -> "账号"; "settings" -> "设置"; "account" -> "账号"; "source" -> "音源"; else -> "关于" }, { settingsSection = null }) {
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 when (section) {
                     "profile" -> {
                         Row(Modifier.fillMaxWidth().clickable { settingsSection = "account" }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -228,9 +228,10 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                         SettingsRow("设置") { settingsSection = "settings" }
                     }
                     "settings" -> {
-                        SettingsCard { SettingsRow("账号") { settingsSection = "account" }; SettingsRow("音源") { settingsSection = "source" } }
-                        SettingsCard { SettingsRow("播放设置") { playbackSettings = true }; SettingsRow("画面设置") { visualSettings = true } }
-                        SettingsCard { SettingsRow("关于", BuildConfig.VERSION_NAME) { settingsSection = "about" } }
+                        SettingsRow("音源") { settingsSection = "source" }
+                        SettingsRow("播放设置") { playbackSettings = true }
+                        SettingsRow("画面设置") { visualSettings = true }
+                        SettingsRow("关于", BuildConfig.VERSION_NAME) { settingsSection = "about" }
                     }
                     "account" -> {
                         home.account?.let { Text(it.name, style = MaterialTheme.typography.titleLarge) }
@@ -291,13 +292,13 @@ private fun ListeningSummary(stats: ListeningStats) {
     Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
         Text("近 7 天", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(verticalAlignment = Alignment.Bottom) {
-            Text("${stats.minutes}", fontSize = 54.sp, lineHeight = 62.sp, fontWeight = FontWeight.SemiBold)
+            Text("${stats.minutes}", fontSize = 44.sp, lineHeight = 52.sp, fontWeight = FontWeight.SemiBold)
             Text("分钟", Modifier.padding(start = 8.dp, bottom = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.weight(1f))
             Text("${stats.songs} 首  ·  ${stats.activeDays} 天", Modifier.padding(bottom = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         val maximum = (stats.days.maxOfOrNull { it.milliseconds } ?: 0).coerceAtLeast(60000)
-        Row(Modifier.fillMaxWidth().height(104.dp).padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
+        Row(Modifier.fillMaxWidth().height(84.dp).padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
             stats.days.forEachIndexed { index, day -> Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
                     Box(Modifier.fillMaxWidth().height((4 + day.milliseconds.toFloat() / maximum * 64).dp).clip(RoundedCornerShape(5.dp))
@@ -312,8 +313,8 @@ private fun ListeningSummary(stats: ListeningStats) {
 
 @Composable
 internal fun SongRow(track: Track, selected: Boolean, play: () -> Unit, enabled: Boolean = true, trailing: @Composable RowScope.() -> Unit = {}) {
-    Row(Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = play).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        MusicCover(track.song, Modifier.size(44.dp))
+    Row(Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = play).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        MusicCover(track.song, Modifier.size(40.dp))
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(track.song.name, style = MaterialTheme.typography.titleMedium, color = if (selected) MusicRed else MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (track.song.artist.isNotBlank()) Text(track.song.artist, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
