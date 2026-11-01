@@ -52,10 +52,44 @@ val NightColors = darkColorScheme(
     inversePrimary = Color(0xFF74538F), surfaceTint = Color.Transparent
 )
 
+val LocalElainaTheme = staticCompositionLocalOf { false }
+
+// MTZ accent #D59DC2 is retained in containers; text uses a darker AA accent in daylight.
+val ElainaPaperColors = PaperColors.copy(
+    primary = Color(0xFF893F70), onPrimary = Color.White,
+    primaryContainer = Color(0xFFF4DDEA), onPrimaryContainer = Color(0xFF51233F),
+    secondary = Color(0xFF625674), onSecondary = Color.White,
+    secondaryContainer = Color(0xFFEDE3F3), onSecondaryContainer = Color(0xFF382E48),
+    tertiary = Color(0xFF445F8B), onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFDFE9FB), onTertiaryContainer = Color(0xFF243958),
+    background = Color(0xFFFAF5FA), onBackground = Color(0xFF302430),
+    surface = Color(0xFFFFFAFD), onSurface = Color(0xFF302430),
+    surfaceVariant = Color(0xFFF0E5EE), onSurfaceVariant = Color(0xFF655565),
+    surfaceContainerLowest = Color(0xFFFFFCFF), surfaceContainerLow = Color(0xFFF8EDF4),
+    surfaceContainer = Color(0xFFF2E7EF), surfaceContainerHigh = Color(0xFFEDDFEA),
+    surfaceContainerHighest = Color(0xFFE5D5E2),
+    outline = Color(0xFF827081), outlineVariant = Color(0xFFD7C4D2)
+)
+val ElainaNightColors = NightColors.copy(
+    primary = Color(0xFFE8B4D1), onPrimary = Color(0xFF442239),
+    primaryContainer = Color(0xFF604052), onPrimaryContainer = Color(0xFFFFE0F1),
+    secondary = Color(0xFFD4C3EA), onSecondary = Color(0xFF332743),
+    secondaryContainer = Color(0xFF4E405E), onSecondaryContainer = Color(0xFFF3E6FF),
+    tertiary = Color(0xFFB5CCF2), onTertiary = Color(0xFF233A5B),
+    tertiaryContainer = Color(0xFF3A4F70), onTertiaryContainer = Color(0xFFDEEAFF),
+    background = Color(0xFF302B3A), onBackground = Color(0xFFF8EFF7),
+    surface = Color(0xFF39313F), onSurface = Color(0xFFF8EFF7),
+    surfaceVariant = Color(0xFF504352), onSurfaceVariant = Color(0xFFDECCDA),
+    surfaceContainerLowest = Color(0xFF322B39), surfaceContainerLow = Color(0xFF3D3342),
+    surfaceContainer = Color(0xFF443949), surfaceContainerHigh = Color(0xFF4D4051),
+    surfaceContainerHighest = Color(0xFF57485A),
+    outline = Color(0xFFB8A3B4), outlineVariant = Color(0xFF705F73)
+)
+
 @Composable
-fun EPlayerTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+fun EPlayerTheme(darkTheme: Boolean = isSystemInDarkTheme(), elainaTheme: Boolean = false, content: @Composable () -> Unit) {
     val dark = darkTheme
-    val colors = if (dark) NightColors else PaperColors
+    val colors = if (elainaTheme) { if (dark) ElainaNightColors else ElainaPaperColors } else { if (dark) NightColors else PaperColors }
     val base = Typography()
     val type = remember {
         Typography(
@@ -92,7 +126,7 @@ fun EPlayerTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composabl
             RoundedCornerShape(9.dp), RoundedCornerShape(12.dp), RoundedCornerShape(16.dp)),
         content = {
             // Dialogs and layouts that draw their own background still need themed ink.
-            CompositionLocalProvider(LocalContentColor provides colors.onBackground, content = content)
+            CompositionLocalProvider(LocalContentColor provides colors.onBackground, LocalElainaTheme provides elainaTheme, content = content)
         }
     )
 }

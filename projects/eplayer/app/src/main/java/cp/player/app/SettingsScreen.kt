@@ -36,7 +36,7 @@ internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
         destination = {
             if (showSound) Surface(Modifier.fillMaxSize()) {
                 Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-                    Text("设置", Modifier.padding(24.dp), style = MaterialTheme.typography.headlineSmall)
+                    Text("播放设置", Modifier.padding(24.dp), style = MaterialTheme.typography.headlineSmall)
                     PlaybackSettings(model, sound.engine) {}
                 }
             }
@@ -44,7 +44,7 @@ internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
         Surface(Modifier.fillMaxSize().testTag("settings-panel")) {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (showSound) "声音" else "设置", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
+                    Text(if (showSound) "均衡器与音效" else "播放设置", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
                     TextButton(onClick = back) { Text(if (showSound) "返回设置" else "完成") }
                 }
                 HorizontalDivider()
@@ -124,6 +124,8 @@ internal fun SleepTimerControl(remainingMinutes: Long, setMinutes: (Int) -> Unit
 @Composable
 internal fun VisualSettings(model: EPlayerViewModel, close: () -> Unit) {
     val animate by model.animate.collectAsState()
+    var themeOpen by rememberSaveable { mutableStateOf(false) }
+    val enabled by model.elainaTheme.collectAsState()
     val stored by model.coverBlur.collectAsState()
     var radius by remember(stored) { mutableFloatStateOf(stored) }
     TravelDialog(close) {
@@ -133,8 +135,12 @@ internal fun VisualSettings(model: EPlayerViewModel, close: () -> Unit) {
                     Text("画面设置", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
                     TextButton(onClick = close) { Text("完成") }
                 }
-                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("角色动画", Modifier.weight(1f)); Switch(animate, model::setAnimate)
+                SettingsCard {
+                    SettingsRow("主题", if (enabled) "伊蕾娜" else "默认") { themeOpen = true }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .5f))
+                    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("角色动画", Modifier.weight(1f)); Switch(animate, model::setAnimate)
+                    }
                 }
                 Row(Modifier.fillMaxWidth().padding(top = 20.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("封面模糊", Modifier.weight(1f))
@@ -145,4 +151,5 @@ internal fun VisualSettings(model: EPlayerViewModel, close: () -> Unit) {
             }
         }
     }
+    if (themeOpen) ThemeSettings(model) { themeOpen = false }
 }

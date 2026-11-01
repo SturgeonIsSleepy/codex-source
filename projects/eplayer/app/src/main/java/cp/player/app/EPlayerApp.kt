@@ -62,6 +62,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     var pendingDelete by remember { mutableStateOf<BackendProvider?>(null) }
     var pendingTrackDelete by remember { mutableStateOf<Track?>(null) }
     var logout by remember { mutableStateOf(false) }
+    var settingsSection by rememberSaveable { mutableStateOf<String?>(null) }
     var visualSettings by remember { mutableStateOf(false) }
     var playbackSettings by remember { mutableStateOf(false) }
     var queueOpen by remember { mutableStateOf(false) }
@@ -92,7 +93,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); model.message.value = null } }
     LaunchedEffect(cloudMessage) { cloudMessage?.let { snackbar.showSnackbar(it); cloud.message.value = null } }
     val backPreview = rememberBackPreview()
-    val visibleSearch = page == 1 && !discovery && searched
+    val visibleSearch = page in 0..1 && !discovery && searched
     PreviewBackHandler(backPreview, enabled = (discovery || visibleSearch) && !showPlayer) {
         when {
             visibleSearch -> { query = ""; cloud.clearSearch() }
@@ -103,7 +104,20 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
 
     var revealingBack by remember { mutableStateOf(false) }
     val revealBack: (Boolean) -> Unit = remember { { revealingBack = it } }
-    val chromeVisible = (!showPlayer && detailPages.isEmpty() && !playbackSettings && !visualSettings) || revealingBack
+    val chromeVisible = (!showPlayer && detailPages.isEmpty() && !playbackSettings && !visualSettings && settingsSection == null) || revealingBack
+    fun LazyListScope.searchItems() {
+        item { MusicSegments(listOf("歌曲", "歌单", "专辑", "歌手"), listOf(1,1000,10,100).indexOf(searchType).coerceAtLeast(0)) {
+            cloud.search(query, listOf(1,1000,10,100)[it])
+        } }
+        if (searching) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+        items(found.entries, key = { "${it.kind}:${it.id}" }) { entry -> MusicEntryRow(entry) { cloud.open(entry) } }
+        items(found.tracks, key = { "${it.source}:${it.song.id}" }) { track ->
+            SongRow(track, track.song.id == state.song?.id, { model.play(track, found.tracks); onShowPlayer(true) }) {
+                IconButton(onClick = { selectedTrack = track to null }) { Icon(Icons.Default.MoreHoriz, "歌曲操作") }
+            }
+        }
+        if (!searching && found.tracks.isEmpty() && found.entries.isEmpty()) item { Text(searchError ?: "没有找到音乐", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
     @Composable
     fun RootContents(destination: Boolean) {
         val screenPage = page
@@ -127,27 +141,31 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                 } else when (screenPage) {
                     0 -> {
                         item { MusicHeading("首页") }
-                        item { ListeningSummary(stats) }
-                        item { Text("继续播放", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 18.dp)) }
-                        item {
-                            val track = state.song?.let { Track(it, source = state.source, remoteId = state.remoteId) } ?: recent.firstOrNull()
-                            if (track == null) SettingsRow("前往曲库") { libraryMode = 0; query = ""; cloud.clearSearch(); page = 1 }
-                            else Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                                .background(MaterialTheme.colorScheme.surfaceContainerLow).clickable {
-                                    if (state.song == null) model.play(track, recent)
-                                    else if (!state.playRequested) model.playPause()
-                                    onShowPlayer(true)
-                                }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                MusicCover(track.song, Modifier.size(76.dp))
-                                Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
-                                    Text(track.song.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                    Text(track.song.artist, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    if (state.position > 0) Text(playerTime(state.position), style = MaterialTheme.typography.labelMedium, color = MusicRed)
+                        item { MusicSearch(if (destination) "" else query, { query = it }, { cloud.search(query) }, { query = ""; cloud.clearSearch() }) }
+                        if (screenSearched) searchItems()
+                        else {
+                            item { ListeningSummary(stats) }
+                            item { Text("继续播放", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 18.dp)) }
+                            item {
+                                val track = state.song?.let { Track(it, source = state.source, remoteId = state.remoteId) } ?: recent.firstOrNull()
+                                if (track == null) SettingsRow("前往曲库") { libraryMode = 0; query = ""; cloud.clearSearch(); page = 1 }
+                                else Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerLow).clickable {
+                                        if (state.song == null) model.play(track, recent)
+                                        else if (!state.playRequested) model.playPause()
+                                        onShowPlayer(true)
+                                    }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    MusicCover(track.song, Modifier.size(76.dp))
+                                    Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
+                                        Text(track.song.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                        Text(track.song.artist, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        if (state.position > 0) Text(playerTime(state.position), style = MaterialTheme.typography.labelMedium, color = MusicRed)
+                                    }
+                                    Icon(Icons.Default.PlayArrow, "继续播放", Modifier.size(30.dp), tint = MusicRed)
                                 }
-                                Icon(Icons.Default.PlayArrow, "继续播放", Modifier.size(30.dp), tint = MusicRed)
                             }
+                            item { Spacer(Modifier.height(12.dp)); SettingsRow("网易云") { discovery = true } }
                         }
-                        item { Spacer(Modifier.height(12.dp)); SettingsRow("网易云") { discovery = true } }
                     }
                     1 -> {
                         item { MusicHeading("曲库") {
@@ -155,17 +173,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                         } }
                         item { MusicSearch(if (destination) "" else query, { query = it }, { cloud.search(query) }, { query = ""; cloud.clearSearch() }) }
                         if (screenSearched) {
-                            item { MusicSegments(listOf("歌曲", "歌单", "专辑", "歌手"), listOf(1,1000,10,100).indexOf(searchType).coerceAtLeast(0)) {
-                                cloud.search(query, listOf(1,1000,10,100)[it])
-                            } }
-                            if (searching) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-                            items(found.entries, key = { "${it.kind}:${it.id}" }) { entry -> MusicEntryRow(entry) { cloud.open(entry) } }
-                            items(found.tracks, key = { "${it.source}:${it.song.id}" }) { track ->
-                                SongRow(track, track.song.id == state.song?.id, { model.play(track, found.tracks); onShowPlayer(true) }) {
-                                    IconButton(onClick = { selectedTrack = track to null }) { Icon(Icons.Default.MoreHoriz, "歌曲操作") }
-                                }
-                            }
-                            if (!searching && found.tracks.isEmpty() && found.entries.isEmpty()) item { Text(searchError ?: "没有找到音乐", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            searchItems()
                         } else {
                             item { MusicSegments(listOf("歌单", "歌曲", "最近"), libraryMode) { libraryMode = it } }
                             when (libraryMode) {
@@ -203,21 +211,17 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                     }
                     else -> {
                         item { MusicHeading("设置") }
-                        home.account?.let { account -> item { Text(account.name, style = MaterialTheme.typography.titleLarge) } }
-                        active?.let { source -> item { SourceLogin(source.id) } }
-                        if (home.account != null) item { TextButton(onClick = { logout = true }) { Text("退出登录") } }
-                        item { QualitySetting(model); HorizontalDivider(); SettingsRow("播放与声音") { playbackSettings = true }; SettingsRow("画面设置") { visualSettings = true } }
-                        item { Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("音源", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-                            TextButton(onClick = { importSource.launch(arrayOf("application/zip", "application/octet-stream")) }) { Text("导入") }
+                        item { SettingsCard {
+                            SettingsRow("账号", home.account?.name ?: "未登录") { settingsSection = "account" }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .5f))
+                            SettingsRow("音源", active?.let { if (it.id == "netease-cloudmusic-rs") "网易云音乐" else it.name } ?: "未添加") { settingsSection = "source" }
                         } }
-                        sourceIssue?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
-                        items(providers, key = { it.id }) { source -> Row(Modifier.fillMaxWidth().clickable { model.selectSource(source) }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(if (source.id == "netease-cloudmusic-rs") "网易云音乐" else source.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                            if (active?.id == source.id) Icon(Icons.Default.Check, "当前音源", tint = MusicRed)
-                            IconButton(onClick = { pendingDelete = source }) { Icon(Icons.Default.RemoveCircleOutline, "移除 ${source.name}", tint = MaterialTheme.colorScheme.outline) }
+                        item { SettingsCard {
+                            SettingsRow("播放设置") { playbackSettings = true }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .5f))
+                            SettingsRow("画面设置") { visualSettings = true }
                         } }
-                        item { HorizontalDivider(); Text("ePlayer ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 16.dp)) }
+                        item { SettingsCard { SettingsRow("关于", BuildConfig.VERSION_NAME) { settingsSection = "about" } } }
                     }
                 }
             }
@@ -226,16 +230,54 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         if (backPreview.progress.value > 0f) RootContents(true)
         Box(Modifier.fillMaxSize().backPreview(backPreview).background(MaterialTheme.colorScheme.background)) {
+            ThemeBackdrop(Modifier.matchParentSize())
             RootContents(false)
         }
         Box(Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (chromeVisible) 1f else 0f }.navigationBarsPadding().padding(horizontal = 18.dp).padding(bottom = 8.dp)) {
             MusicDock(state, page, discovery, { target ->
-                if (target == 1 && page != 1) { libraryMode = 0; query = ""; cloud.clearSearch() }
+                if (target != page) { query = ""; cloud.clearSearch(); if (target == 1) libraryMode = 0 }
                 page = target; discovery = false
             },
                 { onShowPlayer(true) }, model::playPause, model::next, { queueOpen = true })
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 180.dp))
+    }
+    settingsSection?.let { section ->
+        SettingsPanel(when (section) { "account" -> "账号"; "source" -> "音源"; else -> "关于" }, { settingsSection = null }) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                when (section) {
+                    "account" -> {
+                        home.account?.let { Text(it.name, style = MaterialTheme.typography.titleLarge) }
+                        val source = active
+                        if (source != null) SourceLogin(source.id)
+                        else SettingsCard { SettingsRow("添加音源") { settingsSection = "source" } }
+                        if (home.account != null) TextButton(onClick = { logout = true }) { Text("退出登录") }
+                    }
+                    "source" -> {
+                        FilledTonalButton(onClick = { importSource.launch(arrayOf("application/zip", "application/octet-stream")) }, modifier = Modifier.fillMaxWidth()) { Text("导入音源") }
+                        sourceIssue?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                        if (providers.isNotEmpty()) SettingsCard {
+                            providers.forEachIndexed { index, source ->
+                                if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .5f))
+                                Row(Modifier.fillMaxWidth().clickable { model.selectSource(source) }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(if (source.id == "netease-cloudmusic-rs") "网易云音乐" else source.name, Modifier.weight(1f))
+                                    if (active?.id == source.id) Icon(Icons.Default.Check, "当前音源", tint = MusicRed)
+                                    IconButton(onClick = { pendingDelete = source }) { Icon(Icons.Default.RemoveCircleOutline, "移除 ${source.name}", tint = MaterialTheme.colorScheme.outline) }
+                                }
+                            }
+                        }
+                    }
+                    else -> {
+                        Text("ePlayer", style = MaterialTheme.typography.headlineLarge)
+                        Text(BuildConfig.VERSION_NAME)
+                        Text("主题参考：伊蕾娜N1.0（HyperOS）")
+                        Text("主题作者：我可以等你十年")
+                        Text("基于 CPPlayer · MIT")
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
+            }
+        }
     }
     if (queueOpen) QueueSheet(state, model::queueIndex, model::moveQueue, model::removeQueue, model::clearQueue) { queueOpen = false }
     if (visualSettings) VisualSettings(model) { visualSettings = false }

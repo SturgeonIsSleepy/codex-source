@@ -64,6 +64,11 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     val favorites = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getStringSet("favorites", emptySet()).orEmpty().toSet())
     val quality = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getString("quality", "standard") ?: "standard")
     val animate = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getBoolean("animate", true))
+    val elainaTheme = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getBoolean("elaina_theme", true))
+    fun setElainaTheme(value: Boolean) {
+        elainaTheme.value = value
+        app.getSharedPreferences("eplayer_ui", 0).edit().putBoolean("elaina_theme", value).apply()
+    }
     val coverBlur = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getFloat("cover_blur", 6f).coerceIn(0f, 24f))
     fun setCoverBlur(value: Float) {
         val radius = value.coerceIn(0f, 24f)

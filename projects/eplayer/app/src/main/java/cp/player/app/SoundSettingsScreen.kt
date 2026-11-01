@@ -27,12 +27,11 @@ internal fun SoundSettingsScreen(state: SoundSettingsState, equalizer: (Boolean)
     var editing by remember(state.engine, state.bands.size) { mutableStateOf<Int?>(null) }
     Column(Modifier.fillMaxSize().testTag("sound-settings").verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("从平直开始，慢慢找到喜欢的声音。", style = MaterialTheme.typography.bodyMedium)
         if (state.engine == 1 && importProfile != null) OutlinedButton(importProfile, Modifier.fillMaxWidth()) { Text("导入 AutoEQ 文本") }
         HorizontalDivider()
         EffectToggle("均衡器", state.equalizer, state.engine == 1 || state.bands.isNotEmpty(), equalizer)
         if (state.engine == 0 && state.bands.isEmpty()) {
-            Text("播放一首歌后显示设备支持的频段。", style = MaterialTheme.typography.bodyMedium)
+            Text("暂无可用频段", style = MaterialTheme.typography.bodyMedium)
         } else {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("频段增益", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
