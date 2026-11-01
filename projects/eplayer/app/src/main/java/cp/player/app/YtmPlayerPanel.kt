@@ -44,6 +44,13 @@ internal fun YtmPlayerPanel(model: EPlayerViewModel, cloud: CloudViewModel, stat
     val qualityValue by model.quality.collectAsState()
     val noInterest by model.noInterest.collectAsState()
     val origin by model.queueOrigin.collectAsState()
+    val busy by cloud.busy.collectAsState()
+    var save by remember { mutableStateOf(false) }
+    var saveName by remember { mutableStateOf("") }
+    var saveIssue by remember { mutableStateOf<String?>(null) }
+    val queueTracks = remember(state.queue) { model.currentQueueTracks() }
+    val canSave = queueTracks.isNotEmpty() && queueTracks.first().source != null && queueTracks.all { it.source == queueTracks.first().source }
+    val openSave: () -> Unit = { saveName = origin.orEmpty(); saveIssue = null; save = true }
     val disliked = state.song?.let { "${state.source}:${state.remoteId ?: it.id}" in noInterest } == true
     val threshold = with(androidx.compose.ui.platform.LocalDensity.current) { 44.dp.toPx() }
     val base = MaterialTheme.colorScheme.background
@@ -88,7 +95,7 @@ internal fun YtmPlayerPanel(model: EPlayerViewModel, cloud: CloudViewModel, stat
     }
     if (queueOpen) QueueSheet(state, model::queueIndex, model::moveQueue, model::removeQueue, model::clearQueue,
         removeSelected = model::removeQueueItems, options = songOptions,
-        origin = origin, expanded = true, header = {
+        origin = origin, expanded = true, saveAction = if (canSave) openSave else null, header = {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(60.dp), verticalAlignment = Alignment.CenterVertically) {
                 MusicCover(state.song, Modifier.size(38.dp))
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
@@ -100,6 +107,12 @@ internal fun YtmPlayerPanel(model: EPlayerViewModel, cloud: CloudViewModel, stat
                 IconButton(onClick = model::next) { Icon(Icons.Default.SkipNext, "下一首", Modifier.size(22.dp)) }
             }
         }) { queueOpen = false }
+    if (save) TravelAlertDialog(onDismissRequest = { if (!busy) save = false }, title = { Text("保存播放列表") }, text = { Column {
+        OutlinedTextField(saveName, { saveName = it }, singleLine = true, placeholder = { Text("歌单名称") })
+        saveIssue?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+    } }, confirmButton = { TextButton(enabled = !busy && saveName.isNotBlank(), onClick = {
+        cloud.saveQueue(saveName, queueTracks, done = { save = false }, failed = { saveIssue = it })
+    }) { Text("保存") } }, dismissButton = { TextButton(enabled = !busy, onClick = { save = false }) { Text("取消") } })
 }
 
 @Composable

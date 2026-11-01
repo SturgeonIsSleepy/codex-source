@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -28,7 +29,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int) -> Unit,
-    remove: (Int) -> Unit, clear: () -> Unit, removeSelected: (List<Int>) -> Unit = { values -> values.sortedDescending().forEach(remove) }, options: ((Int) -> Unit)? = null, origin: String? = null, expanded: Boolean = false,
+    remove: (Int) -> Unit, clear: () -> Unit, removeSelected: (List<Int>) -> Unit = { values -> values.sortedDescending().forEach(remove) }, options: ((Int) -> Unit)? = null, origin: String? = null, expanded: Boolean = false, saveAction: (() -> Unit)? = null,
     header: @Composable () -> Unit = {}, close: () -> Unit) {
     var editing by rememberSaveable { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
@@ -55,6 +56,7 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
                 TextButton(onClick = { selected = if (selected.size == keys.size) emptySet() else keys.toSet() }) { Text(if (selected.size == keys.size) "取消全选" else "全选") }
                 IconButton(enabled = selected.isNotEmpty(), onClick = { confirmClear = true }) { Icon(Icons.Default.DeleteOutline, "移除所选") }
             }
+            if (!editing && saveAction != null) TextButton(onClick = saveAction) { Text("保存") }
             TextButton(onClick = { reorder.finish(false); editing = !editing; selected = emptySet() }) { Text(if (editing) "完成" else "编辑") }
         }
         if (state.queue.isEmpty()) Text("暂无歌曲", Modifier.padding(24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -70,6 +72,7 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
                 Row(Modifier.fillMaxWidth()
                     .animateItem(fadeInSpec = tween(150), placementSpec = if (dragging) null else tween(180), fadeOutSpec = tween(150))
                     .reorderLayer(reorder, key)
+                    .combinedClickable(onClick = { if (editing) toggle(key) else select(index) }, onLongClick = { editing = true; selected = selected + key })
                     .songDrag(reorder, key, edit = { editing = true; selected = selected + key }).testTag("queue-row-$index")
                     .background(if (dragging) surface else androidx.compose.ui.graphics.Color.Transparent, RoundedCornerShape(14.dp))
                     .semantics {
@@ -80,8 +83,10 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
                             add(CustomAccessibilityAction("移除") { remove(index); true })
                         }
                     }, verticalAlignment = Alignment.CenterVertically) {
-                    if (editing) Checkbox(key in selected, { toggle(key) })
-                    Box(Modifier.weight(1f)) { SongRow(Track(song), current, { if (editing) toggle(key) else select(index) }) }
+                    AnimatedVisibility(editing, enter = fadeIn(tween(140)) + expandHorizontally(tween(140)), exit = fadeOut(tween(100)) + shrinkHorizontally(tween(140))) {
+                        Checkbox(key in selected, { toggle(key) })
+                    }
+                    Box(Modifier.weight(1f)) { SongRow(Track(song), current, {}, interaction = false) }
                     if (!editing) IconButton(onClick = { if (options != null) options(index) else menuIndex = index }) {
                         Icon(Icons.Default.MoreVert, "第 ${index + 1} 首歌曲更多操作")
                     }

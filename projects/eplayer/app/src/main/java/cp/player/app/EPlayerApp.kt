@@ -180,7 +180,11 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             ThemeBackdrop(Modifier.matchParentSize())
-            RootContents()
+            key(page) {
+                val entrance = remember { androidx.compose.animation.core.Animatable(0f) }
+                LaunchedEffect(Unit) { entrance.animateTo(1f, androidx.compose.animation.core.tween(150)) }
+                Box(Modifier.fillMaxSize().graphicsLayer { alpha = .84f + entrance.value * .16f; translationY = (1 - entrance.value) * 7.dp.toPx() }) { RootContents() }
+            }
         }
         Box(Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (chromeVisible) 1f else 0f }.navigationBarsPadding()) {
             MusicDock(state, page, discovery, { target ->
@@ -299,8 +303,8 @@ private fun ListeningSummary(stats: ListeningStats) {
 }
 
 @Composable
-internal fun SongRow(track: Track, selected: Boolean, play: () -> Unit, enabled: Boolean = true, trailing: @Composable RowScope.() -> Unit = {}) {
-    Row(Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = play).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+internal fun SongRow(track: Track, selected: Boolean, play: () -> Unit, enabled: Boolean = true, interaction: Boolean = true, trailing: @Composable RowScope.() -> Unit = {}) {
+    Row(Modifier.fillMaxWidth().then(if (interaction) Modifier.clickable(enabled = enabled, onClick = play) else Modifier).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         MusicCover(track.song, Modifier.size(40.dp))
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(track.song.name, style = MaterialTheme.typography.titleMedium, color = if (selected) MusicRed else MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)

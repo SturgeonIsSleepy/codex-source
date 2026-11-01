@@ -2,6 +2,7 @@ package cp.player.app
 
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -107,9 +109,12 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         destination = { pages.getOrNull(pages.lastIndex - 1)?.let { previous -> val previousScroll = scrollStates[previous.instanceId]; CloudReturnPreview(previous, previousScroll?.firstVisibleItemIndex ?: 0, previousScroll?.firstVisibleItemScrollOffset ?: 0) } }) {
         key(page.instanceId) {
+        val entrance = remember { androidx.compose.animation.core.Animatable(0f) }
+        LaunchedEffect(Unit) { entrance.animateTo(1f, androidx.compose.animation.core.tween(150)) }
         Surface(Modifier.fillMaxSize()) {
           Box(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().systemBarsPadding().padding(bottom = if (playback.song != null) 128.dp else 76.dp)) {
+            Column(Modifier.fillMaxSize().graphicsLayer { alpha = .9f + entrance.value * .1f; translationX = (1 - entrance.value) * 10.dp.toPx() }
+                .systemBarsPadding().padding(bottom = if (playback.song != null) 128.dp else 76.dp)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = cloud::back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
                     Text(if (editing) "已选 ${selected.size}" else target.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -190,6 +195,9 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                         Row(Modifier.fillMaxWidth()
                             .animateItem(fadeInSpec = tween(150), placementSpec = if (dragging) null else tween(180), fadeOutSpec = tween(150))
                             .reorderLayer(reorder, key)
+                            .combinedClickable(enabled = !busy || !editing,
+                                onClick = { if (editing) toggle(track.remoteId ?: track.song.id) else { player.play(track, tracks, origin = target.name); showPlayer() } },
+                                onLongClick = { if (editable && !busy && !page.loading) { editing = true; selected = selected + (track.remoteId ?: track.song.id) } })
                             .songDrag(reorder, key, enabled = editable && !home.loading && !busy && !page.loading, edit = { editing = true; selected = selected + (track.remoteId ?: track.song.id) })
                             .background(if (dragging) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent, RoundedCornerShape(14.dp))
                             .semantics {
@@ -200,7 +208,7 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                             }, verticalAlignment = Alignment.CenterVertically) {
                             if (editing) Checkbox((track.remoteId ?: track.song.id) in selected, { toggle(track.remoteId ?: track.song.id) }, enabled = !busy)
                             Box(Modifier.weight(1f)) {
-                                SongRow(track, playback.song?.id == track.song.id, { if (editing) toggle(track.remoteId ?: track.song.id) else { player.play(track, tracks, origin = target.name); showPlayer() } }, enabled = !busy || !editing) {
+                                SongRow(track, playback.song?.id == track.song.id, {}, interaction = false) {
                                     if (!editing) IconButton(onClick = { songOptions(track, if (own && target.kind == MusicKind.PLAYLIST) target else null) }) { Icon(Icons.Default.MoreVert, "歌曲操作") }
                                 }
                             }
