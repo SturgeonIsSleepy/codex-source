@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -54,42 +55,53 @@ internal fun YtmPlayerPanel(model: EPlayerViewModel, cloud: CloudViewModel, stat
     val disliked = state.song?.let { "${state.source}:${state.remoteId ?: it.id}" in noInterest } == true
     val threshold = with(androidx.compose.ui.platform.LocalDensity.current) { 44.dp.toPx() }
     val base = MaterialTheme.colorScheme.background
-    Box(Modifier.fillMaxSize().testTag("player-page").pointerInput(threshold) {
+    @Composable
+    fun PlaybackBody() {
+    AnimatedContent(state.song, contentKey = { it?.id }, modifier = Modifier.fillMaxWidth().testTag("player-metadata"), transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(100)) }, label = "player-title") { song ->
+        Column(Modifier.fillMaxWidth().clickable(onClick = more)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(song?.name ?: "未选择音乐", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Icon(Icons.Default.ChevronRight, null, Modifier.size(22.dp))
+            }
+            Text(song?.artist.orEmpty(), Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+    Row(Modifier.fillMaxWidth().height(52.dp).horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.height(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = .7f)).testTag("player-action-rating"), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.width(44.dp).fillMaxHeight().clickable(onClick = like), contentAlignment = Alignment.Center) { Icon(if (liked) Icons.Default.ThumbUp else Icons.Default.ThumbUpOffAlt, "喜欢", Modifier.size(20.dp)) }
+            Box(Modifier.width(1.dp).height(18.dp).background(MaterialTheme.colorScheme.outlineVariant))
+            Box(Modifier.width(44.dp).fillMaxHeight().clickable { model.notInterested() }, contentAlignment = Alignment.Center) { Icon(if (disliked) Icons.Default.ThumbDown else Icons.Default.ThumbDownOffAlt, "不感兴趣", Modifier.size(20.dp)) }
+        }
+        PlayerAction("歌词", Icons.Default.FormatQuote, "player-action-lyrics", lyrics)
+        comments?.let { PlayerAction(null, Icons.Default.ChatBubbleOutline, "player-action-comments", it) }
+        PlayerAction(qualityName(qualityValue), null, "player-action-quality", quality)
+    }
+    transport()
+    Column(Modifier.fillMaxWidth().height(48.dp).clickable { queueOpen = true }.testTag("queue-peek"), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.padding(top = 6.dp, bottom = 8.dp).width(32.dp).height(4.dp).clip(CircleShape).background(MaterialTheme.colorScheme.outlineVariant))
+        Text(origin ?: "播放列表", style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+    }
+    val swipe = Modifier.pointerInput(threshold) {
         var distance = 0f
         detectVerticalDragGestures(onDragStart = { distance = 0f }, onDragEnd = { if (distance < -threshold) queueOpen = true },
             onVerticalDrag = { change, amount -> change.consume(); distance += amount })
-    }) {
+    }
+    BoxWithConstraints(Modifier.fillMaxSize().testTag("player-page")) {
+        val wide = maxWidth >= 600.dp && maxWidth > maxHeight
         if (background == null) LyricFrostBackground(state.song, Modifier.matchParentSize()) else PlayerBackdrop(background, Modifier.matchParentSize())
-        Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 20.dp)) {
+        Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 20.dp).then(if (wide) Modifier else swipe)) {
             Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = close) { Icon(Icons.Default.KeyboardArrowDown, "收起播放器") }
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = more) { Icon(Icons.Default.MoreVert, "更多歌曲操作") }
             }
-            artwork(Modifier.weight(1f).fillMaxWidth(), !queueOpen)
-            AnimatedContent(state.song, contentKey = { it?.id }, transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(100)) }, label = "player-title") { song ->
-                Column(Modifier.fillMaxWidth().clickable(onClick = more)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(song?.name ?: "未选择音乐", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Icon(Icons.Default.ChevronRight, null, Modifier.size(22.dp))
-                    }
-                    Text(song?.artist.orEmpty(), Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-            Row(Modifier.fillMaxWidth().height(52.dp).horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.height(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = .7f)).testTag("player-action-rating"), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.width(44.dp).fillMaxHeight().clickable(onClick = like), contentAlignment = Alignment.Center) { Icon(if (liked) Icons.Default.ThumbUp else Icons.Default.ThumbUpOffAlt, "喜欢", Modifier.size(20.dp)) }
-                    Box(Modifier.width(1.dp).height(18.dp).background(MaterialTheme.colorScheme.outlineVariant))
-                    Box(Modifier.width(44.dp).fillMaxHeight().clickable { model.notInterested() }, contentAlignment = Alignment.Center) { Icon(if (disliked) Icons.Default.ThumbDown else Icons.Default.ThumbDownOffAlt, "不感兴趣", Modifier.size(20.dp)) }
-                }
-                PlayerAction("歌词", Icons.Default.FormatQuote, "player-action-lyrics", lyrics)
-                comments?.let { PlayerAction(null, Icons.Default.ChatBubbleOutline, "player-action-comments", it) }
-                PlayerAction(qualityName(qualityValue), null, "player-action-quality", quality)
-            }
-            transport()
-            Column(Modifier.fillMaxWidth().height(48.dp).clickable { queueOpen = true }.testTag("queue-peek"), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.padding(top = 6.dp, bottom = 8.dp).width(32.dp).height(4.dp).clip(CircleShape).background(MaterialTheme.colorScheme.outlineVariant))
-                Text(origin ?: "播放列表", style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (wide) Row(Modifier.weight(1f).fillMaxWidth()) {
+                artwork(Modifier.weight(.43f).fillMaxHeight().then(swipe).testTag("player-artwork"), !queueOpen)
+                Column(Modifier.weight(.57f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(start = 18.dp)) { PlaybackBody() }
+            } else {
+                artwork(Modifier.weight(1f).fillMaxWidth().testTag("player-artwork"), !queueOpen)
+                PlaybackBody()
             }
         }
     }

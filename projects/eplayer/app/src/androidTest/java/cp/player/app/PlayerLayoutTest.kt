@@ -54,12 +54,14 @@ class PlayerLayoutTest {
                 val density = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
                     EPlayerTheme {
-                        PlayerLayout(song, false,
-                            header = { PlayerHeader(action, action, action, action, action) },
-                            artwork = { modifier -> AndroidView(factory = { context ->
-                                WitchPlayerView(context)
-                            }, modifier = modifier) },
-                            controls = { PlayerTransport(state, 0, sought.value, { sought.value = it }, {}, action, action, action, action, action, false, action) })
+                        val model = androidx.lifecycle.ViewModelProvider(compose.activity)[EPlayerViewModel::class.java]
+                        val cloud = androidx.lifecycle.ViewModelProvider(compose.activity)[CloudViewModel::class.java]
+                        YtmPlayerPanel(model, cloud, state, null,
+                            artwork = { modifier, _ -> CharacterStage(song, modifier) { child -> AndroidView(factory = { context ->
+                                WitchPlayerView(context).apply { setMotionEnabled(false); setCoverBackdropEnabled(true) }
+                            }, modifier = child) } },
+                            transport = { PlayerTransport(state, 0, sought.value, { sought.value = it }, {}, action, action, action, action, action, false, action, showFavorite = false) },
+                            liked = false, like = action, lyrics = action, comments = action, quality = action, more = action, songOptions = {}, close = action)
                     }
                 }
             }
@@ -68,10 +70,8 @@ class PlayerLayoutTest {
         val metadata = compose.onNodeWithTag("player-metadata").getUnclippedBoundsInRoot()
         val artwork = compose.onNodeWithTag("player-artwork").getUnclippedBoundsInRoot()
         if (wide) {
-            compose.onNodeWithTag("player-wide").assertExists()
             assertTrue("Metadata must stay beside, never underneath, Elaina", artwork.right <= metadata.left)
         } else {
-            compose.onNodeWithTag("player-portrait").assertExists()
             assertTrue("The artwork precedes the title block", artwork.bottom <= metadata.top)
             compose.onNodeWithTag("player-transport").assertIsDisplayed()
         }
@@ -85,7 +85,7 @@ class PlayerLayoutTest {
         if (wide) seek.performScrollTo()
         seek.assertIsDisplayed().performSemanticsAction(SemanticsActions.SetProgress) { set -> set(30000f) }
         assertEquals("Seek stays accessible without dragging the custom thumb", 30000f, sought.value!!, .01f)
-        if (wide) compose.onNodeWithContentDescription("收起播放器").performScrollTo()
+        compose.onNodeWithContentDescription("收起播放器").assertIsDisplayed()
         // Keep a native component render for visual review; it is not an audio test result.
         val folder = File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null), "layout-check").apply { mkdirs() }
         val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
