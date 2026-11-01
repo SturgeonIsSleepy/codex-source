@@ -11,3 +11,5 @@
 播放器竖屏调整为封面/角色在上、歌名和歌手在下、随机/上一首/播放/下一首/循环同一控制行。保留人物动作、自选背景、音质、歌词、播放队列与评论。
 
 仅运行手动下一首优先级的四项纯 JVM 回归及 internal Release 打包核验；不启动额外设备或操作真实账号。主 agent 分析实现，Terra high 执行现有构建/下载/打包命令。
+
+最终源码 `b04ece072fe16628cc5ee10b3f98e883ac16f594` / [CI 41278195993](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41278195993) 成功执行指定 PlayNextOrderTest 类（源码四项用例）和 internal Release 构建；日志未逐方法打印测试名称。分段下载匹配产物后打包，固定签名、16KiB 对齐、三 ABI、内置音源摘要及 CI 代码一致性验证通过。最终自用通用包 `ePlayer-v0.6.1-internal.apk`，56,970,287 bytes，SHA256 `bda4fc5a184847f733f3b511cf4229849a0d2ffdf55ba348e776d0e5600eaa46`。未做设备复测。
