@@ -24,8 +24,9 @@ class MainActivity : ComponentActivity() {
         showPlayer = intent.action == "ACTION_SHOW_PLAYER"
         enableEdgeToEdge()
         setContent {
-            val elainaTheme by player.elainaTheme.collectAsState()
-            EPlayerTheme(elainaTheme = elainaTheme) { EPlayerApp(player, cloud, showPlayer) { showPlayer = it } }
+            val appearance by player.appearance.collectAsState()
+            val dark = when (appearance) { "light" -> false; "system" -> androidx.compose.foundation.isSystemInDarkTheme(); else -> true }
+            EPlayerTheme(darkTheme = dark) { EPlayerApp(player, cloud, showPlayer) { showPlayer = it } }
         }
     }
 

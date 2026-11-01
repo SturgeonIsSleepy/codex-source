@@ -1,10 +1,12 @@
 # ePlayer
 
-基于 [Aurora-Nasa-1/CPPlayer](https://github.com/Aurora-Nasa-1/CPPlayer) 的 Android 音乐播放器，采用纸白、灰紫和手绘墨线风格。应用独立安装标识为 `app.eplayer.music`；保留原项目 Kotlin 包名与 JNI 名称，以免破坏原生引擎接口。
+基于 [Aurora-Nasa-1/CPPlayer](https://github.com/Aurora-Nasa-1/CPPlayer) 的 Android 音乐播放器，采用 YouTube Music 参考布局与固定中性配色。应用独立安装标识为 `app.eplayer.music`；保留原项目 Kotlin 包名与 JNI 名称，以免破坏原生引擎接口。
 
-## 当前开发版本 0.5.8
+## 当前开发版本 0.6.0
 
 默认交付一个内置用户指定音源的自用通用 APK，包含 ARM64、ARMv7 与 x86_64；不再单独交付 ARM64 包。普通版仅在用户明确要求时制作。当前开发分支的构建与设备检查默认使用 internal universal，历史公开普通版发布入口保留兼容。
+
+0.6.0 重排为首页、探索、媒体库，头像进入账号与设置。首页为听歌统计和一键点歌，支持歌手、歌单、专辑、单曲种子漫游。播放器背景由用户导入，不再内置 MTZ 图片；保留角色、动作和原字体。队列与歌单支持多选、完整全选与批量操作。见 [0.6.0 记录](docs/YTM-0.6.0.md)。
 
 0.5.8 修复搜索返回时输入法优先收起；播放队列与歌单支持整行长按编辑/拖动，保留边缘自动滚动和排序动画；歌单详情保留可操作的悬浮播放底栏；间奏不显示翻译或音译。自有歌单排序同步服务端，他人歌单只保存本机顺序。详见 [0.5.8 记录](docs/INTERACTION-0.5.8.md)。
 

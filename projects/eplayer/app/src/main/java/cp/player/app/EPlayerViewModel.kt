@@ -39,7 +39,12 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private val soundSettingsDelegate = lazy { SoundSettingsStore(app, viewModelScope) }
     internal val soundSettings by soundSettingsDelegate
     private val catalog by lazy { LibraryStore(app) }
-    val initialTab = app.getSharedPreferences("eplayer_ui", 0).getInt("selected_tab", 0).coerceIn(0, 2)
+    val initialTab = app.getSharedPreferences("eplayer_ui", 0).let { prefs ->
+        if (prefs.getInt("navigation_version", 0) < 2) {
+            val tab = if (prefs.getInt("selected_tab", 0) == 1) 2 else 0
+            prefs.edit().putInt("navigation_version", 2).putInt("selected_tab", tab).apply(); tab
+        } else prefs.getInt("selected_tab", 0).coerceIn(0, 2)
+    }
     fun rememberTab(value: Int) {
         val prefs = app.getSharedPreferences("eplayer_ui", 0)
         if (value in 0..2 && prefs.getInt("selected_tab", 0) != value) prefs.edit().putInt("selected_tab", value).apply()
@@ -64,10 +69,37 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     val favorites = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getStringSet("favorites", emptySet()).orEmpty().toSet())
     val quality = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getString("quality", "standard") ?: "standard")
     val animate = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getBoolean("animate", true))
-    val elainaTheme = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getBoolean("elaina_theme", true))
-    fun setElainaTheme(value: Boolean) {
-        elainaTheme.value = value
-        app.getSharedPreferences("eplayer_ui", 0).edit().putBoolean("elaina_theme", value).apply()
+    val appearance = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getString("appearance", "dark") ?: "dark")
+    fun setAppearance(value: String) {
+        if (value !in setOf("dark", "light", "system")) return
+        appearance.value = value; app.getSharedPreferences("eplayer_ui", 0).edit().putString("appearance", value).apply()
+    }
+    val playerBackground = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getString("player_background", null))
+    private var backgroundJob: Job? = null
+    fun importPlayerBackground(uri: Uri) {
+      backgroundJob?.cancel()
+      backgroundJob = viewModelScope.launch {
+        try {
+            val path = PlayerBackgroundStore.import(app, uri)
+            playerBackground.value = path
+            app.getSharedPreferences("eplayer_ui", 0).edit().putString("player_background", path).apply()
+            withContext(Dispatchers.IO) { PlayerBackgroundStore.clean(app, path) }
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+        catch (error: Exception) { message.value = error.message ?: "背景导入失败" }
+      }
+    }
+    fun clearPlayerBackground() {
+        backgroundJob?.cancel()
+        playerBackground.value = null; app.getSharedPreferences("eplayer_ui", 0).edit().remove("player_background").apply()
+        viewModelScope.launch(Dispatchers.IO) { PlayerBackgroundStore.clean(app, null) }
+    }
+    internal val roamHistory = MutableStateFlow(runCatching {
+        val raw = app.getSharedPreferences("eplayer_ui", 0).getString("roam_history", "[]")
+        com.google.gson.Gson().fromJson(raw, Array<QuickPick>::class.java).toList()
+    }.getOrDefault(emptyList()))
+    private fun rememberPick(pick: QuickPick) {
+        roamHistory.value = (listOf(pick) + roamHistory.value).distinctBy { it.source to it.key.lowercase() }.take(24)
+        app.getSharedPreferences("eplayer_ui", 0).edit().putString("roam_history", com.google.gson.Gson().toJson(roamHistory.value)).apply()
     }
     val coverBlur = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getFloat("cover_blur", 6f).coerceIn(0f, 24f))
     fun setCoverBlur(value: Float) {
@@ -83,6 +115,9 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private var progressVisible = false
     private var ticker: Job? = null
     private var radioSource: String? = null
+    private var roaming = false
+    private var radioGeneration = 0
+    private var radioJob: Job? = null
     private var loadingRadio = false
     private val future = MediaController.Builder(app, SessionToken(app, ComponentName(app, MusicService::class.java))).setListener(object : MediaController.Listener {
         override fun onExtrasChanged(controller: MediaController, extras: Bundle) {
@@ -177,6 +212,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         catch (error: Exception) { message.value = error.message ?: "读取失败" }
     }
     fun play(track: Track, queue: List<Track>, radio: Boolean = false) {
+        radioGeneration++; radioJob?.cancel(); loadingRadio = false; roaming = false
         radioSource = if (radio) track.source else null
         val action = {
             controller?.let { player ->
@@ -189,21 +225,36 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
         if (controller == null) pendingPlay = action else action()
     }
-    private fun refillRadio() {
+    internal fun startRoaming(pick: QuickPick, tracks: List<Track>) {
+        if (tracks.isEmpty()) return
+        play(tracks.first(), tracks)
+        radioSource = tracks.first().source; roaming = true
+        rememberPick(pick)
+        refillRadio(force = true)
+    }
+    private fun refillRadio(force: Boolean = false) {
         val source = radioSource ?: return
         val player = controller ?: return
-        if (loadingRadio || player.currentMediaItemIndex < player.mediaItemCount - 2) return
+        if (loadingRadio || !player.playWhenReady || !force && player.currentMediaItemIndex < player.mediaItemCount - 2 || player.mediaItemCount == 0) return
         loadingRadio = true
-        viewModelScope.launch {
+        val generation = radioGeneration
+        val seed = player.getMediaItemAt(if (force) player.currentMediaItemIndex.coerceAtLeast(0) else (player.mediaItemCount - 1).coerceAtLeast(0)).mediaMetadata.extras?.getString("remoteId")
+            ?: playback.value.remoteId ?: playback.value.song?.id
+        radioJob = viewModelScope.launch {
             try {
-                val next = MusicRepository(app, source).radio()
-                if (radioSource == source) {
+                val repo = MusicRepository(app, source)
+                val next = if (roaming && seed != null) repo.similar(seed) else repo.radio()
+                if (radioSource == source && generation == radioGeneration) {
                     val current = controller ?: return@launch
-                    current.addMediaItems(next.map { it.mediaItem(quality.value) })
+                    val existing = (0 until current.mediaItemCount).map { current.getMediaItemAt(it).toSong().id }.toSet()
+                    val fresh = next.filter { it.song.id !in existing }
+                    if (fresh.isEmpty()) { radioSource = null; return@launch }
+                    current.addMediaItems(fresh.map { it.mediaItem(quality.value) })
                     if (current.currentMediaItemIndex > 20) current.removeMediaItems(0, current.currentMediaItemIndex - 5)
                 }
-            } catch (failure: Exception) { message.value = failure.message ?: "FM 加载失败" }
-            finally { loadingRadio = false }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (failure: Exception) { if (generation == radioGeneration) { message.value = failure.message ?: "漫游加载失败"; radioSource = null } }
+            finally { if (generation == radioGeneration) loadingRadio = false }
         }
     }
     fun playPause() { controller?.togglePlayback() }
@@ -235,12 +286,24 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     } }
     fun clearQueue() {
-        radioSource = null; pendingPlay = null
+        radioSource = null; roaming = false; radioGeneration++; radioJob?.cancel(); loadingRadio = false; pendingPlay = null
         controller?.let { it.pause(); it.stop(); it.clearMediaItems() }
     }
     fun moveQueue(from: Int, to: Int) { controller?.let { if (from in 0 until it.mediaItemCount && to in 0 until it.mediaItemCount) it.moveMediaItem(from, to) } }
     fun addNext(track: Track) { controller?.let { it.addMediaItem((it.currentMediaItemIndex + 1).coerceIn(0, it.mediaItemCount), track.mediaItem(quality.value)) } }
     fun addQueue(track: Track) { controller?.addMediaItem(track.mediaItem(quality.value)) }
+    fun removeQueueItems(indices: List<Int>) {
+        val player = controller ?: return
+        val ordered = indices.distinct().filter { it in 0 until player.mediaItemCount }.sorted()
+        if (ordered.size == player.mediaItemCount) { clearQueue(); return }
+        val groups = mutableListOf<IntRange>()
+        ordered.forEach { index ->
+            val last = groups.lastOrNull()
+            if (last != null && index == last.last + 1) groups[groups.lastIndex] = last.first..index else groups += index..index
+        }
+        groups.asReversed().forEach { player.removeMediaItems(it.first, it.last + 1) }
+    }
+    fun addQueueTracks(tracks: List<Track>) { controller?.addMediaItems(tracks.map { it.mediaItem(quality.value) }) }
     fun currentTrack(): Track? = playback.value.song?.let { Track(it, source = playback.value.source, remoteId = playback.value.remoteId) }
     fun queueIndex(index: Int) { controller?.let { it.seekToDefaultPosition(index); it.prepare(); it.play() } }
     fun shuffle() { controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled } }

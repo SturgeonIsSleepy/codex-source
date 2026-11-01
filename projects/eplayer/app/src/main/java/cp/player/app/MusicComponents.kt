@@ -61,14 +61,14 @@ internal fun MusicHeading(title: String, action: (@Composable RowScope.() -> Uni
 
 @Composable
 internal fun MusicSegments(labels: List<String>, selected: Int, choose: (Int) -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(3.dp)) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         labels.forEachIndexed { index, label ->
-            Box(Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                .background(if (index == selected) MaterialTheme.colorScheme.surface else Color.Transparent)
+            Box(Modifier.weight(1f).clip(RoundedCornerShape(7.dp))
+                .background(if (index == selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceContainerHigh)
                 .selectable(selected = index == selected, role = Role.Tab, onClick = { choose(index) })
-                .testTag("music-segment-$label").padding(vertical = 7.dp), contentAlignment = Alignment.Center) {
+                .testTag("music-segment-$label").padding(vertical = 9.dp), contentAlignment = Alignment.Center) {
                 Text(label, style = MaterialTheme.typography.labelLarge,
-                    color = if (index == selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+                    color = if (index == selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface)
             }
         }
     }
@@ -124,52 +124,59 @@ internal fun QualitySetting(model: EPlayerViewModel) {
     if (open) QualitySheet(model) { open = false }
 }
 
-/** Opaque floating controls: no blur, optical shader or captured backdrop. */
 @Composable
 internal fun FloatingBar(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
-    val shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 34.dp, bottomEnd = 34.dp)
-    Box(modifier.shadow(4.dp, shape, ambientColor = Color.Black.copy(alpha = .12f), spotColor = Color.Black.copy(alpha = .12f))
-        .clip(shape).background(MaterialTheme.colorScheme.surfaceContainerLow)
-        .border(.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f), shape), content = content)
+    Box(modifier.background(MaterialTheme.colorScheme.surface), content = content)
 }
 
 @Composable
 internal fun MusicDock(state: Playback, page: Int, discovery: Boolean, choose: (Int) -> Unit,
     showPlayer: () -> Unit, playPause: () -> Unit, next: () -> Unit, queue: () -> Unit = {}) {
-          FloatingBar(Modifier.fillMaxWidth().testTag("music-dock")) {
-           Column(Modifier.fillMaxWidth()) {
-            if (state.song != null) {
-                Row(Modifier.fillMaxWidth().height(60.dp).testTag("dock-now-playing").clickable { showPlayer() }.padding(start = 10.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    MusicCover(state.song, Modifier.size(42.dp))
-                    AnimatedContent(state.song, contentKey = { it?.id }, modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-                        transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(140)) }, label = "mini-track") { current ->
-                        Text(current?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
-                    }
-                    IconButton(onClick = playPause) { Icon(if (state.playRequested) Icons.Default.Pause else Icons.Default.PlayArrow, if (state.playRequested) "暂停" else "播放") }
-                    IconButton(onClick = next) { Icon(Icons.Default.SkipNext, "下一首") }
-                    IconButton(onClick = queue) { Icon(Icons.Default.QueueMusic, "当前播放列表") }
+    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).testTag("music-dock")) {
+        if (state.song != null) {
+            Row(Modifier.fillMaxWidth().height(64.dp).testTag("dock-now-playing").background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .clickable { showPlayer() }.padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                MusicCover(state.song, Modifier.size(44.dp))
+                AnimatedContent(state.song, contentKey = { it?.id }, modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                    transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) }, label = "mini-track") { song ->
+                    Text(song?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
                 }
-                HorizontalDivider(Modifier.padding(horizontal = 22.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .45f))
+                IconButton(onClick = playPause) { Icon(if (state.playRequested) Icons.Default.Pause else Icons.Default.PlayArrow, if (state.playRequested) "暂停" else "播放") }
+                IconButton(onClick = next) { Icon(Icons.Default.SkipNext, "下一首") }
+                IconButton(onClick = queue) { Icon(Icons.Default.QueueMusic, "播放列表") }
             }
-                Row(Modifier.fillMaxWidth().height(64.dp).testTag("dock-navigation").padding(5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    listOf("首页" to Icons.Default.Home, "曲库" to Icons.Default.LibraryMusic, "设置" to Icons.Default.Settings).forEachIndexed { index, (label, icon) ->
-                        Column(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(40.dp))
-                            .background(if (page == index && !discovery) MusicRed.copy(alpha = .08f) else Color.Transparent)
-                            .clickable { choose(index) }
-                            .semantics { contentDescription = label; role = Role.Tab; selected = page == index && !discovery },
-                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                            Icon(icon, null, Modifier.size(24.dp), tint = if (page == index && !discovery) MusicRed else MaterialTheme.colorScheme.onSurface)
-                            Text(label, fontSize = 11.sp, color = if (page == index && !discovery) MusicRed else MaterialTheme.colorScheme.onSurface)
-                        }
+        }
+        Row(Modifier.fillMaxWidth().height(66.dp).testTag("dock-navigation"), verticalAlignment = Alignment.CenterVertically) {
+            listOf("首页" to Icons.Default.Home, "探索" to Icons.Default.Explore, "媒体库" to Icons.Default.LibraryMusic).forEachIndexed { index, (label, icon) ->
+                Column(Modifier.weight(1f).fillMaxHeight().clickable { choose(index) }
+                    .semantics { contentDescription = label; role = Role.Tab; selected = page == index },
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                    Box(Modifier.clip(RoundedCornerShape(14.dp)).background(if (page == index) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent).padding(horizontal = 18.dp, vertical = 4.dp)) {
+                        Icon(icon, null, Modifier.size(25.dp), tint = MaterialTheme.colorScheme.onSurface)
                     }
+                    Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 2.dp))
                 }
             }
         }
+    }
+}
+
+@Composable
+internal fun AppHeader(title: String, avatar: String?, account: () -> Unit, search: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (title == "ePlayer") Icon(Icons.Default.PlayCircle, null, tint = Color(0xFFFF334D), modifier = Modifier.padding(end = 8.dp).size(30.dp))
+        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
+        IconButton(onClick = search) { Icon(Icons.Default.Search, "搜索", Modifier.size(27.dp)) }
+        IconButton(onClick = account) {
+            if (avatar.isNullOrBlank()) Icon(Icons.Default.AccountCircle, "账号与设置", Modifier.size(32.dp))
+            else AsyncImage(avatar, "账号与设置", Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape), contentScale = ContentScale.Crop)
+        }
+    }
 }
 
 /** The album replaces only the old sky panel; the full character stays in front of it. */
 @Composable
-internal fun CharacterStage(song: Song?, modifier: Modifier = Modifier, coverBlur: Float = 6f, portrait: @Composable (Modifier) -> Unit) {
+internal fun CharacterStage(song: Song?, modifier: Modifier = Modifier, coverBlur: Float = 6f, background: String? = null, portrait: @Composable (Modifier) -> Unit) {
     BoxWithConstraints(modifier) {
         val scale = minOf(maxWidth.value / 865f, maxHeight.value / 1280f)
         val left = (maxWidth.value - 865f * scale) / 2f
@@ -178,7 +185,8 @@ internal fun CharacterStage(song: Song?, modifier: Modifier = Modifier, coverBlu
         Box(Modifier.offset(x = (left + 80f * scale).dp, y = (top + 100f * scale).dp)
             .size((705f * scale).dp).clip(RoundedCornerShape((24f * scale).dp))
             .background(MaterialTheme.colorScheme.primaryContainer).testTag("stage-cover")) {
-            SoftStageCover(song, coverBlur, Modifier.matchParentSize())
+            val art = if (background != null) (song ?: Song("background", "", "", album = "")).copy(albumArtUrl = background) else song
+            SoftStageCover(art, coverBlur, Modifier.matchParentSize())
         }
         portrait(Modifier.fillMaxSize())
         }

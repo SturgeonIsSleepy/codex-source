@@ -42,6 +42,7 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
                           more: () -> Unit, comments: () -> Unit, close: () -> Unit) {
     val animate by model.animate.collectAsState()
     val coverBlur by model.coverBlur.collectAsState()
+    val customBackground by model.playerBackground.collectAsState()
     val context = LocalContext.current.applicationContext
     val backdrop = MaterialTheme.colorScheme.background
     val night = backdrop.luminance() < .3f
@@ -68,12 +69,14 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
     }
     val openLyrics = { showLyrics = true }
     TravelDialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+      Box(Modifier.fillMaxSize()) {
+        PlayerBackdrop(customBackground, Modifier.matchParentSize())
         PlayerLayout(
             state.song, state.buffering,
             header = { PlayerHeader(close, openLyrics, if (state.source != null) comments else null, more) { queue = true } },
             artwork = { modifier ->
                 if (artworkGeneration == 0) Box(modifier, contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                else CharacterStage(state.song, modifier, coverBlur) { characterModifier -> AndroidView(
+                else CharacterStage(state.song, modifier, coverBlur, customBackground) { characterModifier -> AndroidView(
                     factory = { WitchPlayerView(it) }, modifier = characterModifier,
                     update = { view ->
                         view.setAppearance(night, backdrop.toArgb(), artworkGeneration)
@@ -97,8 +100,9 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
                 }
             }
         )
+      }
     }
-    if (queue) QueueSheet(state, model::queueIndex, model::moveQueue, model::removeQueue, model::clearQueue) { queue = false }
+    if (queue) QueueSheet(state, model::queueIndex, model::moveQueue, model::removeQueue, model::clearQueue, removeSelected = model::removeQueueItems) { queue = false }
     if (qualitySheet) QualitySheet(model) { qualitySheet = false }
     if (showLyrics) LyricsScreen(lyrics, model) { showLyrics = false }
 }
@@ -109,7 +113,7 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
 @Composable
 internal fun PlayerLayout(song: Song?, buffering: Boolean, header: @Composable () -> Unit,
                           artwork: @Composable (Modifier) -> Unit, controls: @Composable () -> Unit) {
-    BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
+    BoxWithConstraints(Modifier.fillMaxSize().systemBarsPadding()) {
         if (maxWidth >= 600.dp && maxWidth > maxHeight) {
             Row(Modifier.fillMaxSize().padding(horizontal = 16.dp).testTag("player-wide")) {
                 artwork(Modifier.weight(.45f).fillMaxHeight().testTag("player-artwork"))

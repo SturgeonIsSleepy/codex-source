@@ -27,9 +27,10 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int) -> Unit,
-    remove: (Int) -> Unit, clear: () -> Unit, close: () -> Unit) {
+    remove: (Int) -> Unit, clear: () -> Unit, removeSelected: (List<Int>) -> Unit = { values -> values.sortedDescending().forEach(remove) }, close: () -> Unit) {
     var editing by rememberSaveable { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
+    var selected by remember { mutableStateOf(emptySet<String>()) }
     val list = rememberLazyListState()
     val keys = remember(state.queue) {
         val occurrences = mutableMapOf<String, Int>()
@@ -40,12 +41,17 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
             "$identity#$count"
         }
     }
+    LaunchedEffect(keys) { selected = selected.intersect(keys.toSet()) }
     val reorder = rememberSongReorder(keys, list, move)
+    fun toggle(key: String) { selected = if (key in selected) selected - key else selected + key }
     TravelSheet(close, gesturesEnabled = !editing) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("播放队列", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-            if (editing && state.queue.isNotEmpty()) IconButton(onClick = { confirmClear = true }) { Icon(Icons.Default.DeleteSweep, "清空播放队列") }
-            TextButton(onClick = { reorder.finish(false); editing = !editing }) { Text(if (editing) "完成" else "编辑") }
+            Text(if (editing) "已选 ${selected.size}" else "播放队列", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+            if (editing && state.queue.isNotEmpty()) {
+                TextButton(onClick = { selected = if (selected.size == keys.size) emptySet() else keys.toSet() }) { Text(if (selected.size == keys.size) "取消全选" else "全选") }
+                IconButton(enabled = selected.isNotEmpty(), onClick = { confirmClear = true }) { Icon(Icons.Default.DeleteOutline, "移除所选") }
+            }
+            TextButton(onClick = { reorder.finish(false); editing = !editing; selected = emptySet() }) { Text(if (editing) "完成" else "编辑") }
         }
         if (state.queue.isEmpty()) Text("暂无歌曲", Modifier.padding(24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         LazyColumn(Modifier.fillMaxWidth().heightIn(max = 560.dp).testTag("queue-list"),
@@ -59,7 +65,7 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
                 Row(Modifier.fillMaxWidth()
                     .animateItem(fadeInSpec = tween(150), placementSpec = if (dragging) null else tween(180), fadeOutSpec = tween(150))
                     .reorderLayer(reorder, key)
-                    .songDrag(reorder, key, edit = { editing = true }).testTag("queue-row-$index")
+                    .songDrag(reorder, key, edit = { editing = true; selected = selected + key }).testTag("queue-row-$index")
                     .background(if (dragging) surface else androidx.compose.ui.graphics.Color.Transparent, RoundedCornerShape(14.dp))
                     .semantics {
                         customActions = buildList {
@@ -68,15 +74,13 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
                             add(CustomAccessibilityAction("移除") { remove(index); true })
                         }
                     }, verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f)) { SongRow(Track(song), current, { select(index) }, enabled = !editing) }
+                    if (editing) Checkbox(key in selected, { toggle(key) })
+                    Box(Modifier.weight(1f)) { SongRow(Track(song), current, { if (editing) toggle(key) else select(index) }) }
                     AnimatedVisibility(editing, enter = fadeIn(tween(140)) + expandHorizontally(tween(180)),
                         exit = fadeOut(tween(100)) + shrinkHorizontally(tween(160))) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { remove(index) }, enabled = reorder.dragging == null) {
-                                Icon(Icons.Default.RemoveCircleOutline, "移除第 ${index + 1} 首")
-                            }
                             Icon(Icons.Default.DragHandle, "拖动第 ${index + 1} 首",
-                                Modifier.size(44.dp).padding(6.dp).songDrag(reorder, key, longPress = false, edit = { editing = true }) , tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Modifier.size(44.dp).padding(6.dp).songDrag(reorder, key, longPress = false, edit = { editing = true; selected = selected + key }) , tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     if (!editing && current) Icon(Icons.Default.GraphicEq, "当前播放", tint = MusicRed)
@@ -84,7 +88,7 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
             }
         }
     }
-    if (confirmClear) TravelAlertDialog(onDismissRequest = { confirmClear = false }, title = { Text("清空播放队列？") },
-        confirmButton = { TextButton(onClick = { clear(); confirmClear = false }) { Text("清空") } },
+    if (confirmClear) TravelAlertDialog(onDismissRequest = { confirmClear = false }, title = { Text("移除 ${selected.size} 首歌曲？") },
+        confirmButton = { TextButton(onClick = { val indices = selected.map(keys::indexOf).filter { it >= 0 }; if (indices.size == keys.size) clear() else removeSelected(indices); selected = emptySet(); confirmClear = false }) { Text("移除") } },
         dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("取消") } })
 }

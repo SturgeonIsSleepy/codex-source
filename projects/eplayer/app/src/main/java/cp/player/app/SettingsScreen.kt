@@ -125,7 +125,9 @@ internal fun SleepTimerControl(remainingMinutes: Long, setMinutes: (Int) -> Unit
 internal fun VisualSettings(model: EPlayerViewModel, close: () -> Unit) {
     val animate by model.animate.collectAsState()
     var themeOpen by rememberSaveable { mutableStateOf(false) }
-    val enabled by model.elainaTheme.collectAsState()
+    val appearance by model.appearance.collectAsState()
+    val background by model.playerBackground.collectAsState()
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(model::importPlayerBackground) }
     val stored by model.coverBlur.collectAsState()
     var radius by remember(stored) { mutableFloatStateOf(stored) }
     TravelDialog(close) {
@@ -136,8 +138,10 @@ internal fun VisualSettings(model: EPlayerViewModel, close: () -> Unit) {
                     TextButton(onClick = close) { Text("完成") }
                 }
                 SettingsCard {
-                    SettingsRow("主题", if (enabled) "伊蕾娜" else "默认") { themeOpen = true }
+                    SettingsRow("显示模式", when (appearance) { "light" -> "浅色"; "system" -> "跟随系统"; else -> "深色" }) { themeOpen = true }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .5f))
+                    SettingsRow("播放器背景", if (background == null) "未设置" else "已设置") { picker.launch(arrayOf("image/*")) }
+                    if (background != null) TextButton(onClick = model::clearPlayerBackground) { Text("移除背景") }
                     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("角色动画", Modifier.weight(1f)); Switch(animate, model::setAnimate)
                     }

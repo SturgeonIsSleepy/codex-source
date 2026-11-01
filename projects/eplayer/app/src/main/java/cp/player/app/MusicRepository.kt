@@ -99,7 +99,13 @@ class MusicRepository(private val context: Context, val source: String) {
             MusicDetail(target, songs, total = ids.size)
         }
         MusicKind.CHARTS -> MusicDetail(target, entries = entries(request("toplist").array("list"), MusicKind.PLAYLIST))
-        MusicKind.BROWSE -> MusicDetail(target, entries = entries(request("top/playlist", mapOf("cat" to "全部", "limit" to "50")).array("playlists"), MusicKind.PLAYLIST))
+        MusicKind.BROWSE -> when (target.id) {
+            "new" -> MusicDetail(target, entries = entries(request("album/newest").array("albums"), MusicKind.ALBUM))
+            "genres" -> MusicDetail(target, entries = request("playlist/catlist").array("sub").mapNotNull { item ->
+                item.takeIf { it.isJsonObject }?.asJsonObject?.str("name")?.let { MusicEntry("cat:$it", it, source, MusicKind.BROWSE) }
+            })
+            else -> MusicDetail(target, entries = entries(request("top/playlist", mapOf("cat" to if (target.id.startsWith("cat:")) target.id.removePrefix("cat:") else "全部", "limit" to "50")).array("playlists"), MusicKind.PLAYLIST))
+        }
         MusicKind.RECORD_ALL, MusicKind.RECORD_WEEK -> {
             val weekly = target.kind == MusicKind.RECORD_WEEK
             val response = request("user/record", mapOf("uid" to target.id, "type" to if (weekly) "1" else "0"))
@@ -115,6 +121,19 @@ class MusicRepository(private val context: Context, val source: String) {
             }
             MusicDetail(target, songs, total = response.number("count"))
         }
+    }
+    suspend fun similar(id: String): List<Track> = tracks(request("simi/song", mapOf("id" to id)).array("songs"))
+    suspend fun songs(ids: List<String>): List<Track> {
+        val result = mutableListOf<Track>()
+        ids.chunked(500).forEach { chunk -> result += tracks(request("song/detail", mapOf("ids" to chunk.joinToString(","))).array("songs")) }
+        val byId = result.associateBy { it.remoteId ?: it.song.id }
+        return ids.mapNotNull(byId::get)
+    }
+    suspend fun playlistIds(id: String): List<String> {
+        val header = request("playlist/detail", mapOf("id" to id)).obj("playlist") ?: error("歌单不存在")
+        val ids = header.array("trackIds").mapNotNull { it.takeIf { item -> item.isJsonObject }?.asJsonObject?.str("id") }
+        check(ids.size == header.number("trackCount")) { "歌单未完整加载，请重试" }
+        return ids
     }
     suspend fun like(id: String, liked: Boolean) { request("like", mapOf("id" to id, "like" to liked.toString())) }
     suspend fun createPlaylist(name: String, private: Boolean = false): MusicEntry {

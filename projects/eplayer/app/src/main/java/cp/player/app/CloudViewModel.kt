@@ -206,6 +206,44 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
             } finally { busy.value = false }
         }
     }
+    internal fun roam(pick: QuickPick, play: (List<Track>) -> Unit) = action {
+        val source = pick.source ?: error("请先添加音源")
+        val repo = MusicRepository(app, source)
+        val base = pick.track?.let { listOf(it) } ?: pick.entry?.let { repo.detail(it).tracks }.orEmpty()
+        check(base.isNotEmpty()) { "没有可播放的歌曲" }
+        val seed = if (pick.track != null) base.first() else base.random()
+        val queue = (listOf(seed) + base.filter { it.song.id != seed.song.id }.shuffled().take(8))
+            .distinctBy { it.song.id to it.source }
+        play(queue)
+    }
+    fun selectAllPlaylist(target: MusicEntry, selected: (Set<String>) -> Unit) = action {
+        val ids = MusicRepository(app, target.source).playlistIds(target.id).toSet()
+        if (pages.value.lastOrNull()?.target?.id == target.id) selected(ids)
+    }
+    fun removePlaylistTracks(target: MusicEntry, ids: Set<String>) = action {
+        require(target.owner != null && target.owner == home.value.account?.id) { "只能修改自己的歌单" }
+        if (ids.isEmpty()) return@action
+        val repo = MusicRepository(app, target.source)
+        val removed = mutableSetOf<String>()
+        try {
+            if (target.special) ids.forEach { repo.like(it, false); removed += it }
+            else ids.toList().chunked(500).forEach { repo.changeTracks(target.id, it, false); removed += it }
+        } catch (failure: Exception) {
+            updatePage(target) { page -> page.copy(data = page.data?.let { it.copy(tracks = it.tracks.filterNot { track -> (track.remoteId ?: track.song.id) in removed }, total = (it.total - removed.size).coerceAtLeast(0)) }, error = failure.message ?: "部分歌曲未移除") }
+            throw failure
+        } finally {
+            if (target.special) likes.update { values -> values + (target.source to (values[target.source].orEmpty() - removed)) }
+        }
+        load(target)
+    }
+    fun playlistSelection(target: MusicEntry, ids: Set<String>, use: (List<Track>) -> Unit) = action {
+        if (ids.isEmpty()) return@action
+        val page = pages.value.lastOrNull { it.target.id == target.id && it.target.source == target.source }
+        val loaded = page?.data?.tracks.orEmpty()
+        val ordered = loaded.map { it.remoteId ?: it.song.id }.filter { it in ids } + ids.filter { id -> loaded.none { (it.remoteId ?: it.song.id) == id } }
+        val tracks = MusicRepository(app, target.source).songs(ordered)
+        check(tracks.isNotEmpty()) { "没有可播放的歌曲" }; use(tracks)
+    }
     fun radio(play: (List<Track>) -> Unit) = action {
         val source = home.value.source ?: error("请先选择音源")
         val tracks = MusicRepository(app, source).radio()
