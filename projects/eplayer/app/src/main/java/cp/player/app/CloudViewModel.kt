@@ -92,6 +92,7 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
     }
     fun clearSearch() { searchGeneration++; searchJob?.cancel(); searching.value = false; searched.value = false; searchError.value = null; searchResult.value = MusicSearch() }
     fun open(target: MusicEntry) {
+        ensureLibrary()
         pages.update { it + DetailPage(target) }
         load(target)
     }
@@ -174,7 +175,7 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
         return data.copy(tracks = data.tracks.sortedBy { ranks[it.remoteId ?: it.song.id] ?: Int.MAX_VALUE })
     }
     fun movePlaylist(target: MusicEntry, from: Int, to: Int) {
-        if (busy.value) return
+        if (busy.value || home.value.loading) return
         val page = pages.value.lastOrNull { it.target.id == target.id && it.target.source == target.source && it.target.kind == target.kind } ?: return
         val before = page.data ?: return
         if (from !in before.tracks.indices || to !in before.tracks.indices || from == to) return

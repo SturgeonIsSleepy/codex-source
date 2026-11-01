@@ -105,7 +105,7 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = cloud::back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
                     Text(if (editing) { if (own) "编辑歌单" else "编辑播放顺序" } else target.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (editable && tracks.isNotEmpty()) TextButton(onClick = { reorder.finish(false); editing = !editing }) { Text(if (editing) "完成" else "编辑") }
+                    if (editable && tracks.isNotEmpty()) TextButton(enabled = !home.loading && !page.loading && !busy, onClick = { reorder.finish(false); editing = !editing }) { Text(if (editing) "完成" else "编辑") }
                     if (own && !target.special && target.kind == MusicKind.PLAYLIST) Box {
                         IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "歌单操作") }
                         TravelMenu(menu, { menu = false }) {
@@ -170,7 +170,7 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                         Row(Modifier.fillMaxWidth()
                             .animateItem(fadeInSpec = tween(150), placementSpec = if (dragging) null else tween(180), fadeOutSpec = tween(150))
                             .reorderLayer(reorder, key)
-                            .songDrag(reorder, key, enabled = editable && !busy && !page.loading, edit = { editing = true })
+                            .songDrag(reorder, key, enabled = editable && !home.loading && !busy && !page.loading, edit = { editing = true })
                             .background(if (dragging) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent, RoundedCornerShape(14.dp))
                             .semantics {
                                 if (editable) customActions = buildList {
@@ -187,7 +187,7 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (own) IconButton(enabled = !busy && !page.loading, onClick = { cloud.removeFromPlaylist(target, track) }) { Icon(Icons.Default.RemoveCircleOutline, "从歌单移除") }
                                     Icon(Icons.Default.DragHandle, "拖动歌曲", Modifier.size(44.dp).padding(6.dp)
-                                        .songDrag(reorder, key, enabled = !busy && !page.loading, longPress = false))
+                                        .songDrag(reorder, key, enabled = !home.loading && !busy && !page.loading, longPress = false))
                                 }
                             }
                         }
