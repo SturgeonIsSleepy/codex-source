@@ -11,3 +11,5 @@
 歌词移除上一版封面坐标放大和 GPU 模糊开场，改为 220 ms 的短距离上移/淡入，背景直接使用既有缓存磨砂取色，不增加退出等待。
 
 只运行四项页面身份/设置栈纯 JVM 回归与既有四项下一首回归，再生成一个 internal Release 和做必要打包核验；不启动额外设备，不自动写入真实账号。
+
+最终源码 `320f762a40d0cd21c899c993ba0c9ef087f8b82f` / [CI 41281591900](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41281591900) 成功执行目标 JVM 回归与 internal Release 构建。较早 1bda23c 也构建成功但不交付，最后将焦点/键盘控制放入搜索 Dialog 自身，避免调用主页窗口控制器。最终自用通用包 `ePlayer-v0.6.2-internal.apk`，56,986,671 bytes，SHA256 `94b9c4de061967c891f314a5a2ca20ea160056be76b8224134a846bf49cf790a`；固定签名、16KiB 对齐、三 ABI、音源摘要与 CI 代码一致性核验通过。未做设备复测或真实账号写入验收。
