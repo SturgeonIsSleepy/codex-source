@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -89,7 +90,10 @@ internal fun YtmPlayerPanel(model: EPlayerViewModel, cloud: CloudViewModel, stat
     }
     BoxWithConstraints(Modifier.fillMaxSize().testTag("player-page")) {
         val wide = maxWidth >= 600.dp && maxWidth > maxHeight
-        if (background == null) LyricFrostBackground(state.song, Modifier.matchParentSize()) else PlayerBackdrop(background, Modifier.matchParentSize())
+        if (background == null) {
+            LyricFrostBackground(state.song, Modifier.matchParentSize())
+            Box(Modifier.matchParentSize().background(base.copy(alpha = if (base.luminance() < .3f) .42f else .50f)))
+        } else PlayerBackdrop(background, Modifier.matchParentSize())
         Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 20.dp).then(if (wide) Modifier else swipe)) {
             Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = close) { Icon(Icons.Default.KeyboardArrowDown, "收起播放器") }

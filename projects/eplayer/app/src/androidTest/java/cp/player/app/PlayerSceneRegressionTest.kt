@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -72,6 +74,27 @@ class PlayerSceneRegressionTest {
         assertTrue(cover.width < scene.width * .9f)
         assertTrue(cover.height < scene.height * .7f)
         assertTrue(scene.bottom > cover.bottom)
+    }
+
+    @Test fun playerTintKeepsSecondaryTextReadableEvenOnAWhiteCover() {
+        val file = java.io.File(compose.activity.cacheDir, "qa-white-cover.png")
+        val image = android.graphics.Bitmap.createBitmap(64, 64, android.graphics.Bitmap.Config.ARGB_8888)
+        image.eraseColor(android.graphics.Color.WHITE)
+        file.outputStream().use { image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }; image.recycle()
+        val model = player(); val library = cloud()
+        val song = songs[0].copy(albumArtUrl = file.toURI().toString())
+        compose.runOnUiThread { compose.activity.setContent { EPlayerTheme(darkTheme = true) {
+            YtmPlayerPanel(model, library, Playback(song), null, { modifier, _ -> Box(modifier) }, {}, false, {}, {}, {}, {}, {}, {}, {})
+        } } }
+        var background = android.graphics.Color.BLACK
+        compose.waitUntil(12000) {
+            val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
+            val bounds = compose.onNodeWithText("测试歌手").fetchSemanticsNode().boundsInRoot
+            background = bitmap.getPixel(2, bounds.center.y.toInt().coerceIn(0, bitmap.height - 1))
+            android.graphics.Color.red(background) in 50..85
+        }
+        assertTrue(androidx.core.graphics.ColorUtils.calculateContrast(cp.player.ui.theme.NightColors.onSurfaceVariant.toArgb(), background) >= 4.5)
+        file.delete()
     }
 
     @Test fun longPressSelectsThatSecondSongAndMoreIsNotADragHandle() {
