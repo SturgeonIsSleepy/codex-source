@@ -11,8 +11,8 @@
     {
       "id": "eplayer",
       "path": "projects/eplayer",
-      "version": "0.5.0",
-      "description": "音乐核心与手绘界面重构中，普通版/自用版隔离；能力缺口与验收见交接说明",
+      "version": "0.6.3",
+      "description": "魔女主题音乐播放器，YTM 风格导航、自选背景、一键漫游与多选编辑，自用通用包",
       "entrypoint": "README.md"
     },
     {

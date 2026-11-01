@@ -1,169 +1,159 @@
 package cp.player.app
 
-import android.content.Context
-import androidx.compose.animation.animateColorAsState
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import coil3.compose.AsyncImage
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.google.gson.Gson
-import com.google.gson.JsonParser
-import java.io.File
-import java.security.MessageDigest
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
-data class LyricsText(val original: String, val translated: String = "")
-data class TimedLine(val time: Long, val text: String)
-
-object LyricParser {
-    private val stamp = Regex("\\[(\\d{1,3}):(\\d{2})(?:[.:](\\d{1,3}))?]")
-    private val offset = Regex("\\[offset:([+-]?\\d+)]", RegexOption.IGNORE_CASE)
-    fun parse(text: String): List<TimedLine> {
-        val shift = offset.find(text)?.groupValues?.get(1)?.toLongOrNull() ?: 0
-        val result = mutableListOf<TimedLine>()
-        text.lines().forEach { line ->
-            // NCM embeds author/composer credits as JSON among normal LRC lines.
-            // Render the text fragments, never the transport representation.
-            val credit = if (line.trimStart().startsWith("{")) runCatching {
-                val value = JsonParser.parseString(line).asJsonObject
-                val fragments = value.getAsJsonArray("c") ?: return@runCatching null
-                val content = fragments.joinToString("") { it.asJsonObject.get("tx")?.asString.orEmpty() }.trim()
-                TimedLine(((value.get("t")?.asLong ?: 0L) + shift).coerceAtLeast(0), content)
-            }.getOrNull() else null
-            if (credit != null) {
-                if (credit.text.isNotBlank()) result += credit
-                return@forEach
-            }
-            val stamps = stamp.findAll(line).toList()
-            val content = stamp.replace(line, "").trim()
-            if (stamps.isEmpty()) {
-                if (content.isNotBlank() && !content.startsWith("[")) result += TimedLine(0, content)
-            } else stamps.forEach { match ->
-                val millis = match.groupValues[3].padEnd(3, '0').take(3).toLongOrNull() ?: 0
-                result += TimedLine((match.groupValues[1].toLong() * 60000 + match.groupValues[2].toLong() * 1000 + millis + shift).coerceAtLeast(0), content)
-            }
-        }
-        return result.sortedBy { it.time }
-    }
-    fun index(lines: List<TimedLine>, position: Long): Int {
-        var low = 0; var high = lines.lastIndex; var found = -1
-        while (low <= high) { val middle = (low + high) ushr 1; if (lines[middle].time <= position) { found = middle; low = middle + 1 } else high = middle - 1 }
-        return found
-    }
-}
-
-class LyricsRepository(private val context: Context) {
-    suspend fun get(source: String, id: String): LyricsText = withContext(Dispatchers.IO) {
-        val hash = MessageDigest.getInstance("SHA-256").digest("$source:$id".toByteArray()).joinToString("") { "%02x".format(it) }
-        val file = File(context.filesDir, "lyrics/$hash.json")
-        if (file.isFile) runCatching { Gson().fromJson(file.readText(), LyricsText::class.java) }.getOrNull()?.let { return@withContext it }
-        val response = SourceStore.call(context, source, "lyric/new", mapOf("id" to id))
-        val text = LyricsText(response.obj("lrc")?.str("lyric") ?: "暂无歌词", response.obj("tlyric")?.str("lyric").orEmpty())
-        if (text.original != "暂无歌词") {
-            file.parentFile!!.mkdirs()
-            val temporary = File(file.parentFile, "$hash.tmp")
-            temporary.writeText(Gson().toJson(text)); temporary.renameTo(file)
-        }
-        text
-    }
-}
-
-/** Full-screen lyric reading: one active line, translations and seek by tapping. */
 @Composable
 internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, close: () -> Unit) {
-    val position by model.position.collectAsState()
+    val entrance = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { entrance.animateTo(1f, tween(220, easing = FastOutSlowInEasing)) }
+    val sampled by model.position.collectAsState()
     val playback by model.playback.collectAsState()
     val quality by model.quality.collectAsState()
-    val lines = remember(text) { LyricParser.parse(text?.original.orEmpty()) }
-    val translations = remember(text) { LyricParser.parse(text?.translated.orEmpty()).associate { it.time to it.text } }
-    val timed = remember(lines) { lines.any { it.time > 0 } }
-    val active = remember(lines, position) { LyricParser.index(lines, position) }
+    val context = LocalContext.current
+    val duration = playback.duration.takeIf { it > 0 } ?: playback.song?.durationMs ?: 0
+    val lines by produceState<List<TimedLine>>(emptyList(), text, duration) {
+        value = withContext(Dispatchers.Default) { text?.let { LyricParser.document(it, duration) }.orEmpty() }
+    }
     val list = rememberLazyListState()
+    var located by remember(playback.song?.id) { mutableStateOf(false) }
     val dragged by list.interactionSource.collectIsDraggedAsState()
-    var follow by remember(text) { mutableStateOf(true) }
+    var follow by remember(playback.song?.id) { mutableStateOf(true) }
     var translate by remember { mutableStateOf(true) }
+    var romanized by remember { mutableStateOf(false) }
     var qualityOpen by remember { mutableStateOf(false) }
+    var options by remember { mutableStateOf(false) }
+    val clock = remember(playback.song?.id) { mutableLongStateOf(sampled) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    var foreground by remember(lifecycle) { mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) }
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, _ -> foreground = lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
+    val coarseFocus = remember(lines, sampled) { LyricParser.focus(lines, sampled) }
+    val animateVisible by remember(list, coarseFocus) { derivedStateOf {
+        list.layoutInfo.visibleItemsInfo.any { it.index in maxOf(0, coarseFocus - 1)..(coarseFocus + 1) }
+    } }
+    val fineTiming = lines.subList(maxOf(0, coarseFocus - 1).coerceAtMost(lines.size), (coarseFocus + 2).coerceIn(0, lines.size))
+        .any { it.instrumental || it.words.any(TimedWord::timed) }
+    val moving = playback.playing && foreground && animateVisible && fineTiming && !qualityOpen && !options
+    // The MediaController already estimates the audio clock locally. No new service IPC or decoder polling.
+    LaunchedEffect(playback.song?.id, sampled, moving) {
+        clock.longValue = sampled
+        if (moving) while (isActive) { clock.longValue = model.lyricPosition(); delay(32) }
+    }
+    val activeState = remember(lines, clock) { derivedStateOf { LyricParser.focus(lines, clock.longValue) } }
+    val active by activeState
+    val timed = remember(lines) { lines.any { it.time > 0 || it.words.any(TimedWord::timed) } }
+    val duet = remember(lines) { lines.any { it.right } }
     LaunchedEffect(dragged) { if (dragged) follow = false }
-    LaunchedEffect(active, follow) {
+    LaunchedEffect(active, follow, timed) {
         if (follow && timed && active >= 0) {
-            val offset = -(list.layoutInfo.viewportEndOffset / 3)
-            list.animateScrollToItem(active, offset)
+            snapshotFlow { list.layoutInfo.viewportEndOffset }.first { it > 0 }
+            val anchor = (list.layoutInfo.viewportEndOffset * .24f).toInt()
+            val item = list.layoutInfo.visibleItemsInfo.firstOrNull { it.index == active }
+            if (!located || item == null) list.scrollToItem(active, -anchor)
+            else list.animateScrollBy((item.offset - anchor).toFloat(), tween(320))
+            located = true
         }
     }
-    Dialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Box(Modifier.fillMaxSize().background(Color(0xFF173044))) {
-            AsyncImage(playback.song?.albumArtUrl ?: "file:///android_asset/travel-sky.png", null,
-                Modifier.matchParentSize().blur(48.dp), contentScale = ContentScale.Crop, alpha = .42f)
-            Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color(0x77101924), Color(0xCC101923)))))
-            Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 24.dp)) {
+    TravelDialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        val ink = MaterialTheme.colorScheme.onBackground
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).testTag("lyrics-page").graphicsLayer {
+            alpha = entrance.value
+            translationY = (1 - entrance.value) * 20.dp.toPx()
+        }) {
+            LyricFrostBackground(playback.song, Modifier.matchParentSize())
+            Column(Modifier.fillMaxSize()
+                .systemBarsPadding().padding(horizontal = 20.dp)) {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = close) { Icon(Icons.Default.KeyboardArrowDown, "关闭歌词", tint = Color.White) }
-                    MusicCover(playback.song, Modifier.size(42.dp))
+                    IconButton(onClick = close) { Icon(Icons.Default.KeyboardArrowDown, "关闭歌词", tint = ink) }
+                    MusicCover(playback.song, Modifier.size(44.dp))
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                        Text(playback.song?.name.orEmpty(), color = Color.White, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(playback.song?.artist.orEmpty(), color = Color.White.copy(alpha = .55f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(playback.song?.name.orEmpty(), color = ink, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(playback.song?.artist.orEmpty(), color = ink.copy(alpha = .65f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    if (translations.isNotEmpty()) TextButton(onClick = { translate = !translate }) {
-                        Text("译", color = Color.White.copy(alpha = if (translate) 1f else .4f))
+                    if (lines.any { it.translation.isNotBlank() }) TextButton(onClick = { translate = !translate }) {
+                        Text("译", color = ink.copy(alpha = if (translate) 1f else .5f))
                     }
+                    IconButton(onClick = { options = true }) { Icon(Icons.Default.MoreHoriz, "歌词选项", tint = ink) }
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) {
-                    if (text == null) CircularProgressIndicator(Modifier.align(Alignment.Center).size(28.dp), color = Color.White, strokeWidth = 2.dp)
-                    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(top = 80.dp, bottom = 160.dp)) {
-                        itemsIndexed(lines) { index, line ->
-                            val color by animateColorAsState(if (!timed || index == active) Color.White else Color.White.copy(alpha = .33f), tween(240), label = "lyric-emphasis")
-                            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                .then(if (timed) Modifier.clickable { model.seek(line.time); follow = true } else Modifier)
-                                .padding(horizontal = 6.dp, vertical = 15.dp)) {
-                                Text(line.text.ifBlank { "•••" }, color = color, fontSize = 31.sp, lineHeight = 43.sp,
-                                    fontWeight = if (!timed || index == active) FontWeight.SemiBold else FontWeight.Medium)
-                                if (translate) translations[line.time]?.takeIf(String::isNotBlank)?.let {
-                                    Text(it, color = color.copy(alpha = if (!timed || index == active) .8f else .35f), fontSize = 18.sp,
-                                        lineHeight = 28.sp, modifier = Modifier.padding(top = 7.dp))
-                                }
-                            }
+                    if (text == null) CircularProgressIndicator(Modifier.align(Alignment.Center).size(28.dp), color = ink, strokeWidth = 2.dp)
+                    if (text != null && lines.isEmpty()) Text("暂无歌词", Modifier.align(Alignment.Center), color = ink.copy(alpha = .65f))
+                    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(top = 80.dp, bottom = 260.dp)) {
+                        itemsIndexed(lines, key = { index, line -> "${line.time}:${line.speaker}:$index" }) { index, line ->
+                            val highlighted by remember(line, index, clock, timed, activeState) { derivedStateOf {
+                                val now = clock.longValue
+                                if (!timed) true else now >= line.time && (line.end?.let { now < it } ?: (index == activeState.value))
+                            } }
+                            LyricVerse(line, clock, highlighted, duet, translate, romanized, ink,
+                                Modifier.clip(RoundedCornerShape(10.dp))
+                                    .then(if (timed && !line.credit) Modifier.clickable { model.seek(line.time); follow = true } else Modifier)
+                                    .padding(horizontal = 6.dp, vertical = if (line.credit) 6.dp else if (line.background) 9.dp else 22.dp))
                         }
                     }
                     if (!follow && timed) TextButton(onClick = { follow = true }, modifier = Modifier.align(Alignment.BottomEnd)) {
-                        Icon(Icons.Default.ArrowDownward, null, tint = Color.White, modifier = Modifier.size(16.dp)); Text("回到当前", color = Color.White)
+                        Icon(Icons.Default.ArrowDownward, null, tint = ink, modifier = Modifier.size(16.dp)); Text("回到当前", color = ink)
                     }
                 }
                 Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(playerTime(position), color = Color.White.copy(alpha = .55f), style = MaterialTheme.typography.labelMedium)
+                    Text(playerTime(sampled), color = ink.copy(alpha = .7f), style = MaterialTheme.typography.labelMedium)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = model::previous) { Icon(Icons.Default.SkipPrevious, "上一首", tint = Color.White, modifier = Modifier.size(28.dp)) }
+                        IconButton(onClick = model::previous) { Icon(Icons.Default.SkipPrevious, "上一首", tint = ink, modifier = Modifier.size(28.dp)) }
                         IconButton(onClick = model::playPause, modifier = Modifier.size(60.dp)) { Icon(if (playback.playRequested) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            if (playback.playRequested) "暂停" else "播放", tint = Color.White, modifier = Modifier.size(38.dp)) }
-                        IconButton(onClick = model::next) { Icon(Icons.Default.SkipNext, "下一首", tint = Color.White, modifier = Modifier.size(28.dp)) }
+                            if (playback.playRequested) "暂停" else "播放", tint = ink, modifier = Modifier.size(38.dp)) }
+                        IconButton(onClick = model::next) { Icon(Icons.Default.SkipNext, "下一首", tint = ink, modifier = Modifier.size(28.dp)) }
                     }
-                    TextButton(onClick = { qualityOpen = true }) { Text(qualityName(quality), color = Color.White.copy(alpha = .75f), style = MaterialTheme.typography.labelMedium) }
+                    TextButton(onClick = { qualityOpen = true }) { Text(qualityName(quality), color = ink.copy(alpha = .8f), style = MaterialTheme.typography.labelMedium) }
                 }
             }
         }
     }
     if (qualityOpen) QualitySheet(model) { qualityOpen = false }
+    TravelMenu(options, { options = false }) {
+        if (lines.any { it.romanized.isNotBlank() }) DropdownMenuItem(text = { Text(if (romanized) "隐藏音译" else "显示音译") },
+            onClick = { romanized = !romanized; options = false })
+        if (!text?.ttmlSource.isNullOrBlank()) DropdownMenuItem(text = { Text("歌词来源") }, onClick = {
+            val url = text!!.ttmlSource
+            if (url.startsWith("https://github.com/amll-dev/amll-ttml-db/")) context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            options = false
+        })
+        DropdownMenuItem(text = { Text("回到当前歌词") }, onClick = { follow = true; options = false })
+    }
 }

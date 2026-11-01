@@ -1,10 +1,10 @@
 package cp.player.app
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,7 +15,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -26,12 +29,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import cp.player.model.Song
 import cp.player.ui.artwork.WitchPlayerView
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
@@ -39,12 +40,16 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state: Playback,
-                          more: () -> Unit, comments: () -> Unit, close: () -> Unit) {
+                          more: () -> Unit, comments: () -> Unit, queueOptions: (Int) -> Unit = {}, close: () -> Unit) {
     val animate by model.animate.collectAsState()
+    val coverBlur by model.coverBlur.collectAsState()
+    val customBackground by model.playerBackground.collectAsState()
     val context = LocalContext.current.applicationContext
-    val artworkReady by produceState(initialValue = false, key1 = context) {
+    val backdrop = MaterialTheme.colorScheme.background
+    val night = backdrop.luminance() < .3f
+    val artworkGeneration by produceState(initialValue = 0, key1 = context) {
         withContext(Dispatchers.IO) { WitchPlayerView.prepareAssets(context) }
-        value = true
+        value += 1
     }
     val favorites by model.favorites.collectAsState()
     val likes by cloud.likes.collectAsState()
@@ -56,59 +61,37 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
     var lyrics by remember { mutableStateOf<LyricsText?>(null) }
     var showLyrics by remember { mutableStateOf(false) }
     var seeking by remember(state.song?.id) { mutableStateOf<Float?>(null) }
-    val scope = rememberCoroutineScope()
     val liked = state.song?.let { song ->
         if (state.source == null) song.id in favorites else (state.remoteId ?: song.id) in likes[state.source].orEmpty()
     } ?: false
     LaunchedEffect(showLyrics, state.source, state.remoteId, state.song?.id) {
-        lyrics = if (showLyrics) model.lyrics() else null
+        lyrics = null
+        if (showLyrics) lyrics = model.lyrics { lyrics = it }
     }
     val openLyrics = { showLyrics = true }
-    Dialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        PlayerLayout(
-            state.song, state.buffering,
-            header = { PlayerHeader(close, openLyrics, if (state.source != null) comments else null, more) { queue = true } },
-            artwork = { modifier ->
-                if (!artworkReady) Box(modifier, contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                else AndroidView(
-                    factory = { WitchPlayerView(it) }, modifier = modifier,
-                    update = { view ->
-                        view.setMotionEnabled(animate)
-                        view.setArtworkActive(!showLyrics && !queue)
-                        view.setPlayback(state.playing, state.playRequested, position) })
+    TravelDialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        YtmPlayerPanel(model, cloud, state, customBackground,
+            artwork = { modifier, characterVisible ->
+                CharacterStage(state.song, modifier, coverBlur, customBackground) { portrait ->
+                    AnimatedVisibility(characterVisible && artworkGeneration > 0, enter = fadeIn(tween(140)), exit = fadeOut(tween(90))) {
+                        AndroidView(factory = { WitchPlayerView(it) }, modifier = portrait.testTag("player-character"), update = { view ->
+                            view.setAppearance(night, backdrop.toArgb(), artworkGeneration)
+                            view.setCoverBackdropEnabled(true)
+                            view.setMotionEnabled(animate)
+                            view.setArtworkActive(characterVisible && !showLyrics && !qualitySheet)
+                            view.setPlayback(state.playing, state.playRequested, position)
+                        })
+                    }
+                }
             },
-            controls = {
-                Column {
-                PlayerTransport(state, position, seeking, { seeking = it }, {
-                    seeking?.let { model.seek(it.toLong()) }; seeking = null
-                }, model::playPause, model::previous, model::next, model::shuffle, model::repeat, liked) {
-                    state.song?.let { song ->
-                        if (state.source == null) model.favorite(song) else model.currentTrack()?.let(cloud::like)
-                    }
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                    TextButton(onClick = { qualitySheet = true }) { Text(qualityName(quality), style = MaterialTheme.typography.labelMedium) }
-                }
-                }
-            }
-        )
-    }
-    if (queue) ModalBottomSheet(onDismissRequest = { queue = false }) {
-        LazyColumn(contentPadding = PaddingValues(20.dp)) {
-            items(state.queue.size) { index ->
-                var options by remember { mutableStateOf(false) }
-                SongRow(Track(state.queue[index]), state.queue[index].id == state.song?.id, { model.queueIndex(index); queue = false }) {
-                    Box {
-                        IconButton(onClick = { options = true }) { Icon(Icons.Default.MoreVert, "队列操作") }
-                        DropdownMenu(options, { options = false }) {
-                            if (index > 0) DropdownMenuItem(text = { Text("上移") }, onClick = { options = false; model.moveQueue(index, index - 1) })
-                            if (index < state.queue.lastIndex) DropdownMenuItem(text = { Text("下移") }, onClick = { options = false; model.moveQueue(index, index + 1) })
-                            DropdownMenuItem(text = { Text("移除") }, onClick = { options = false; model.removeQueue(index) })
-                        }
-                    }
-                }
-            }
-        }
+            transport = { PlayerTransport(state, position, seeking, { seeking = it }, {
+                seeking?.let { model.seek(it.toLong()) }; seeking = null
+            }, model::playPause, model::previous, model::next, model::shuffle, model::repeat, liked, {
+                state.song?.let { song -> if (state.source == null) model.favorite(song) else model.currentTrack()?.let(cloud::like) }
+            }, showFavorite = false) },
+            liked = liked, like = { state.song?.let { song -> if (state.source == null) model.favorite(song) else model.currentTrack()?.let(cloud::like) } },
+            lyrics = openLyrics, comments = if (state.source != null) comments else null,
+            quality = { qualitySheet = true }, more = more, songOptions = queueOptions, close = close)
     }
     if (qualitySheet) QualitySheet(model) { qualitySheet = false }
     if (showLyrics) LyricsScreen(lyrics, model) { showLyrics = false }
@@ -120,7 +103,7 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
 @Composable
 internal fun PlayerLayout(song: Song?, buffering: Boolean, header: @Composable () -> Unit,
                           artwork: @Composable (Modifier) -> Unit, controls: @Composable () -> Unit) {
-    BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
+    BoxWithConstraints(Modifier.fillMaxSize().systemBarsPadding()) {
         if (maxWidth >= 600.dp && maxWidth > maxHeight) {
             Row(Modifier.fillMaxSize().padding(horizontal = 16.dp).testTag("player-wide")) {
                 artwork(Modifier.weight(.45f).fillMaxHeight().testTag("player-artwork"))
@@ -134,13 +117,8 @@ internal fun PlayerLayout(song: Song?, buffering: Boolean, header: @Composable (
         } else {
             Column(Modifier.fillMaxSize().padding(horizontal = 20.dp).testTag("player-portrait")) {
                 header()
-                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-                    val artHeight = (maxHeight - 100.dp).coerceAtLeast(160.dp)
-                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                        PlayerMetadata(song)
-                        artwork(Modifier.fillMaxWidth().height(artHeight).testTag("player-artwork"))
-                    }
-                }
+                artwork(Modifier.weight(1f).fillMaxWidth().testTag("player-artwork"))
+                PlayerMetadata(song)
                 if (buffering) LinearProgressIndicator(Modifier.fillMaxWidth())
                 controls()
             }
@@ -150,11 +128,15 @@ internal fun PlayerLayout(song: Song?, buffering: Boolean, header: @Composable (
 
 @Composable
 private fun PlayerMetadata(song: Song?) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp).testTag("player-metadata")) {
-        Text(song?.name ?: "未选择音乐", style = MaterialTheme.typography.headlineSmall,
-            maxLines = 3, overflow = TextOverflow.Ellipsis)
-        if (!song?.artist.isNullOrBlank()) Text(song!!.artist, style = MaterialTheme.typography.bodyMedium,
-            maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    AnimatedContent(song, contentKey = { it?.id },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp).testTag("player-metadata"),
+        transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(140)) }, label = "track-metadata") { display ->
+        Column(Modifier.fillMaxWidth()) {
+            Text(display?.name ?: "未选择音乐", style = MaterialTheme.typography.headlineSmall,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (!display?.artist.isNullOrBlank()) Text(display!!.artist, style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -163,10 +145,8 @@ internal fun PlayerHeader(close: () -> Unit, lyrics: () -> Unit, comments: (() -
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = close) { Icon(Icons.Default.KeyboardArrowDown, "收起播放器") }
         Spacer(Modifier.weight(1f))
-        IconButton(onClick = lyrics) { Icon(Icons.Default.Lyrics, "歌词") }
         if (comments != null) IconButton(onClick = comments) { Icon(Icons.Default.ChatBubbleOutline, "评论") }
         IconButton(onClick = more) { Icon(Icons.Default.MoreHoriz, "更多歌曲操作") }
-        IconButton(onClick = queue) { Icon(Icons.Default.QueueMusic, "播放队列") }
     }
 }
 
@@ -174,7 +154,7 @@ internal fun PlayerHeader(close: () -> Unit, lyrics: () -> Unit, comments: (() -
 @Composable
 internal fun PlayerTransport(state: Playback, position: Long, seeking: Float?, seek: (Float) -> Unit, finishSeek: () -> Unit,
                              playPause: () -> Unit, previous: () -> Unit, next: () -> Unit, shuffle: () -> Unit,
-                             repeat: () -> Unit, liked: Boolean, favorite: () -> Unit) {
+                             repeat: () -> Unit, liked: Boolean, favorite: () -> Unit, showFavorite: Boolean = true) {
     Column(Modifier.fillMaxWidth().testTag("player-transport")) {
         val limit = state.duration.coerceAtLeast(1).toFloat()
         val value = (seeking ?: position.toFloat()).coerceIn(0f, limit)
@@ -201,22 +181,35 @@ internal fun PlayerTransport(state: Playback, position: Long, seeking: Float?, s
             Text(playerTime((seeking ?: position.toFloat()).toLong()), style = MaterialTheme.typography.labelMedium)
             Text(playerTime(state.duration), style = MaterialTheme.typography.labelMedium)
         }
-        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly,
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = previous, enabled = state.queue.size > 1) { Icon(Icons.Default.SkipPrevious, "上一首", Modifier.size(34.dp)) }
-            FilledIconButton(onClick = playPause, modifier = Modifier.size(64.dp)) { Icon(
-                if (state.playRequested) Icons.Default.Pause else Icons.Default.PlayArrow,
-                if (state.playRequested) "暂停" else "播放", Modifier.size(38.dp)) }
-            IconButton(onClick = next, enabled = state.queue.size > 1) { Icon(Icons.Default.SkipNext, "下一首", Modifier.size(34.dp)) }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            IconToggleButton(checked = state.shuffle, onCheckedChange = { shuffle() }) { Icon(Icons.Default.Shuffle, "随机播放") }
-            IconToggleButton(checked = liked, onCheckedChange = { favorite() }, enabled = state.song != null) {
-                Icon(if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "喜欢")
+            val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+            IconToggleButton(checked = state.shuffle, onCheckedChange = { shuffle(); haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) },
+                modifier = Modifier.semantics { stateDescription = if (state.shuffle) "随机播放已开启" else "顺序播放" }) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.Shuffle, if (state.shuffle) "关闭随机播放" else "开启随机播放",
+                        modifier = Modifier.size(23.dp), tint = if (state.shuffle) ink else quietInk)
+                    if (state.shuffle) Box(Modifier.padding(top = 3.dp).size(4.dp).background(ink, CircleShape))
+                }
             }
-            IconButton(onClick = repeat) { Icon(if (state.repeat == 1) Icons.Default.RepeatOne else Icons.Default.Repeat,
-                when (state.repeat) { 1 -> "单曲循环"; 2 -> "列表循环"; else -> "循环关闭" },
-                tint = if (state.repeat != 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.outline) }
+            IconButton(onClick = previous, enabled = state.queue.size > 1) { Icon(Icons.Default.SkipPrevious, "上一首", Modifier.size(29.dp)) }
+            FilledIconButton(onClick = playPause, modifier = Modifier.size(56.dp)) { Icon(
+                if (state.playRequested) Icons.Default.Pause else Icons.Default.PlayArrow,
+                if (state.playRequested) "暂停" else "播放", Modifier.size(32.dp)) }
+            IconButton(onClick = next, enabled = state.queue.size > 1) { Icon(Icons.Default.SkipNext, "下一首", Modifier.size(29.dp)) }
+            IconButton(onClick = repeat) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(if (state.repeat == 1) Icons.Default.RepeatOne else Icons.Default.Repeat,
+                        when (state.repeat) { 1 -> "单曲循环"; 2 -> "列表循环"; else -> "循环关闭" },
+                        modifier = Modifier.size(23.dp), tint = if (state.repeat != 0) ink else quietInk)
+                    if (state.repeat != 0) Box(Modifier.padding(top = 3.dp).size(4.dp).background(ink, CircleShape))
+                }
+            }
+        }
+        if (showFavorite) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            IconToggleButton(checked = liked, onCheckedChange = { favorite() }, enabled = state.song != null, modifier = Modifier.size(40.dp)) {
+                Icon(if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "喜欢", Modifier.size(21.dp))
+            }
         }
     }
 }

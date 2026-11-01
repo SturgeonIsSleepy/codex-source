@@ -45,7 +45,11 @@ jobs:
       - name: Build preview and device tests
         run: |
           bash tools/prepare-local-signing.sh
-          bash gradlew testStandardFastReleaseUnitTest assembleStandardFastRelease assembleInternalFastRelease assembleStandardFastReleaseAndroidTest -PwithRust=false -PtestBuildType=fastRelease --console=plain
+          if [ "$GITHUB_REF" = "refs/heads/codex/eplayer-power" ]; then
+            bash gradlew testInternalFastReleaseUnitTest assembleInternalFastRelease assembleInternalFastReleaseAndroidTest assembleInternalRelease -PtestBuildType=fastRelease -PwithRust=false '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8' --console=plain
+          else
+            bash gradlew testStandardFastReleaseUnitTest assembleStandardFastRelease assembleInternalFastRelease assembleStandardFastReleaseAndroidTest -PwithRust=false -PtestBuildType=fastRelease --console=plain
+          fi
       - name: Upload early fast validation candidates
         if: github.ref == 'refs/heads/codex/eplayer-light'
         uses: actions/upload-artifact@v4
@@ -56,9 +60,33 @@ jobs:
             projects/eplayer/app/build/outputs/apk/androidTest/standard/fastRelease/*.apk
           if-no-files-found: error
       - name: Build shrunk release candidates
-        if: github.ref == 'refs/heads/codex/eplayer-light' || github.ref == 'refs/heads/codex/ncm-basic-completion' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'workflow_dispatch'
-        run: bash gradlew assembleStandardRelease assembleInternalRelease -PwithRust=false --console=plain
+        if: github.ref == 'refs/heads/codex/eplayer-light' || github.ref == 'refs/heads/codex/ncm-basic-completion' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/codex/eplayer-power')
+        run: |
+          if [ "$GITHUB_REF" = "refs/heads/codex/eplayer-power" ]; then
+            bash gradlew assembleInternalRelease -PwithRust=false '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8' --console=plain
+          else
+            bash gradlew assembleStandardRelease assembleInternalRelease -PwithRust=false --console=plain
+          fi
+      - name: Upload internal universal preview and device tests
+        if: github.ref == 'refs/heads/codex/eplayer-power'
+        uses: actions/upload-artifact@v4
+        with:
+          name: eplayer-preview-${{ github.sha }}
+          path: |
+            projects/eplayer/app/build/outputs/apk/internal/release/*universal*.apk
+          if-no-files-found: error
+      - name: Upload local full-check candidates
+        if: github.ref == 'refs/heads/codex/eplayer-power'
+        uses: actions/upload-artifact@v4
+        with:
+          name: eplayer-qa-${{ github.sha }}
+          path: |
+            projects/eplayer/app/build/outputs/apk/internal/fastRelease/*universal*.apk
+            projects/eplayer/app/build/outputs/apk/androidTest/internal/fastRelease/*.apk
+            projects/eplayer/app/build/test-results/
+          if-no-files-found: error
       - name: Upload preview and device tests
+        if: github.ref != 'refs/heads/codex/eplayer-power'
         uses: actions/upload-artifact@v4
         with:
           name: eplayer-preview-${{ github.sha }}
@@ -74,6 +102,7 @@ jobs:
             projects/eplayer/app/build/outputs/apk/androidTest/standard/fastRelease/*.apk
           if-no-files-found: error
   device-check:
+    if: github.ref != 'refs/heads/codex/eplayer-power'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -92,10 +121,13 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Verify standard playback and responsive layout on Android 16
+      - name: Verify playback and responsive layout on Android 16
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          EPLAYER_CHECK_RELEASE: ${{ (github.ref == 'refs/heads/codex/eplayer-light' || github.ref == 'refs/heads/codex/ncm-basic-completion' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'workflow_dispatch') && '1' || '0' }}
+          EPLAYER_VARIANT: ${{ github.ref == 'refs/heads/codex/eplayer-power' && 'internal' || 'standard' }}
+          EPLAYER_APK_ARCH: ${{ github.ref == 'refs/heads/codex/eplayer-power' && 'universal' || 'x86_64' }}
+          EPLAYER_TEST_CLASSES: ${{ github.ref == 'refs/heads/codex/eplayer-power' && 'cp.player.EPlayerIntegrationTest,cp.player.engine.EnergyAudioProcessorTest,cp.player.ui.artwork.ArtworkPowerTest,cp.player.ui.artwork.ArtIntegrityTest,cp.player.app.DarkAppearanceTest,cp.player.app.TravelPresentationTest,cp.player.app.LightNavigationTest,cp.player.app.LyricPresentationTest,cp.player.app.LibraryFlowTest' || '' }}
+          EPLAYER_CHECK_RELEASE: ${{ (github.ref == 'refs/heads/codex/eplayer-power' || github.ref == 'refs/heads/codex/eplayer-light' || github.ref == 'refs/heads/codex/ncm-basic-completion' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'workflow_dispatch') && '1' || '0' }}
         with:
           api-level: 36
           target: google_apis

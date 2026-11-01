@@ -45,8 +45,9 @@ class SoundSettingsScreenTest {
         try {
             compose.runOnIdle { model = ViewModelProvider(compose.activity)[EPlayerViewModel::class.java] }
             val current = model!!
-            compose.onNodeWithContentDescription("设置").performClick()
-            compose.onNodeWithText("播放与声音").performClick()
+            compose.onNodeWithContentDescription("账号与设置").performClick()
+            compose.onNodeWithText("设置").performClick()
+            compose.onNodeWithText("播放设置").performClick()
             if (savedEngine != 1) compose.onNodeWithTag("audio-engine-1").performClick()
             compose.waitUntil(15000) { UserPreferences.getAudioEngine(context) == 1 }
             compose.onNodeWithTag("open-sound-settings").performClick()
@@ -107,8 +108,9 @@ class SoundSettingsScreenTest {
     }
 
     @Test fun realSettingsNavigationReturnsToTheSameHome() {
-        compose.onNodeWithContentDescription("设置").performClick()
-        compose.onNodeWithText("播放与声音").performClick()
+        compose.onNodeWithContentDescription("账号与设置").performClick()
+        compose.onNodeWithText("设置").performClick()
+        compose.onNodeWithText("播放设置").performClick()
         compose.onNodeWithTag("open-sound-settings").assertIsDisplayed()
         save("settings-full-page", "settings-panel")
         compose.onNodeWithTag("open-sound-settings").performClick()
@@ -118,7 +120,7 @@ class SoundSettingsScreenTest {
         compose.onNodeWithTag("open-sound-settings").assertIsDisplayed()
         compose.onNodeWithText("完成").performClick()
         compose.onNodeWithTag("settings-panel").assertDoesNotExist()
-        compose.onNodeWithContentDescription("设置").assertIsDisplayed()
+        compose.onNodeWithText("画面设置").assertIsDisplayed()
     }
 
     @Test fun largeTextSoundControlsRemainReachableAndAccessible() {
@@ -157,7 +159,7 @@ class SoundSettingsScreenTest {
             } }
         }
         compose.onNodeWithContentDescription("均衡器").assertIsNotEnabled()
-        compose.onNodeWithText("播放一首歌后显示设备支持的频段。").assertIsDisplayed()
+        compose.onNodeWithText("暂无可用频段").assertIsDisplayed()
         for (label in listOf("环绕感", "低音增强", "响度增强"))
             compose.onNodeWithContentDescription(label).performScrollTo().assertIsNotEnabled()
         save("sound-system-unavailable")

@@ -38,6 +38,22 @@ class MusicService : MediaSessionService() {
     private lateinit var audio: AudioManager
     private var rustFocus: RustAudioFocus? = null
     private var engine = 0
+    private val playNextOrder = cp.player.core.playback.PlayNextOrder()
+    private var lastPriorityOrder: String? = null
+    private fun updatePriorityShuffle() {
+        playNextOrder.consume(player.currentMediaItem)
+        val items = (0 until player.mediaItemCount).map(player::getMediaItemAt)
+        val current = player.currentMediaItemIndex
+        val pending = playNextOrder.pending(items, current)
+        val exo = player as? androidx.media3.exoplayer.ExoPlayer ?: return
+        if (!exo.shuffleModeEnabled || pending.isEmpty() || current !in items.indices) { lastPriorityOrder = null; return }
+        val signature = "$current:${items.size}:${pending.map { cp.player.core.playback.PlayNextOrder.token(items[it]) }}"
+        if (lastPriorityOrder == signature) return
+        lastPriorityOrder = signature
+        val fixed = (listOf(current) + pending).toSet()
+        val order = listOf(current) + pending + items.indices.filter { it !in fixed }.shuffled()
+        exo.setShuffleOrder(androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), System.nanoTime()))
+    }
     private val handler = Handler(Looper.getMainLooper())
     private val listeningClock = cp.player.app.ListeningClock()
     private val listeningCheckpoint = Runnable { checkpointListening(saveQueue = true) }
@@ -65,6 +81,7 @@ class MusicService : MediaSessionService() {
     }
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
+            if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED)) updatePriorityShuffle()
             if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION)) checkpointListening()
             if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION,
                     Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_POSITION_DISCONTINUITY)) {
@@ -99,6 +116,7 @@ class MusicService : MediaSessionService() {
                 }
                 override fun onPlayerInteractionFinished(session: MediaSession,
                     controller: MediaSession.ControllerInfo, playerCommands: Player.Commands) {
+                    if (playerCommands.contains(Player.COMMAND_CHANGE_MEDIA_ITEMS)) updatePriorityShuffle()
                     if (playerCommands.contains(Player.COMMAND_STOP)) {
                         // Only whitelist our fixture labels; never dump arbitrary connection hints.
                         val label = controller.connectionHints.getString("eplayer.qa.owner")
@@ -144,6 +162,8 @@ class MusicService : MediaSessionService() {
                         engine = requested
                         UserPreferences.saveAudioEngine(this@MusicService, engine)
                         player = CPPlayerManager.createPlayer(this@MusicService, engine)
+                        lastPriorityOrder = null
+                        (player as? cp.player.engine.FlickPlayer)?.rememberPlayedNextTokens(playNextOrder.consumed())
                         rustFocus = if (engine == 1) RustAudioFocus(audio, player, handler) else null
                         player.repeatMode = repeat
                         player.shuffleModeEnabled = shuffle
