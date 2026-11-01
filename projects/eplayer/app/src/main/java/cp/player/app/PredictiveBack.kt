@@ -36,8 +36,9 @@ internal fun rememberBackPreview() = remember { BackPreview() }
 @Composable
 internal fun PreviewBackHandler(preview: BackPreview, enabled: Boolean = true, onBack: () -> Unit) {
     val latestBack by rememberUpdatedState(onBack)
+    val imeVisible = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
     val scope = rememberCoroutineScope()
-    PredictiveBackHandler(enabled) { events ->
+    PredictiveBackHandler(enabled && !imeVisible) { events ->
         try {
             events.collect { event ->
                 preview.edge = event.swipeEdge

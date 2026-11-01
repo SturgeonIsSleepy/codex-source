@@ -96,17 +96,18 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
         load(target)
     }
     fun back() { pages.update { it.dropLast(1) } }
+    fun closeDetails() { pages.value = emptyList() }
     fun replaceTop(target: MusicEntry) {
         pages.update { if (it.isEmpty()) listOf(DetailPage(target)) else it.dropLast(1) + DetailPage(target) }
         load(target)
     }
     fun retry() { pages.value.lastOrNull()?.let { load(it.target) } }
-    private fun updatePage(target: MusicEntry, transform: (DetailPage) -> DetailPage) { pages.update { list -> list.map { if (it.target == target) transform(it) else it } } }
+    private fun updatePage(target: MusicEntry, transform: (DetailPage) -> DetailPage) { pages.update { list -> list.map { if (it.target.id == target.id && it.target.source == target.source && it.target.kind == target.kind) transform(it) else it } } }
     private fun load(target: MusicEntry) = viewModelScope.launch {
         updatePage(target) { it.copy(loading = true, error = null) }
         try {
             val result = MusicRepository(app, target.source).detail(target)
-            updatePage(target) { it.copy(data = result, loading = false) }
+            updatePage(target) { it.copy(data = applyLocalOrder(target, result), loading = false) }
         } catch (error: CancellationException) { throw error }
         catch (error: Exception) { updatePage(target) { it.copy(loading = false, error = error.message ?: "加载失败") } }
     }
@@ -118,7 +119,7 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
             updatePage(page.target) { it.copy(loading = true) }
             try {
                 val next = MusicRepository(app, page.target.source).detail(page.target, detail.tracks.size)
-                updatePage(page.target) { it.copy(loading = false, data = detail.copy(tracks = (detail.tracks + next.tracks).distinctBy { it.song.id }, total = if (next.tracks.isEmpty()) detail.tracks.size else detail.total)) }
+                updatePage(page.target) { it.copy(loading = false, data = applyLocalOrder(page.target, detail.copy(tracks = (detail.tracks + next.tracks).distinctBy { it.song.id }, total = if (next.tracks.isEmpty()) detail.tracks.size else detail.total))) }
             } catch (error: Exception) { updatePage(page.target) { it.copy(loading = false, error = error.message) } }
         }
     }
@@ -160,6 +161,49 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
             likes.update { values -> values + (target.source to (values[target.source].orEmpty() - (track.remoteId ?: track.song.id))) }
         } else MusicRepository(app, target.source).changeTracks(target.id, listOf(track.remoteId ?: track.song.id), false)
         load(target)
+    }
+    private fun orderKey(target: MusicEntry) = "${target.source}:${home.value.account?.id.orEmpty()}:${target.id}"
+    private fun localOrder(target: MusicEntry): List<String> = runCatching {
+        val raw = app.getSharedPreferences("playlist_order", 0).getString(orderKey(target), null) ?: return@runCatching emptyList()
+        com.google.gson.JsonParser.parseString(raw).asJsonArray.map { it.asString }
+    }.getOrDefault(emptyList())
+    private fun applyLocalOrder(target: MusicEntry, data: MusicDetail): MusicDetail {
+        if (target.kind != MusicKind.PLAYLIST || target.owner != null && target.owner == home.value.account?.id) return data
+        val ranks = localOrder(target).withIndex().associate { it.value to it.index }
+        if (ranks.isEmpty()) return data
+        return data.copy(tracks = data.tracks.sortedBy { ranks[it.remoteId ?: it.song.id] ?: Int.MAX_VALUE })
+    }
+    fun movePlaylist(target: MusicEntry, from: Int, to: Int) {
+        if (busy.value) return
+        val page = pages.value.lastOrNull { it.target.id == target.id && it.target.source == target.source && it.target.kind == target.kind } ?: return
+        val before = page.data ?: return
+        if (from !in before.tracks.indices || to !in before.tracks.indices || from == to) return
+        val tracks = before.tracks.toMutableList().apply { add(to, removeAt(from)) }
+        val own = target.owner != null && target.owner == home.value.account?.id
+        val optimistic = before.copy(tracks = tracks)
+        updatePage(target) { it.copy(data = optimistic, error = null) }
+        if (!own) {
+            val ids = tracks.map { it.remoteId ?: it.song.id }
+            val known = ids.toHashSet()
+            val saved = ids + localOrder(target).filter { it !in known }
+            app.getSharedPreferences("playlist_order", 0).edit().putString(orderKey(target), com.google.gson.Gson().toJson(saved)).apply()
+            return
+        }
+        viewModelScope.launch {
+            busy.value = true
+            try {
+                MusicRepository(app, target.source).movePlaylistTrack(target.id,
+                    before.tracks[from].remoteId ?: before.tracks[from].song.id,
+                    before.tracks[to].remoteId ?: before.tracks[to].song.id)
+            } catch (cancelled: CancellationException) {
+                updatePage(target) { if (it.data == optimistic) it.copy(data = before) else it }
+                throw cancelled
+            } catch (error: Exception) {
+                val issue = error.message ?: "排序未保存"
+                updatePage(target) { if (it.data == optimistic) it.copy(data = before, error = issue) else it }
+                message.value = issue
+            } finally { busy.value = false }
+        }
     }
     fun radio(play: (List<Track>) -> Unit) = action {
         val source = home.value.source ?: error("请先选择音源")

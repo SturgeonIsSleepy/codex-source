@@ -11,8 +11,8 @@
     {
       "id": "eplayer",
       "path": "projects/eplayer",
-      "version": "0.5.7",
-      "description": "魔女主题音乐播放器，可切换伊蕾娜主题、首页搜索与精简设置，自用通用包",
+      "version": "0.5.8",
+      "description": "魔女主题音乐播放器，可切换伊蕾娜主题、长按编辑歌单与悬浮播放，自用通用包",
       "entrypoint": "README.md"
     },
     {

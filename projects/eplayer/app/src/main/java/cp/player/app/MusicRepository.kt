@@ -126,6 +126,18 @@ class MusicRepository(private val context: Context, val source: String) {
     suspend fun changeTracks(playlist: String, ids: List<String>, add: Boolean) {
         request("playlist/tracks", mapOf("op" to if (add) "add" else "del", "pid" to playlist, "tracks" to ids.joinToString(",")))
     }
+    suspend fun movePlaylistTrack(playlist: String, fromId: String, toId: String) {
+        val header = request("playlist/detail", mapOf("id" to playlist)).obj("playlist") ?: error("歌单不存在")
+        val ids = header.array("trackIds").mapNotNull { it.takeIf { item -> item.isJsonObject }?.asJsonObject?.str("id") }.toMutableList()
+        check(ids.size == header.number("trackCount")) { "歌单未完整加载，请重试" }
+        val from = ids.indexOf(fromId); val to = ids.indexOf(toId)
+        check(from >= 0 && to >= 0) { "歌单已更新，请刷新重试" }
+        if (from == to) return
+        ids.add(to, ids.removeAt(from))
+        // Submit the complete current server order, including songs beyond the loaded UI page.
+        val array = JsonArray().apply { ids.forEach { add(it.toBigDecimal()) } }
+        request("song/order/update", mapOf("pid" to playlist, "ids" to array.toString()))
+    }
     suspend fun subscribe(target: MusicEntry, value: Boolean) {
         val method = when (target.kind) { MusicKind.ALBUM -> "album/sub"; MusicKind.ARTIST -> "artist/sub"; else -> "playlist/subscribe" }
         request(method, mapOf("id" to target.id, "t" to if (value) "1" else "2"))

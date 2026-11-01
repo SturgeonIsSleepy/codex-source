@@ -237,8 +237,8 @@ object LyricParser {
                 ?.takeIf { kotlin.math.abs(it.time - at) <= 800 }?.text.orEmpty()
         }
         val enriched = selected.map { line -> line.copy(
-            translation = line.translation.ifBlank { if (line.background) "" else nearest(translations, line.time) },
-            romanized = line.romanized.ifBlank { if (line.background) "" else nearest(romanized, line.time) }) }
+            translation = if (line.instrumental || line.text.isBlank()) "" else line.translation.ifBlank { if (line.background) "" else nearest(translations, line.time) },
+            romanized = if (line.instrumental || line.text.isBlank()) "" else line.romanized.ifBlank { if (line.background) "" else nearest(romanized, line.time) }) }
         val result = enriched.toMutableList()
         val vocals = enriched.filter { !it.credit && !it.background && !it.instrumental && it.text.isNotBlank() }
         vocals.firstOrNull()?.takeIf { it.time >= 4000 }?.let { first ->

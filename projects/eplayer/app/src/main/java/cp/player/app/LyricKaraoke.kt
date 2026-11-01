@@ -108,11 +108,11 @@ internal fun LyricVerse(line: TimedLine, clock: State<Long>, active: Boolean, du
             horizontalAlignment = if (line.right) Alignment.End else Alignment.Start) {
             if (line.instrumental || line.text.isBlank()) InterludeDots(clock, line.time, line.end, active, ink)
             else KaraokeWords(line, clock, active, ink, Modifier.fillMaxWidth())
-            if (showTranslation && line.translation.isNotBlank()) Text(line.translation,
+            if (!line.instrumental && line.text.isNotBlank() && showTranslation && line.translation.isNotBlank()) Text(line.translation,
                 color = ink.copy(alpha = if (active) .86f else .45f), fontSize = 18.sp, lineHeight = 28.sp,
                 textAlign = if (line.right) TextAlign.End else TextAlign.Start,
                 modifier = Modifier.fillMaxWidth().padding(top = 7.dp))
-            if (showRomanized && line.romanized.isNotBlank()) Text(line.romanized,
+            if (!line.instrumental && line.text.isNotBlank() && showRomanized && line.romanized.isNotBlank()) Text(line.romanized,
                 color = ink.copy(alpha = .65f), fontSize = 16.sp, lineHeight = 24.sp,
                 textAlign = if (line.right) TextAlign.End else TextAlign.Start,
                 modifier = Modifier.fillMaxWidth().padding(top = 5.dp))

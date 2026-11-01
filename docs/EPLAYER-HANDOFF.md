@@ -1,5 +1,7 @@
 # ePlayer 转移交接
 
+0.5.8 接续输入法返回、整行长按编辑/拖动、歌单悬浮底栏及间奏翻译修复，记录见 [交互记录](../projects/eplayer/docs/INTERACTION-0.5.8.md)。自有歌单保存云端、他人歌单仅保存本机播放顺序。只构建与打包核验，不做真实账号写入或额外设备回归。最终包待构建。
+
 0.5.7 接续主题、设置与首页搜索优化，记录见 [主题记录](../projects/eplayer/docs/THEME-0.5.7.md)。主题开关位于画面设置 → 主题；关闭恢复 0.5.6 的配色与纯底。主 agent 分析实现，Terra high 只执行明确命令。本轮仅正文对比度、一次构建和打包核验，不启动额外设备或完整回归。源码 `f81b3d189af180cbf9c46ec135e891ae02a8d3cc` / CI 41265431347 成功；`ePlayer-v0.5.7-internal.apk` 已交付，SHA256 `3d91329f8bfbbfd18aa6278a80e00f8ad983b28675284121ea446c4ef03fd91e`，56,970,344 bytes。正文对比度 28 组最低 4.916:1；打包核验通过，未做设备测试。
 
 0.5.6 在 0.5.5 后继续调整歌词视觉/跟随、队列拖动动画/边缘滚动、返回提交与画面设置封面模糊。用户要求主 agent 亲自分析源码并实现，Terra high 仅执行构建/下载/打包，非必要不检查。源码 `c372903887e169aff7425da2ab2e4e61ef793893` / [CI 41205685626](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41205685626) Release 已成功。自用通用包 `ePlayer-v0.5.6-internal.apk`，56,888,367 bytes，SHA256 `a4a0a58b06a05300ebcf2c9dfecbb3cb62753c60dcd3b4f3f404dafd2f9ac563`；既有签名/对齐/三 ABI/模块与代码一致性校验通过，未做设备复测。0.5.5 已交付产物保留。

@@ -291,7 +291,10 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
         Row(verticalAlignment = Alignment.CenterVertically) { Text("私密", Modifier.weight(1f)); Switch(privatePlaylist, { privatePlaylist = it }) }
     } }, confirmButton = { TextButton(enabled = playlistName.isNotBlank(), onClick = { cloud.create(playlistName, privatePlaylist); createPlaylist = false; playlistName = "" }) { Text("创建") } }, dismissButton = { TextButton(onClick = { createPlaylist = false }) { Text("取消") } })
     if (logout) TravelAlertDialog(onDismissRequest = { logout = false }, title = { Text("退出当前账号？") }, confirmButton = { TextButton(onClick = { cloud.logout(); logout = false }) { Text("退出登录") } }, dismissButton = { TextButton(onClick = { logout = false }) { Text("取消") } })
-    CloudDetailScreen(cloud, model, { onShowPlayer(true) }) { track, playlist -> selectedTrack = track to playlist }
+    CloudDetailScreen(cloud, model, { onShowPlayer(true) }, selectedTab = page, chooseTab = { tab ->
+        page = tab; discovery = false; query = ""; cloud.clearSearch()
+        if (tab == 1) libraryMode = 0
+    }) { track, playlist -> selectedTrack = track to playlist }
     if (showPlayer) PlayerScreen(model, cloud, state, { selectedTrack = model.currentTrack()?.let { it to null } }, { commentTrack = model.currentTrack() }) { onShowPlayer(false) }
     selectedTrack?.let { (track, playlist) -> SongOptions(track, playlist, cloud, model, { commentTrack = it }, { entry -> onShowPlayer(false); cloud.open(entry) }) { selectedTrack = null } }
     commentTrack?.let { track -> CommentsSheet(track) { commentTrack = null } }
