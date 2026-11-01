@@ -227,10 +227,13 @@ class EPlayerIntegrationTest {
             await { var paused = false; main { paused = !player.playWhenReady && player.sessionExtras.getLong(PlaybackSleepTimer.DEADLINE) == 0L }; paused }
             main { assertFalse("Service timer pauses while the activity is backgrounded", player.isPlaying); player.play() }
             await { var playing = false; main { playing = player.isPlaying }; playing }
+            var notificationTitle = ""
             main {
                 assertNotNull("MediaSession exposes the notification return intent", player.sessionActivity)
-                player.sessionActivity!!.send() // Fixture setup; real notification tap is checked after backend playback.
+                notificationTitle = player.mediaMetadata.title?.toString().orEmpty()
             }
+            // Exercise a real user notification tap, not an Android-restricted background send.
+            openFromNotification(notificationTitle)
             await(60000) { playerExpanded() }
             SystemClock.sleep(1200)
             capture("player-playing")
