@@ -11,3 +11,5 @@
 间奏行在解析合并和渲染两处都抑制翻译/音译，只显示三点。
 
 按用户要求只运行交付必要的 internal Release 构建和固定签名打包核验，不启动额外设备或完整回归。主 agent 分析/实现；Terra high 仅执行明确的读取、构建和打包命令。
+
+最终源码 `a2d8cdaa0cb675ffca9450bbda45923bd09653c5` / [CI 41267837930](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41267837930) internal Release 构建成功。较早 4e41f71 构建已取消，最后补充首页冷启动直接进入歌单时先识别账号，账号加载期间禁用排序，避免自有歌单误按本机保存。最终包 `ePlayer-v0.5.8-internal.apk`，56,970,344 bytes，SHA256 `208071f1386f9bcd1d953dd5afdb57337722970a08783b4593df9c38b6452a0f`；固定签名、16KiB 对齐、三 ABI、模块摘要与 CI 代码一致性核验通过。未进行设备或账号写入测试。
