@@ -47,7 +47,7 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
         }
     }
     LaunchedEffect(keys) { selected = selected.intersect(keys.toSet()) }
-    val reorder = rememberSongReorder(keys, list, move)
+    val reorder = rememberSongReorder(keys, list, move = move)
     fun toggle(key: String) { selected = if (key in selected) selected - key else selected + key }
     val contents: @Composable () -> Unit = {
       Column(Modifier.fillMaxWidth().then(if (inline) Modifier.fillMaxHeight() else if (expanded) Modifier.fillMaxHeight(.88f) else Modifier).testTag("queue-panel")) {

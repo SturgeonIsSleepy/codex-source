@@ -40,6 +40,7 @@ internal class SongReorder(private val list: LazyListState) {
     private var source = emptyList<String>()
     private var center by mutableFloatStateOf(0f)
     var onMove: (Int, Int) -> Unit = { _, _ -> }
+    var headerCount: Int = 0
     fun update(keys: List<String>) {
         if (source != keys) { source = keys; order = keys; dragging = null }
     }
@@ -57,8 +58,11 @@ internal class SongReorder(private val list: LazyListState) {
     private fun target() {
         val key = dragging ?: return
         val from = order.indexOf(key)
-        val targetKey = list.layoutInfo.visibleItemsInfo.firstOrNull { center >= it.offset && center < it.offset + it.size }?.key as? String ?: return
-        val to = order.indexOf(targetKey)
+        val slot = list.layoutInfo.visibleItemsInfo.firstOrNull { center >= it.offset && center < it.offset + it.size } ?: return
+        if (slot.key !in source) return
+        // Several pointer events can arrive before LazyColumn measures the new order.
+        // A physical slot stays stable; looking up its old key in the new order bounces back.
+        val to = slot.index - headerCount
         if (from >= 0 && to >= 0 && from != to) order = order.toMutableList().apply { add(to, removeAt(from)) }
     }
     fun finish(commit: Boolean) {
@@ -85,9 +89,9 @@ internal class SongReorder(private val list: LazyListState) {
 }
 
 @Composable
-internal fun rememberSongReorder(keys: List<String>, list: LazyListState, move: (Int, Int) -> Unit): SongReorder {
+internal fun rememberSongReorder(keys: List<String>, list: LazyListState, headerCount: Int = 0, move: (Int, Int) -> Unit): SongReorder {
     val state = remember(list) { SongReorder(list) }
-    SideEffect { state.onMove = move; state.update(keys) }
+    SideEffect { state.onMove = move; state.headerCount = headerCount; state.update(keys) }
     val edge = with(LocalDensity.current) { 72.dp.toPx() }
     val speed = with(LocalDensity.current) { 680.dp.toPx() }
     LaunchedEffect(state.dragging) {

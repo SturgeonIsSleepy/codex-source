@@ -102,7 +102,8 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
     val tracks = page.data?.tracks.orEmpty()
     val keys = remember(tracks) { tracks.map { "track:${it.source}:${it.remoteId ?: it.song.id}" } }
     val listState = scrollStates.getOrPut(page.instanceId) { androidx.compose.foundation.lazy.LazyListState() }
-    val reorder = rememberSongReorder(keys, listState) { from, to -> cloud.movePlaylist(target, from, to) }
+    val reorderHeaders = listOf(target.image != null, page.data?.description?.isNotBlank() == true, tracks.isNotEmpty()).count { it }
+    val reorder = rememberSongReorder(keys, listState, headerCount = reorderHeaders) { from, to -> cloud.movePlaylist(target, from, to) }
     val editable = target.kind == MusicKind.PLAYLIST
 
     TravelDialog(onDismissRequest = cloud::back,
