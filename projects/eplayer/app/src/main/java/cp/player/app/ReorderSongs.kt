@@ -8,11 +8,18 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.gestures.drag
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -101,12 +108,17 @@ internal fun Modifier.songInteraction(state: SongReorder, key: String, enabled: 
     if (!enabled) this else composed {
       val latestClick by rememberUpdatedState(click)
       val latestSelect by rememberUpdatedState(select)
+      val interactions = remember { MutableInteractionSource() }
+      val haptic = LocalHapticFeedback.current
       semantics(mergeDescendants = true) {
         onClick { latestClick(); true }
         select?.let { onLongClick { latestSelect?.invoke(); true } }
-      }.pointerInput(state, key, reorderEnabled, select != null) {
+      }.indication(interactions, LocalIndication.current).pointerInput(state, key, reorderEnabled, select != null) {
         awaitEachGesture {
             val down = awaitFirstDown()
+            val press = PressInteraction.Press(down.position)
+            interactions.tryEmit(press)
+            try {
             if (!reorderEnabled) {
                 waitForUpOrCancellation()?.let { it.consume(); latestClick() }
             } else {
@@ -115,17 +127,23 @@ internal fun Modifier.songInteraction(state: SongReorder, key: String, enabled: 
                     currentEvent.changes.firstOrNull { it.id == down.id && !it.pressed && !it.isConsumed }
                         ?.let { it.consume(); latestClick() }
                 } else {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     var moving = false
-                    var distance = 0f
+                    var distance = held.position - down.position
                     try {
+                        if (distance.getDistance() > viewConfiguration.touchSlop) {
+                            moving = true
+                            state.start(key) {}
+                            state.drag(distance.y)
+                        }
                         val released = drag(held.id) { change ->
-                            val dy = change.positionChange().y
-                            distance += dy
-                            if (!moving && kotlin.math.abs(distance) > viewConfiguration.touchSlop) {
+                            val delta = change.positionChange()
+                            distance += delta
+                            if (!moving && distance.getDistance() > viewConfiguration.touchSlop) {
                                 moving = true
                                 state.start(key) {}
-                                state.drag(distance)
-                            } else if (moving) state.drag(dy)
+                                state.drag(distance.y)
+                            } else if (moving) state.drag(delta.y)
                             change.consume()
                         }
                         if (moving) state.finish(released) else if (released) latestSelect?.invoke()
@@ -133,6 +151,9 @@ internal fun Modifier.songInteraction(state: SongReorder, key: String, enabled: 
                         if (state.dragging == key) state.finish(false)
                     }
                 }
+            }
+            } finally {
+                interactions.tryEmit(if (currentEvent.changes.none { it.pressed }) PressInteraction.Release(press) else PressInteraction.Cancel(press))
             }
         }
       }

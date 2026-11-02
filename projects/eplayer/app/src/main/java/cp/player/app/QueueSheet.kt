@@ -98,7 +98,7 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
         }
     }
     }
-    if (inline) contents() else TravelSheet(close, gesturesEnabled = !editing && reorder.dragging == null) { contents() }
+    if (inline) contents() else TravelSheet(close, gesturesEnabled = !editing) { contents() }
     menuIndex?.let { index -> TravelSheet({ menuIndex = null }) {
         TextButton(onClick = { remove(index); menuIndex = null }, modifier = Modifier.fillMaxWidth()) { Text("从播放列表移除") }
     } }

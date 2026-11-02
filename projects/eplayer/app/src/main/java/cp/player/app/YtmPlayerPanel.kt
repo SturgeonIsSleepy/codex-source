@@ -53,6 +53,7 @@ internal fun YtmPlayerPanel(model: EPlayerViewModel, cloud: CloudViewModel, stat
     more: () -> Unit, songOptions: (Int) -> Unit, close: () -> Unit) {
     var expansion by remember { mutableFloatStateOf(0f) }
     var queueHeight by remember { mutableFloatStateOf(1f) }
+    var dragOrigin by remember { mutableFloatStateOf(0f) }
     var settling by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
     val queueList = rememberLazyListState()
@@ -61,12 +62,14 @@ internal fun YtmPlayerPanel(model: EPlayerViewModel, cloud: CloudViewModel, stat
         settling?.cancel()
         settling = scope.launch { Animatable(expansion).animateTo(if (open) 1f else 0f, tween(200)) { expansion = value } }
     }
+    fun releasedOpen(velocity: Float) = velocity < -300f ||
+        (velocity < 300f && expansion > if (dragOrigin < .5f) .12f else .82f)
     val queueOpen = expansion > 0f
-    PreviewBackHandler(queueBack, enabled = queueOpen) { settle(false) }
+    PreviewBackHandler(queueBack, enabled = queueOpen) { settling?.cancel(); expansion = 0f }
     val dragState = rememberDraggableState { delta -> expansion = (expansion - delta / queueHeight).coerceIn(0f, 1f) }
     val swipe = Modifier.draggable(dragState, Orientation.Vertical,
-        onDragStarted = { settling?.cancel() }, onDragStopped = { velocity ->
-            settle(velocity < -300f || (velocity < 300f && expansion > .22f))
+        onDragStarted = { settling?.cancel(); dragOrigin = expansion }, onDragStopped = { velocity ->
+            settle(releasedOpen(velocity))
         })
     val qualityValue by model.quality.collectAsState()
     val noInterest by model.noInterest.collectAsState()
@@ -132,10 +135,12 @@ internal fun YtmPlayerPanel(model: EPlayerViewModel, cloud: CloudViewModel, stat
       if (queueOpen) {
         val scroll = remember {
             object : NestedScrollConnection {
+                private var pulling = false
                 override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                     if (source != NestedScrollSource.UserInput) return Offset.Zero
                     val atTop = queueList.firstVisibleItemIndex == 0 && queueList.firstVisibleItemScrollOffset == 0
                     if (expansion < 1f || (atTop && available.y > 0)) {
+                        if (!pulling) { dragOrigin = expansion; pulling = true }
                         settling?.cancel()
                         val before = expansion
                         expansion = (expansion - available.y / queueHeight).coerceIn(0f, 1f)
@@ -144,8 +149,9 @@ internal fun YtmPlayerPanel(model: EPlayerViewModel, cloud: CloudViewModel, stat
                     return Offset.Zero
                 }
                 override suspend fun onPreFling(available: Velocity): Velocity {
-                    if (expansion < 1f) {
-                        settle(available.y < -300f || (available.y < 300f && expansion > .22f))
+                    if (pulling || expansion < 1f) {
+                        pulling = false
+                        settle(releasedOpen(available.y))
                         return available
                     }
                     return Velocity.Zero

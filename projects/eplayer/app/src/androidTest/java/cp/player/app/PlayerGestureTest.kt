@@ -25,6 +25,13 @@ class PlayerGestureTest {
     private val songs = (0..8).map { Song("gesture-$it", "手势歌曲 $it", "手势歌手", album = "手势") }
     private fun model() = ViewModelProvider(compose.activity)[EPlayerViewModel::class.java]
     private fun cloud() = ViewModelProvider(compose.activity)[CloudViewModel::class.java]
+    private fun snapshot(name: String) {
+        val folder = java.io.File(compose.activity.getExternalFilesDir(null), "gesture-check").apply { mkdirs() }
+        val image = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        java.io.File(folder, "$name.png").outputStream().use { image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        image.recycle()
+        compose.onRoot(useUnmergedTree = true).printToLog("Gesture064")
+    }
 
     @Test fun heldDragOnlyReordersAndSelectionCannotMoveSongs() {
         val moves = mutableListOf<Pair<Int, Int>>()
@@ -34,11 +41,15 @@ class PlayerGestureTest {
         val rowHeight = compose.onNodeWithTag("queue-row-1").fetchSemanticsNode().boundsInRoot.height
         compose.onNodeWithTag("queue-row-1").performTouchInput {
             down(center)
+        }
+        compose.mainClock.advanceTimeBy(700)
+        compose.onNodeWithTag("queue-row-1").performTouchInput {
             advanceEventTime(700)
             moveBy(Offset(0f, rowHeight * .65f))
             moveBy(Offset(0f, rowHeight * .45f))
             up()
         }
+        if (moves != listOf(1 to 2)) snapshot("held-drag")
         compose.runOnIdle { assertEquals(listOf(1 to 2), moves) }
         compose.onNodeWithText("编辑").assertIsDisplayed()
         compose.onNodeWithText("已选 1").assertDoesNotExist()
@@ -62,6 +73,10 @@ class PlayerGestureTest {
         } } }
         compose.onNodeWithTag("queue-row-2").performTouchInput { click() }
         compose.runOnIdle { assertEquals(2, chosen) }
+        compose.onNodeWithTag("queue-row-2").performTouchInput {
+            down(center); advanceEventTime(700); moveBy(Offset(48f, 0f)); up()
+        }
+        compose.onNodeWithText("编辑").assertIsDisplayed()
     }
 
     @Test fun queueFollowsCoverSwipeBeforeReleaseAndCanBePulledDown() {
@@ -88,6 +103,7 @@ class PlayerGestureTest {
             moveBy(Offset(0f, page.height * .65f), delayMillis = 500)
             up()
         }
+        if (compose.onAllNodesWithTag("queue-list").fetchSemanticsNodes().isNotEmpty()) snapshot("pull-down")
         compose.onNodeWithTag("queue-list").assertDoesNotExist()
         compose.onNodeWithText("角色手势夹具").assertIsDisplayed()
     }
