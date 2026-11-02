@@ -43,7 +43,7 @@ class PlayerSceneRegressionTest {
         } } }
         compose.onNodeWithText("角色夹具").assertIsDisplayed()
         compose.onNodeWithTag("queue-list").assertDoesNotExist()
-        compose.onNodeWithTag("player-page").performTouchInput { swipeUp() }
+        compose.onNodeWithTag("player-artwork").performTouchInput { swipeUp() }
         compose.onNodeWithTag("queue-list").assertIsDisplayed()
         val screen = instrumentation.uiAutomation.takeScreenshot().let { image -> val height = image.height; image.recycle(); height }
         val bottom = compose.onNodeWithTag("queue-panel").fetchSemanticsNode().boundsInRoot.bottom

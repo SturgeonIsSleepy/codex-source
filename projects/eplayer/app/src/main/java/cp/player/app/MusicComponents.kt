@@ -48,7 +48,7 @@ internal fun songArtwork(song: Song?) = song?.albumArtUrl?.takeUnless {
 
 @Composable
 internal fun MusicCover(song: Song?, modifier: Modifier = Modifier) {
-    Box(modifier.clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest)) {
+    Box(modifier.clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest)) {
         TrackArtwork(song, Modifier.fillMaxSize(), 128, "file:///android_asset/elaina-layer.png")
     }
 }
@@ -137,16 +137,20 @@ internal fun MusicDock(state: Playback, page: Int, discovery: Boolean, choose: (
     showPlayer: () -> Unit, playPause: () -> Unit, next: () -> Unit, queue: () -> Unit = {}) {
     Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).testTag("music-dock")) {
         if (state.song != null) {
-            Row(Modifier.fillMaxWidth().height(50.dp).testTag("dock-now-playing").background(MaterialTheme.colorScheme.surfaceContainerLow)
-                .clickable { showPlayer() }.padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(horizontal = 8.dp).padding(top = 4.dp, bottom = 3.dp).fillMaxWidth().height(52.dp).testTag("dock-now-playing")
+                .clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .clickable { showPlayer() }.padding(start = 8.dp, end = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 MusicCover(state.song, Modifier.size(36.dp))
                 AnimatedContent(state.song, contentKey = { it?.id }, modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
                     transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) }, label = "mini-track") { song ->
-                    Text(song?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
+                    Column {
+                        Text(song?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
+                        Text(song?.artist.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
-                IconButton(onClick = playPause) { Icon(if (state.playRequested) Icons.Default.Pause else Icons.Default.PlayArrow, if (state.playRequested) "暂停" else "播放") }
-                IconButton(onClick = next) { Icon(Icons.Default.SkipNext, "下一首") }
-                IconButton(onClick = queue) { Icon(Icons.Default.QueueMusic, "播放列表") }
+                IconButton(onClick = playPause, modifier = Modifier.size(40.dp)) { Icon(if (state.playRequested) Icons.Default.Pause else Icons.Default.PlayArrow, if (state.playRequested) "暂停" else "播放", Modifier.size(25.dp)) }
+                IconButton(onClick = next, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.SkipNext, "下一首", Modifier.size(23.dp)) }
+                IconButton(onClick = queue, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.QueueMusic, "播放列表", Modifier.size(22.dp)) }
             }
         }
         Row(Modifier.fillMaxWidth().height(54.dp).testTag("dock-navigation"), verticalAlignment = Alignment.CenterVertically) {

@@ -76,7 +76,7 @@ internal fun TravelDialog(onDismissRequest: () -> Unit,
         PreviewWindow(preview)
         val entrance = remember { Animatable(0f) }
         LaunchedEffect(Unit) { entrance.animateTo(1f, tween(150)) }
-        Box(Modifier.fillMaxSize().graphicsLayer { translationY = (1 - entrance.value) * 5.dp.toPx() }) {
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = .75f + .25f * entrance.value; translationY = (1 - entrance.value) * 20.dp.toPx() }) {
             if (preview.progress.value > 0f) destination?.invoke()
             Box(Modifier.fillMaxSize().backPreview(preview).testTag("predictive-page")) { content() }
         }

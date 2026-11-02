@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.draw.clip
@@ -47,9 +48,11 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
     val context = LocalContext.current.applicationContext
     val backdrop = MaterialTheme.colorScheme.background
     val night = backdrop.luminance() < .3f
-    val artworkGeneration by produceState(initialValue = 0, key1 = context) {
-        withContext(Dispatchers.IO) { WitchPlayerView.prepareAssets(context) }
-        value += 1
+    val artworkGeneration by produceState(initialValue = if (WitchPlayerView.areAssetsPrepared()) 1 else 0, key1 = context) {
+        if (value == 0) {
+            withContext(Dispatchers.IO) { WitchPlayerView.prepareAssets(context) }
+            value = 1
+        }
     }
     val favorites by model.favorites.collectAsState()
     val likes by cloud.likes.collectAsState()
@@ -73,8 +76,8 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
         YtmPlayerPanel(model, cloud, state, customBackground,
             artwork = { modifier, characterVisible ->
                 CharacterStage(state.song, modifier, coverBlur, customBackground) { portrait ->
-                    AnimatedVisibility(characterVisible && artworkGeneration > 0, enter = fadeIn(tween(140)), exit = fadeOut(tween(90))) {
-                        AndroidView(factory = { WitchPlayerView(it) }, modifier = portrait.testTag("player-character"), update = { view ->
+                    if (artworkGeneration > 0) {
+                        AndroidView(factory = { WitchPlayerView(it) }, modifier = portrait.graphicsLayer { alpha = if (characterVisible) 1f else 0f }.testTag("player-character"), update = { view ->
                             view.setAppearance(night, backdrop.toArgb(), artworkGeneration)
                             view.setCoverBackdropEnabled(true)
                             view.setMotionEnabled(animate)
@@ -193,9 +196,10 @@ internal fun PlayerTransport(state: Playback, position: Long, seeking: Float?, s
                 }
             }
             IconButton(onClick = previous, enabled = state.queue.size > 1) { Icon(Icons.Default.SkipPrevious, "上一首", Modifier.size(29.dp)) }
-            FilledIconButton(onClick = playPause, modifier = Modifier.size(56.dp)) { Icon(
+            FilledIconButton(onClick = playPause, modifier = Modifier.size(68.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(containerColor = ink, contentColor = MaterialTheme.colorScheme.surface)) { Icon(
                 if (state.playRequested) Icons.Default.Pause else Icons.Default.PlayArrow,
-                if (state.playRequested) "暂停" else "播放", Modifier.size(32.dp)) }
+                if (state.playRequested) "暂停" else "播放", Modifier.size(36.dp)) }
             IconButton(onClick = next, enabled = state.queue.size > 1) { Icon(Icons.Default.SkipNext, "下一首", Modifier.size(29.dp)) }
             IconButton(onClick = repeat) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {

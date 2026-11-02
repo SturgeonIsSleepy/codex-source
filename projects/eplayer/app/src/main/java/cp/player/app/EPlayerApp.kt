@@ -13,6 +13,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -79,6 +81,9 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     val lists = remember { List(3) { LazyListState() } }
     val importAudio = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments(), model::importAudio)
     val importSource = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let(model::importSource) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { cp.player.ui.artwork.WitchPlayerView.prepareAssets(model.getApplication()) }
+    }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) model.scanLibrary() }
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
@@ -105,14 +110,14 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     val revealBack: (Boolean) -> Unit = remember { { revealingBack = it } }
     val chromeVisible = (!showPlayer && detailPages.isEmpty() && !playbackSettings && !visualSettings && settingsSection == null && !searchOpen) || revealingBack
     @Composable
-    fun RootContents() {
-        LazyColumn(Modifier.fillMaxSize().statusBarsPadding().testTag("root-content-$page"), state = lists[page],
+    fun RootContents(selectedPage: Int) {
+        LazyColumn(Modifier.fillMaxSize().statusBarsPadding().testTag("root-content-$selectedPage"), state = lists[selectedPage],
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = if (state.song != null) 132.dp else 80.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { AppHeader(when (page) { 1 -> "探索"; 2 -> "媒体库"; else -> "ePlayer" }, home.account?.avatar,
+            item { AppHeader(when (selectedPage) { 1 -> "探索"; 2 -> "媒体库"; else -> "ePlayer" }, home.account?.avatar,
                 { openSettings("profile") }, { searchOpen = true }) }
             if (busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-            when (page) {
+            when (selectedPage) {
                 0 -> {
                     item { ListeningSummary(stats) }
                     item { Column { QuickPickGrid(picks, ::roam) { roamPicker = it } } }
@@ -180,11 +185,10 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             ThemeBackdrop(Modifier.matchParentSize())
-            key(page) {
-                val entrance = remember { androidx.compose.animation.core.Animatable(0f) }
-                LaunchedEffect(Unit) { entrance.animateTo(1f, androidx.compose.animation.core.tween(150)) }
-                Box(Modifier.fillMaxSize().graphicsLayer { alpha = .84f + entrance.value * .16f; translationY = (1 - entrance.value) * 7.dp.toPx() }) { RootContents() }
-            }
+            AnimatedContent(page, modifier = Modifier.fillMaxSize(), transitionSpec = {
+                (fadeIn(tween(160)) + slideInHorizontally(tween(180)) { if (targetState > initialState) it / 18 else -it / 18 })
+                    .togetherWith(fadeOut(tween(110)))
+            }, label = "root-tab") { selectedPage -> RootContents(selectedPage) }
         }
         Box(Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (chromeVisible) 1f else 0f }.navigationBarsPadding()) {
             MusicDock(state, page, discovery, { target ->
@@ -198,7 +202,9 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     settingsSection?.let { section ->
         SettingsPanel(when (section) { "profile" -> "账号"; "settings" -> "设置"; "account" -> "账号"; "source" -> "音源"; else -> "关于" }, ::backSettings) {
           key(settingsPath.size, section) {
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+            val entrance = remember { androidx.compose.animation.core.Animatable(0f) }
+            LaunchedEffect(Unit) { entrance.animateTo(1f, tween(160)) }
+            Column(Modifier.fillMaxWidth().graphicsLayer { alpha = entrance.value; translationX = (1 - entrance.value) * 12.dp.toPx() }.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 when (section) {
                     "profile" -> {
                         Row(Modifier.fillMaxWidth().clickable { openSettings("account") }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {

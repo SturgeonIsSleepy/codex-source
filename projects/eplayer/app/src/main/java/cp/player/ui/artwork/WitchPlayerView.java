@@ -56,6 +56,7 @@ public final class WitchPlayerView extends View {
         return cachedAssets;
     }
     public static void prepareAssets(Context context) { assets(context); }
+    public static boolean areAssetsPrepared() { return cachedAssets != null; }
     public static void prepareAssets(Context context, boolean night) { if (night) assets(context).prepareNight(); else assets(context); }
     public static synchronized void clearAssetCache() { cachedAssets = null; }
     private static Bitmap load(Context context, String name) {

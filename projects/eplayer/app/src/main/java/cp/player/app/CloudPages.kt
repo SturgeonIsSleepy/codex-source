@@ -195,13 +195,13 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                         Row(Modifier.fillMaxWidth()
                             .animateItem(fadeInSpec = tween(150), placementSpec = if (dragging) null else tween(180), fadeOutSpec = tween(150))
                             .reorderLayer(reorder, key)
-                            .combinedClickable(enabled = !busy || !editing,
-                                onClick = { if (editing) toggle(track.remoteId ?: track.song.id) else { player.play(track, tracks, origin = target.name); showPlayer() } },
-                                onLongClick = { if (editable && !busy && !page.loading) { editing = true; selected = selected + (track.remoteId ?: track.song.id) } })
-                            .songDrag(reorder, key, enabled = editable && !home.loading && !busy && !page.loading, edit = { editing = true; selected = selected + (track.remoteId ?: track.song.id) })
+                            .songInteraction(reorder, key, enabled = !editing || !busy,
+                                reorderEnabled = !editing && editable && !home.loading && !busy && !page.loading,
+                                click = { if (editing) toggle(track.remoteId ?: track.song.id) else { player.play(track, tracks, origin = target.name); showPlayer() } },
+                                select = if (editable && !busy && !page.loading) ({ editing = true; selected = selected + (track.remoteId ?: track.song.id) }) else null)
                             .background(if (dragging) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent, RoundedCornerShape(14.dp))
                             .semantics {
-                                if (editable) customActions = buildList {
+                                if (editable && !editing) customActions = buildList {
                                     if (index > 0) add(CustomAccessibilityAction("上移") { cloud.movePlaylist(target, index, index - 1); true })
                                     if (index < tracks.lastIndex) add(CustomAccessibilityAction("下移") { cloud.movePlaylist(target, index, index + 1); true })
                                 }
@@ -210,12 +210,6 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                             Box(Modifier.weight(1f)) {
                                 SongRow(track, playback.song?.id == track.song.id, {}, interaction = false) {
                                     if (!editing) IconButton(onClick = { songOptions(track, if (own && target.kind == MusicKind.PLAYLIST) target else null) }) { Icon(Icons.Default.MoreVert, "歌曲操作") }
-                                }
-                            }
-                            androidx.compose.animation.AnimatedVisibility(editing) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.DragHandle, "拖动歌曲", Modifier.size(44.dp).padding(6.dp)
-                                        .songDrag(reorder, key, enabled = !home.loading && !busy && !page.loading, longPress = false))
                                 }
                             }
                         }

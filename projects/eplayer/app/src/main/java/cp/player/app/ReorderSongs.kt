@@ -3,12 +3,22 @@ package cp.player.app
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -85,15 +95,48 @@ internal fun rememberSongReorder(keys: List<String>, list: LazyListState, move: 
     return state
 }
 
-internal fun Modifier.songDrag(state: SongReorder, key: String, enabled: Boolean = true,
-    longPress: Boolean = true, edit: () -> Unit = {}): Modifier = if (!enabled) this else pointerInput(state, key, longPress) {
-    if (longPress) detectDragGesturesAfterLongPress(
-        onDragStart = { state.start(key, edit) }, onDragEnd = { state.finish(true) }, onDragCancel = { state.finish(false) },
-        onDrag = { change, amount -> change.consume(); state.drag(amount.y) })
-    else detectDragGestures(
-        onDragStart = { state.start(key, edit) }, onDragEnd = { state.finish(true) }, onDragCancel = { state.finish(false) },
-        onDrag = { change, amount -> change.consume(); state.drag(amount.y) })
-}
+/** A stationary hold selects on release; a held drag only reorders. Selection never reorders. */
+internal fun Modifier.songInteraction(state: SongReorder, key: String, enabled: Boolean = true,
+    reorderEnabled: Boolean = true, click: () -> Unit, select: (() -> Unit)? = null): Modifier =
+    if (!enabled) this else composed {
+      val latestClick by rememberUpdatedState(click)
+      val latestSelect by rememberUpdatedState(select)
+      semantics(mergeDescendants = true) {
+        onClick { latestClick(); true }
+        select?.let { onLongClick { latestSelect?.invoke(); true } }
+      }.pointerInput(state, key, reorderEnabled, select != null) {
+        awaitEachGesture {
+            val down = awaitFirstDown()
+            if (!reorderEnabled) {
+                waitForUpOrCancellation()?.let { it.consume(); latestClick() }
+            } else {
+                val held = awaitLongPressOrCancellation(down.id)
+                if (held == null) {
+                    currentEvent.changes.firstOrNull { it.id == down.id && !it.pressed && !it.isConsumed }
+                        ?.let { it.consume(); latestClick() }
+                } else {
+                    var moving = false
+                    var distance = 0f
+                    try {
+                        val released = drag(held.id) { change ->
+                            val dy = change.positionChange().y
+                            distance += dy
+                            if (!moving && kotlin.math.abs(distance) > viewConfiguration.touchSlop) {
+                                moving = true
+                                state.start(key) {}
+                                state.drag(distance)
+                            } else if (moving) state.drag(dy)
+                            change.consume()
+                        }
+                        if (moving) state.finish(released) else if (released) latestSelect?.invoke()
+                    } finally {
+                        if (state.dragging == key) state.finish(false)
+                    }
+                }
+            }
+        }
+      }
+    }
 
 internal fun Modifier.reorderLayer(state: SongReorder, key: String): Modifier =
     zIndex(if (state.dragging == key) 1f else 0f).graphicsLayer {

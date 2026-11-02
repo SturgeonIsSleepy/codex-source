@@ -30,12 +30,13 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int) -> Unit,
     remove: (Int) -> Unit, clear: () -> Unit, removeSelected: (List<Int>) -> Unit = { values -> values.sortedDescending().forEach(remove) }, options: ((Int) -> Unit)? = null, origin: String? = null, expanded: Boolean = false, saveAction: (() -> Unit)? = null,
-    header: @Composable () -> Unit = {}, close: () -> Unit) {
+    header: @Composable () -> Unit = {}, inline: Boolean = false,
+    listState: androidx.compose.foundation.lazy.LazyListState = rememberLazyListState(), close: () -> Unit) {
     var editing by rememberSaveable { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
     var menuIndex by remember { mutableStateOf<Int?>(null) }
     var selected by remember { mutableStateOf(emptySet<String>()) }
-    val list = rememberLazyListState()
+    val list = listState
     val keys = remember(state.queue) {
         val occurrences = mutableMapOf<String, Int>()
         state.queue.map { song ->
@@ -48,8 +49,8 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
     LaunchedEffect(keys) { selected = selected.intersect(keys.toSet()) }
     val reorder = rememberSongReorder(keys, list, move)
     fun toggle(key: String) { selected = if (key in selected) selected - key else selected + key }
-    TravelSheet(close, gesturesEnabled = !editing) {
-      Column(Modifier.fillMaxWidth().then(if (expanded) Modifier.fillMaxHeight(.88f) else Modifier).testTag("queue-panel")) {
+    val contents: @Composable () -> Unit = {
+      Column(Modifier.fillMaxWidth().then(if (inline) Modifier.fillMaxHeight() else if (expanded) Modifier.fillMaxHeight(.88f) else Modifier).testTag("queue-panel")) {
         header()
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(if (editing) "已选 ${selected.size}" else origin ?: "播放列表", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
@@ -61,7 +62,7 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
             TextButton(onClick = { reorder.finish(false); editing = !editing; selected = emptySet() }) { Text(if (editing) "完成" else "编辑") }
         }
         if (state.queue.isEmpty()) Text("暂无歌曲", Modifier.padding(24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        LazyColumn(Modifier.fillMaxWidth().then(if (expanded) Modifier.weight(1f) else Modifier.heightIn(max = 560.dp)).testTag("queue-list"),
+        LazyColumn(Modifier.fillMaxWidth().then(if (expanded || inline) Modifier.weight(1f) else Modifier.heightIn(max = 560.dp)).testTag("queue-list"),
             state = list, contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)) {
             itemsIndexed(reorder.order, key = { _, key -> key }) { _, key ->
                 val index = keys.indexOf(key)
@@ -73,14 +74,15 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
                 Row(Modifier.fillMaxWidth()
                     .animateItem(fadeInSpec = tween(150), placementSpec = if (dragging) null else tween(180), fadeOutSpec = tween(150))
                     .reorderLayer(reorder, key)
-                    .combinedClickable(onClick = { if (editing) toggle(key) else select(index) }, onLongClick = { editing = true; selected = selected + key })
-                    .songDrag(reorder, key, edit = { editing = true; selected = selected + key }).testTag("queue-row-$index")
+                    .songInteraction(reorder, key, reorderEnabled = !editing,
+                        click = { if (editing) toggle(key) else select(index) },
+                        select = { editing = true; selected = selected + key }).testTag("queue-row-$index")
                     .background(if (dragging) surface else androidx.compose.ui.graphics.Color.Transparent, RoundedCornerShape(14.dp))
                     .semantics {
                         this.selected = rowSelected
                         customActions = buildList {
-                            if (index > 0) add(CustomAccessibilityAction("上移") { move(index, index - 1); true })
-                            if (index < state.queue.lastIndex) add(CustomAccessibilityAction("下移") { move(index, index + 1); true })
+                            if (!editing && index > 0) add(CustomAccessibilityAction("上移") { move(index, index - 1); true })
+                            if (!editing && index < state.queue.lastIndex) add(CustomAccessibilityAction("下移") { move(index, index + 1); true })
                             add(CustomAccessibilityAction("移除") { remove(index); true })
                         }
                     }, verticalAlignment = Alignment.CenterVertically) {
@@ -96,6 +98,7 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
         }
     }
     }
+    if (inline) contents() else TravelSheet(close, gesturesEnabled = !editing && reorder.dragging == null) { contents() }
     menuIndex?.let { index -> TravelSheet({ menuIndex = null }) {
         TextButton(onClick = { remove(index); menuIndex = null }, modifier = Modifier.fillMaxWidth()) { Text("从播放列表移除") }
     } }
