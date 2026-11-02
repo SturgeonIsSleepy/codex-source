@@ -30,7 +30,8 @@ class PlayerGestureTest {
         val image = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
         java.io.File(folder, "$name.png").outputStream().use { image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
         image.recycle()
-        compose.onRoot(useUnmergedTree = true).printToLog("Gesture064")
+        val roots = compose.onAllNodes(isRoot(), useUnmergedTree = true)
+        roots.fetchSemanticsNodes().indices.forEach { roots[it].printToLog("Gesture064") }
     }
 
     @Test fun heldDragOnlyReordersAndSelectionCannotMoveSongs() {
@@ -41,10 +42,7 @@ class PlayerGestureTest {
         val rowHeight = compose.onNodeWithTag("queue-row-1").fetchSemanticsNode().boundsInRoot.height
         compose.onNodeWithTag("queue-row-1").performTouchInput {
             down(center)
-        }
-        compose.mainClock.advanceTimeBy(700)
-        compose.onNodeWithTag("queue-row-1").performTouchInput {
-            advanceEventTime(700)
+            repeat((viewConfiguration.longPressTimeoutMillis / 20).toInt() + 10) { moveBy(Offset.Zero, delayMillis = 20) }
             moveBy(Offset(0f, rowHeight * .65f))
             moveBy(Offset(0f, rowHeight * .45f))
             up()
@@ -58,7 +56,7 @@ class PlayerGestureTest {
         compose.onNodeWithTag("queue-row-0").assertIsNotSelected()
         compose.onNodeWithTag("queue-row-1").performTouchInput {
             down(center)
-            advanceEventTime(700)
+            repeat((viewConfiguration.longPressTimeoutMillis / 20).toInt() + 10) { moveBy(Offset.Zero, delayMillis = 20) }
             moveBy(Offset(0f, rowHeight * 1.1f))
             up()
         }
@@ -74,7 +72,9 @@ class PlayerGestureTest {
         compose.onNodeWithTag("queue-row-2").performTouchInput { click() }
         compose.runOnIdle { assertEquals(2, chosen) }
         compose.onNodeWithTag("queue-row-2").performTouchInput {
-            down(center); advanceEventTime(700); moveBy(Offset(48f, 0f)); up()
+            down(center)
+            repeat((viewConfiguration.longPressTimeoutMillis / 20).toInt() + 10) { moveBy(Offset.Zero, delayMillis = 20) }
+            moveBy(Offset(48f, 0f)); up()
         }
         compose.onNodeWithText("编辑").assertIsDisplayed()
     }
