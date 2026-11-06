@@ -1,5 +1,7 @@
 # ePlayer 转移交接
 
+0.6.4 已完成跟手队列、拖动与多选分离、角色视图复用及底栏/过渡调整。[下载](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.6.4) · [定向检查记录](../projects/eplayer/docs/QA-0.6.4.md)。应用源码 `743513b1b19a7d8e082a9e0cea704d176bba9358` / CI 41446618286，12 项改动相关设备检查全部通过，最终 R8 包已手动检查。自用通用 APK SHA256 `ddceba95fe51dc07f25525e1518dced5a3ae59b242548b82aecdc341333280de`；本地保留源码、最新 APK 与签名密钥。没有重跑完整功能或实机功耗回归。
+
 0.6.3 已完成八项修复及完整检查，下载见 [Release](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.6.3)，详情见 [QA 记录](../projects/eplayer/docs/QA-0.6.3.md)。应用源码 `d5bdd7d2887304824b0109c5cd7f83eec4b51ff3` / CI 41305341052；仅交付 internal universal，APK SHA256 `91d5cf6b02eb3fafd56da29aaa2e5d521ff44e40f02507bde91344e62e3cb6bd`。52 JVM、8 播放器专项通过；完整设备回归 65 项中 58 通过/6 保护跳过/1 Espresso 焦点失败，六项另行干净环境补测通过，系统 BACK 手动验证正常。最终 R8 底部队列截图已核验。不操作实机或真实账号写入，不宣称全部自动化通过。
 
 0.6.2 接续页面叠加、一次点击预测搜索、设置返回栈、连续队列播放器与歌词开场重做；记录见 [场景记录](../projects/eplayer/docs/SCENES-0.6.2.md)。保留伊蕾娜但上滑隐藏，取消歌词封面放大。只执行八项针对性 JVM 回归与打包，不启动设备/账号写入测试。最终源码 `320f762a40d0cd21c899c993ba0c9ef087f8b82f` / CI 41281591900 成功；目标 JVM 回归和 Release 构建通过。`ePlayer-v0.6.2-internal.apk` 已生成，56,986,671 bytes，SHA256 `94b9c4de061967c891f314a5a2ca20ea160056be76b8224134a846bf49cf790a`；固定签名打包核验通过，未做设备复测。

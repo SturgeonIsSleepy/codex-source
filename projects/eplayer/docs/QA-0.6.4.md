@@ -10,4 +10,16 @@
 
 首轮 41e8fde 构建通过，12 项针对性设备检查中 10 通过、2 失败：长按拖动未提交预期排序、下拉后队列未收回。下拉阈值改为根据起始状态判断，避免展开阈值同时用于关闭；排序补充完整按住时间和在长按完成帧中已经产生的位移处理。保留行触摸反馈与长按触感，预测返回提交不再播放第二次收回动画。继续仅重跑本次相关范围，不将首轮失败算作通过。
 
-待记录：最终针对性检查、R8 包摘要及本地/远程交付。
+第二轮 92978dd 为 11 通过、1 失败：下拉收回、视图复用与布局均已通过；排序结果不符合预期，诊断抓图又因双 Compose root 抛出异常，该轮不算排序通过。随后修正诊断以遍历根节点，使用运行时长按时长与连续静止触点模拟长按，沿用 [AndroidX longClick 的事件生成方式](https://android.googlesource.com/platform/frameworks/support/+/202b4bda8adfeb303ac30e359e8436a3752fe2b0/compose/ui/ui-test/src/commonMain/kotlin/androidx/compose/ui/test/TouchInjectionScope.kt#394)，没有放宽排序、多选或视图复用断言。ca18605 的后续设备执行已由修复提交替代。
+
+743513b 修正实际排序计算：一帧内的多个拖动事件可能发生在 LazyColumn 重新测量之前。第一次已重排内存 order，第二次仍取旧布局的目标 key，再查询它在新 order 中的位置，会把歌曲移回去。现在按目标物理槽位 index 排序；歌单扣除封面、描述与播放按钮占用的头部 item 数，播放队列没有头部偏移。继续保留边缘自动滚动。
+
+## 最终交付
+
+应用源码 `743513b1b19a7d8e082a9e0cea704d176bba9358`，对应 [CI 41446618286](https://github.com/SturgeonIsSleepy/codex-source/actions/runs/41446618286)。本轮最终 12 项定向设备检查全部通过；不以这些结果代替完整功能或实机功耗回归。检查覆盖跟手展开/收回、排序与多选互斥、长按选中、角色视图复用、同高操作按钮，以及横竖屏、大字体和缓冲控制。
+
+最终 R8 包已在 TravelTest36 安装并手动检查队列拖动、恢复原顺序、原地长按多选、滚动、上拉/收回和设置切换；三张交付截图均为实际应用界面。没有写入真实云端歌单或收藏。
+
+`ePlayer-v0.6.4-internal.apk` 为自用通用版，57,003,055 bytes，SHA256 `ddceba95fe51dc07f25525e1518dced5a3ae59b242548b82aecdc341333280de`。固定签名、16 KB 对齐、三 ABI、内置音源摘要和 CI 代码载荷一致性核验通过。
+
+[下载与验证记录](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.6.4)。源码和最新安装包同时保留本地；公开归档仅包含报告、测试输出和界面截图，不含签名密钥、登录凭据或原始 logcat。
