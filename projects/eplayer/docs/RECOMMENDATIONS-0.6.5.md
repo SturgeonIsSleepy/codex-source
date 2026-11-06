@@ -12,4 +12,6 @@ YTM 只访问匿名首页、search 与 next Radio；没有请求播放流、内�
 
 Spotify 调查见 [官方新应用限制](https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api) 和 [librespot Radio/Autoplay 源码](https://github.com/librespot-org/librespot/blob/dev/core/src/spclient.rs)：存在内部 Radio 实现，但依赖 Spotify 会话，项目要求 Premium。没有将它包装为免 Premium 的可用推荐接口。
 
-匿名 YTM 本机探测返回 HTTP 200 的地区不可用页面，未验证本网络下的真实推荐链路。可选后端需要网络能够访问 YTM；默认网易云不依赖它。本轮只执行推荐排序、会话排重、跨平台匹配、YTM 元数据解析及相关入口检查，结果待补充。
+匿名 YTM 本机首页返回地区不可用页面。最初实现过度依赖首页提取版号，后按参考库 `initialize_context` 改为 UTC 日期默认上下文：首页只作为可选 visitor 来源。使用库同样的公开匿名同意状态标志 `SOCS=CAI`，不读取浏览器账户 Cookie。修正后本机能请求 search，但示例查询返回 No results，尚未执行成功 Radio，不能把它算作推荐链路已联通。可选后端仍取决于 YTM 网络与服务可用性；默认网易云不依赖它。
+
+首轮 CI 因缺少 `testBuildType=fastRelease` 参数未创建目标单测任务，未执行测试；修正后 f006944 的 13 项逻辑检查通过。dbf031b 的 14 项通过，入口检查 1/2 通过；主页入口测试夹具缺少 Column，顶层控件重叠，已补容器，保留原单击计数断言。最终只检查本次相关的排序、会话排重、严格匹配、元数据解析与新增入口，不做无关全量回归，结果待补充。

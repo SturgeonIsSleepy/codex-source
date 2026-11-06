@@ -1,6 +1,7 @@
 package cp.player.app
 
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.ViewModelProvider
@@ -15,7 +16,7 @@ class RecommendationControlsTest {
     @Test fun homepageRoamIsASeparateSingleTapAction() {
         var roam = 0; var picker = 0; var chosen = 0
         compose.runOnUiThread { compose.activity.setContent { EPlayerTheme {
-            QuickPickGrid(emptyList(), { chosen++ }, { picker++ }, { roam++ })
+            Column { QuickPickGrid(emptyList(), { chosen++ }, { picker++ }, { roam++ }) }
         } } }
         compose.onNodeWithText("漫游").performClick()
         compose.runOnIdle { assertEquals(1, roam); assertEquals(0, picker); assertEquals(0, chosen) }

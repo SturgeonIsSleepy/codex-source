@@ -18,4 +18,12 @@ class YtmMetadataTest {
             assertTrue(YtmMetadata.radio(json).isEmpty())
         }
     }
+    @Test fun songSearchPreservesIdentityAndNoResultsMessagesStayEmpty() {
+        val json = JsonParser.parseString("""{"contents":[{"musicResponsiveListItemRenderer":{"playlistItemData":{"videoId":"abcdefghijk"},"flexColumns":[{"musicResponsiveListItemFlexColumnRenderer":{"text":{"runs":[{"text":"Song"}]}}},{"musicResponsiveListItemFlexColumnRenderer":{"text":{"runs":[{"text":"Artist","navigationEndpoint":{"browseEndpoint":{"browseId":"UCartist"}}},{"text":"Album","navigationEndpoint":{"browseEndpoint":{"browseId":"MPREalbum"}}},{"text":"3:00"}]}}}]}}]}""").asJsonObject
+        val item = YtmMetadata.search(json).single()
+        assertEquals("abcdefghijk", item.id); assertEquals("Song", item.title)
+        assertEquals(listOf("Artist"), item.artists); assertEquals("Album", item.album); assertEquals(180000L, item.durationMs)
+        val empty = JsonParser.parseString("""{"contents":{"messageRenderer":{"text":{"runs":[{"text":"No results"}]}}}}""").asJsonObject
+        assertTrue(YtmMetadata.search(empty).isEmpty())
+    }
 }
