@@ -30,26 +30,42 @@ internal data class QuickPick(val key: String, val title: String, val image: Str
     val source: String? get() = entry?.source ?: track?.source
 }
 
-internal fun quickPicks(home: CloudHome, recent: List<Track>, saved: List<QuickPick>): List<QuickPick> {
+internal fun quickPicks(home: CloudHome, recent: List<Track>, saved: List<QuickPick>, excluded: Set<String> = emptySet()): List<QuickPick> {
     val source = home.source ?: return emptyList()
-    val tracks = recent.filter { it.source == source }
+    val tracks = recent.filter { it.source == source && it.recommendationKey() !in excluded }.distinctBy { it.recommendationKey() }
     val artists = tracks.mapNotNull { track -> track.song.artistId?.takeIf { it.isNotBlank() }?.let {
         QuickPick("artist:$it", track.song.artist, track.song.albumArtUrl, MusicEntry(it, track.song.artist, source, MusicKind.ARTIST))
-    } }.distinctBy { it.key }.take(4)
+    } }.distinctBy { it.key }.take(8)
     val albums = tracks.mapNotNull { track -> track.song.albumId?.takeIf { it.isNotBlank() }?.let {
         QuickPick("album:$it", track.song.album, track.song.albumArtUrl, MusicEntry(it, track.song.album, source, MusicKind.ALBUM))
-    } }.distinctBy { it.key }.take(4)
-    val playlists = home.playlists.take(6).map { QuickPick("playlist:${it.id}", if (it.special) "我喜欢的音乐" else it.name, it.image, it) }
-    val singles = tracks.take(6).map { QuickPick("song:${it.remoteId ?: it.song.id}", it.song.name, it.song.albumArtUrl, track = it) }
-    val mixed = (0 until 6).flatMap { i -> listOfNotNull(playlists.getOrNull(i), artists.getOrNull(i), albums.getOrNull(i), singles.getOrNull(i)) }
-    return (saved.filter { it.source == source } + mixed).distinctBy { it.key.lowercase() }.take(24)
+    } }.distinctBy { it.key }.take(8)
+    val playlists = (home.playlists + home.recommendations).distinctBy { it.id }.take(12).map { QuickPick("playlist:${it.id}", if (it.special) "我喜欢的音乐" else it.name, it.image, it) }
+    val singles = tracks.take(8).map { QuickPick("song:${it.remoteId ?: it.song.id}", it.song.name, it.song.albumArtUrl, track = it) }
+    val remembered = saved.filter { it.source == source && (it.track == null || it.track.recommendationKey() !in excluded) }
+    val candidates = remembered + playlists + artists + albums + singles
+    fun identity(pick: QuickPick) = "${pick.kind}:${pick.entry?.id ?: pick.track?.remoteId ?: pick.track?.song?.id ?: pick.key}"
+    val grouped = candidates.distinctBy(::identity).groupBy { it.kind }.mapValues { (_, values) ->
+        values.sortedBy { pick ->
+            val memory = remembered.indexOfFirst { identity(it) == identity(pick) }.takeIf { it >= 0 } ?: 100
+            val recentRank = tracks.indexOfFirst { track -> when (pick.kind) {
+                100 -> track.song.artistId == pick.entry?.id
+                10 -> track.song.albumId == pick.entry?.id
+                1 -> track.recommendationKey() == pick.track?.recommendationKey()
+                else -> false
+            } }.takeIf { it >= 0 } ?: 100
+            minOf(memory * 3, recentRank * 2)
+        }
+    }
+    // History can influence each category, but cannot bury every other category in the first grid.
+    return (0 until 9).flatMap { i -> listOf(1000, 100, 1, 10).mapNotNull { grouped[it]?.getOrNull(i) } }.take(24)
 }
 
 @Composable
-internal fun QuickPickGrid(picks: List<QuickPick>, choose: (QuickPick) -> Unit, openPicker: (Int) -> Unit) {
+internal fun QuickPickGrid(picks: List<QuickPick>, choose: (QuickPick) -> Unit, openPicker: (Int) -> Unit, roam: () -> Unit = {}) {
     var filter by remember { mutableIntStateOf(0) }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text("一键点歌", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
+        TextButton(onClick = roam) { Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp)); Text("漫游", Modifier.padding(start = 5.dp)) }
         IconButton(onClick = { openPicker(if (filter == 0) 1 else filter) }) { Icon(Icons.Default.Add, "添加漫游种子") }
     }
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

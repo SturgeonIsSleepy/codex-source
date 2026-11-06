@@ -74,14 +74,25 @@ internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
 
 @Composable
 private fun PlaybackSettings(model: EPlayerViewModel, engine: Int, openSound: () -> Unit) {
+    val recommendation by model.recommendationEngine.collectAsState()
+    var chooseRecommendation by remember { mutableStateOf(false) }
     Column(Modifier.verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedButton(onClick = { openSound() }, modifier = Modifier.fillMaxWidth().testTag("open-sound-settings")) { Text("均衡器与音效") }
         SleepTimerSetting(model)
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
         QualitySetting(model)
+        SettingsRow("推荐", if (recommendation == "ytm") "YTM" else "网易云") { chooseRecommendation = true }
         listOf("系统音频", "Rust 音频").forEachIndexed { index, label ->
             Row(Modifier.fillMaxWidth().testTag("audio-engine-$index").clickable { model.setEngine(index) }, verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(engine == index, { model.setEngine(index) }); Text(label)
+            }
+        }
+    }
+    if (chooseRecommendation) TravelSheet({ chooseRecommendation = false }) {
+        listOf("网易云" to "netease", "YTM" to "ytm").forEach { (label, value) ->
+            Row(Modifier.fillMaxWidth().clickable { model.setRecommendationEngine(value); chooseRecommendation = false }.padding(horizontal = 20.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(recommendation == value, { model.setRecommendationEngine(value); chooseRecommendation = false })
+                Text(label)
             }
         }
     }

@@ -206,15 +206,17 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
             } finally { busy.value = false }
         }
     }
-    internal fun roam(pick: QuickPick, play: (List<Track>) -> Unit) = action {
+    internal fun roam(pick: QuickPick, excluded: Set<String> = emptySet(), play: (List<Track>, Set<String>) -> Unit) = action {
         val source = pick.source ?: error("请先添加音源")
         val repo = MusicRepository(app, source)
-        val base = pick.track?.let { listOf(it) } ?: pick.entry?.let { repo.detail(it).tracks }.orEmpty()
-        check(base.isNotEmpty()) { "没有可播放的歌曲" }
-        val seed = if (pick.track != null) base.first() else base.random()
-        val queue = (listOf(seed) + base.filter { it.song.id != seed.song.id }.shuffled().take(8))
-            .distinctBy { it.song.id to it.source }
-        play(queue)
+        val originalIds = pick.entry?.takeIf { it.kind == MusicKind.PLAYLIST }?.let { repo.playlistIds(it.id) }
+        val base = pick.track?.let { listOf(it) } ?: pick.entry?.let { entry ->
+            if (originalIds != null) repo.songs(originalIds.shuffled().take(32)) else repo.detail(entry).tracks
+        }.orEmpty()
+        val allowed = base.filter { it.source == source && it.recommendationKey() !in excluded }
+        check(allowed.isNotEmpty()) { "没有可漫游的歌曲" }
+        val queue = diverseTracks(if (pick.track != null) allowed else allowed.shuffled(), excluded, 9)
+        play(queue, originalIds?.map { "$source:$it" }?.toSet() ?: base.map { it.recommendationKey() }.toSet())
     }
     fun saveQueue(name: String, tracks: List<Track>, done: () -> Unit, failed: (String) -> Unit = {}) = action {
       try {

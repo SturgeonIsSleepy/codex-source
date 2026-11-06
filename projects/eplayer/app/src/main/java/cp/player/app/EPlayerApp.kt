@@ -53,8 +53,15 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     var roamPicker by remember { mutableStateOf<Int?>(null) }
     val savedPicks by model.roamHistory.collectAsState()
     val busy by cloud.busy.collectAsState()
-    val picks = remember(home.playlists, home.source, recent, savedPicks) { quickPicks(home, recent, savedPicks) }
-    fun roam(pick: QuickPick) { cloud.roam(pick) { tracks -> model.startRoaming(pick, tracks); onShowPlayer(true) } }
+    val excluded by model.noInterest.collectAsState()
+    val picks = remember(home.playlists, home.recommendations, home.source, recent, savedPicks, excluded) { quickPicks(home, recent, savedPicks, excluded) }
+    fun roam(pick: QuickPick) { cloud.roam(pick, excluded) { tracks, original -> model.startRoaming(pick, tracks, original); onShowPlayer(true) } }
+    fun beginRoaming() {
+        val pick = picks.firstOrNull { it.entry?.special == true } ?: picks.firstOrNull { it.kind == 1000 } ?: picks.firstOrNull()
+        if (pick != null) roam(pick) else cloud.radio { tracks -> tracks.firstOrNull()?.let {
+            model.startRoaming(QuickPick("personal", "私人漫游", track = it), tracks); onShowPlayer(true)
+        } }
+    }
     var query by rememberSaveable { mutableStateOf("") }
     var libraryMode by rememberSaveable { mutableIntStateOf(0) }
     var createPlaylist by remember { mutableStateOf(false) }
@@ -120,7 +127,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
             when (selectedPage) {
                 0 -> {
                     item { ListeningSummary(stats) }
-                    item { Column { QuickPickGrid(picks, ::roam) { roamPicker = it } } }
+                    item { Column { QuickPickGrid(picks, ::roam, { roamPicker = it }, ::beginRoaming) } }
                 }
                 1 -> {
                     if (home.source == null) item { SettingsRow("添加音源") { openSettings("source") } }

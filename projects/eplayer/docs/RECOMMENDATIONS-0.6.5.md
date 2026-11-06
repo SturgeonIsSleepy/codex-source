@@ -1,0 +1,15 @@
+# ePlayer 0.6.5 推荐与漫游
+
+0.6.4 已先交付。此版本增加首页「漫游」、播放器漫游开关及播放设置内的推荐来源选择；默认网易云，YTM 为可选元数据推荐后端，实际歌单和音频始终留在网易云。
+
+首页按歌单、歌手、单曲、专辑交错排序，结合最近播放与种子历史；屏蔽不感兴趣歌曲，补充服务端推荐歌单。旧种子不再独占首屏。歌单种子从完整网易云 ID 列表抽样，避免仅使用前 200 首。
+
+漫游保留原始种子并轮换，提前补队列；按音源和歌曲 ID 去重，保留已听记录，过滤原歌单、当前队列和不感兴趣项。同名歌曲不会被当作相同 ID。队列修剪后仍保留本轮排重记录。请求失败有冷却，关闭漫游或切换推荐后端会取消在途工作，旧结果不能重新入队。
+
+YTM 只访问匿名首页、search 与 next Radio；没有请求播放流、内置 Python 或创建远端歌单，也没有 Google/Spotify 登录凭据。先将网易云种子严格匹配成 YTM 歌曲，再将推荐严格匹配回网易云。匹配核对完整歌名、全部可识别歌手、版本文字、时长和可用专辑；有歧义、缺时长、不同版本或专辑不符则跳过。无法保证覆盖所有跨语言别名，优先保守跳过。YTM 失败或无可靠匹配时回到网易云，并提示一次。
+
+参考 [ytmusicapi MIT 源码](https://github.com/sigma67/ytmusicapi/tree/488dbf31d8f9173331c80375fdc2fb6de6d45f6d)，独立实现最小 Kotlin 协议与解析，未复制 GPL 的 Metrolist 实现。整张私有歌单 Suggestions 需要授权和拥有相应歌单，本版只做多首种子 Radio，不能将其称为完整歌单 Suggestions。
+
+Spotify 调查见 [官方新应用限制](https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api) 和 [librespot Radio/Autoplay 源码](https://github.com/librespot-org/librespot/blob/dev/core/src/spclient.rs)：存在内部 Radio 实现，但依赖 Spotify 会话，项目要求 Premium。没有将它包装为免 Premium 的可用推荐接口。
+
+匿名 YTM 本机探测返回 HTTP 200 的地区不可用页面，未验证本网络下的真实推荐链路。可选后端需要网络能够访问 YTM；默认网易云不依赖它。本轮只执行推荐排序、会话排重、跨平台匹配、YTM 元数据解析及相关入口检查，结果待补充。

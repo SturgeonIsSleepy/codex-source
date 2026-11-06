@@ -74,6 +74,7 @@ internal fun YtmPlayerPanel(model: EPlayerViewModel, cloud: CloudViewModel, stat
     val qualityValue by model.quality.collectAsState()
     val noInterest by model.noInterest.collectAsState()
     val origin by model.queueOrigin.collectAsState()
+    val roaming by model.roaming.collectAsState()
     val busy by cloud.busy.collectAsState()
     var save by remember { mutableStateOf(false) }
     var saveName by remember { mutableStateOf("") }
@@ -102,6 +103,7 @@ internal fun YtmPlayerPanel(model: EPlayerViewModel, cloud: CloudViewModel, stat
         }
         PlayerAction("歌词", Icons.Default.FormatQuote, "player-action-lyrics", lyrics)
         comments?.let { PlayerAction(null, Icons.Default.ChatBubbleOutline, "player-action-comments", it) }
+        PlayerAction(if (roaming) "漫游中" else "漫游", Icons.Default.AutoAwesome, "player-action-roam", model::toggleRoaming, active = roaming)
         PlayerAction(qualityName(qualityValue), null, "player-action-quality", quality)
     }
     transport()
@@ -193,10 +195,14 @@ internal fun YtmPlayerPanel(model: EPlayerViewModel, cloud: CloudViewModel, stat
 }
 
 @Composable
-private fun PlayerAction(label: String?, icon: androidx.compose.ui.graphics.vector.ImageVector?, tag: String, action: () -> Unit) {
-    Row(Modifier.height(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = .7f))
+private fun PlayerAction(label: String?, icon: androidx.compose.ui.graphics.vector.ImageVector?, tag: String, action: () -> Unit, active: Boolean = false) {
+    val background = if (active) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = .7f)
+    val foreground = if (active) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface
+    androidx.compose.runtime.CompositionLocalProvider(LocalContentColor provides foreground) {
+    Row(Modifier.height(40.dp).clip(CircleShape).background(background)
         .clickable(onClick = action).padding(horizontal = 12.dp).testTag(tag), verticalAlignment = Alignment.CenterVertically) {
         icon?.let { Icon(it, if (label == null) "评论" else null, Modifier.size(20.dp)) }
         label?.let { Text(it, if (icon == null) Modifier else Modifier.padding(start = 6.dp), style = MaterialTheme.typography.labelLarge) }
+    }
     }
 }
