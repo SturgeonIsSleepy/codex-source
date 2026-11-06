@@ -26,4 +26,4 @@ Spotify 调查见 [官方新应用限制](https://developer.spotify.com/blog/202
 
 自用通用 APK 为 `ePlayer-v0.6.5-internal.apk`，57,035,823 bytes，比 0.6.4 增加 32 KiB。SHA256 `9f4202addeeb9176ac4ee737ed7992db93660b58a16373823bfa0a51b15f2463`。固定签名、16 KB 对齐、三 ABI、内置音源与 CI 代码载荷一致性已核验。
 
-[下载与验证记录](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.6.5)。公开归档包含本轮报告、定向结果、匿名接口可用性摘要和实际界面截图，不包含用户登录数据、签名密钥、原始网络响应或歌曲录音。
+[下载与验证记录](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.6.5)。公开归档仅含本轮报告、定向测试结果、包摘要和匿名接口可用性摘要；不包含界面图片、UI XML、用户登录数据、签名密钥、原始网络响应或歌曲录音。三张界面截图保留本地，避免公开听歌信息。首次含截图的发布被自动审批拒绝，发布脚本未执行；已收紧公开内容后重新审查。
