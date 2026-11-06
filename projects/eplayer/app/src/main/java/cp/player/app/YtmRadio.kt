@@ -19,13 +19,13 @@ internal class YtmRadio {
     companion object {
         private val client = OkHttpClient.Builder().connectTimeout(4, TimeUnit.SECONDS).readTimeout(6, TimeUnit.SECONDS)
             .callTimeout(10, TimeUnit.SECONDS).retryOnConnectionFailure(false).followRedirects(false).build()
-        private data class Cached(val at: Long, val value: JsonObject)
+        private data class Cached(val at: Long, val value: List<Recording>)
         private val cache = linkedMapOf<String, Cached>()
         private var bootstrap: Pair<Long, JsonObject>? = null
-        @Synchronized private fun cached(key: String): JsonObject? = cache[key]?.takeIf { System.currentTimeMillis() - it.at < 10 * 60_000 }?.value
-        @Synchronized private fun store(key: String, value: JsonObject) {
+        @Synchronized private fun cached(key: String): List<Recording>? = cache[key]?.takeIf { System.currentTimeMillis() - it.at < 10 * 60_000 }?.value
+        @Synchronized private fun store(key: String, value: List<Recording>) {
             cache[key] = Cached(System.currentTimeMillis(), value)
-            while (cache.size > 64) cache.remove(cache.keys.first())
+            while (cache.size > 32) cache.remove(cache.keys.first())
         }
     }
     private suspend fun response(request: Request): String = suspendCancellableCoroutine { continuation ->
@@ -60,8 +60,7 @@ internal class YtmRadio {
         synchronized(YtmRadio::class.java) { bootstrap = System.currentTimeMillis() to value }
         return value
     }
-    private suspend fun request(endpoint: String, key: String, body: JsonObject): JsonObject {
-        cached(key)?.let { return it }
+    private suspend fun request(endpoint: String, body: JsonObject): JsonObject {
         val context = context()
         body.add("context", context)
         val request = Request.Builder().url("https://music.youtube.com/youtubei/v1/$endpoint?prettyPrint=false")
@@ -70,19 +69,25 @@ internal class YtmRadio {
         context.obj("client")?.str("visitorData")?.let { request.header("X-Goog-Visitor-Id", it) }
         val result = JsonParser.parseString(response(request.post(body.toString().toRequestBody("application/json".toMediaType())).build())).asJsonObject
         check(result.obj("error") == null) { "YTM 推荐暂不可用" }
-        store(key, result)
         return result
     }
-    suspend fun search(song: Recording): List<Recording> = YtmMetadata.search(request("search", "search:${song.title}:${song.artists.joinToString()}", JsonObject().apply {
-        addProperty("query", "${song.title} ${song.artists.joinToString(" ")}")
-        addProperty("params", "EgWKAQIIAWoMEA4QChADEAQQCRAF")
-    }))
+    suspend fun search(song: Recording): List<Recording> {
+        val key = "search:${song.title}:${song.artists.joinToString()}"
+        cached(key)?.let { return it }
+        val result = YtmMetadata.search(request("search", JsonObject().apply {
+            addProperty("query", "${song.title} ${song.artists.joinToString(" ")}")
+            addProperty("params", "EgWKAQIIAWoMEA4QChADEAQQCRAF")
+        }))
+        store(key, result); return result
+    }
     suspend fun radio(id: String): List<Recording> {
         require(id.matches(Regex("[A-Za-z0-9_-]{11}")))
-        return YtmMetadata.radio(request("next", "radio:$id", JsonObject().apply {
+        cached("radio:$id")?.let { return it }
+        val result = YtmMetadata.radio(request("next", JsonObject().apply {
             addProperty("videoId", id); addProperty("playlistId", "RDAMVM$id"); addProperty("params", "wAEB")
             addProperty("isAudioOnly", true); addProperty("enablePersistentPlaylistPanel", true)
         }))
+        store("radio:$id", result); return result
     }
 }
 
