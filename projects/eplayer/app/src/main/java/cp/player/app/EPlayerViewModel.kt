@@ -126,24 +126,14 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private var visible = false
     private var progressVisible = false
     private var ticker: Job? = null
-    private var radioSource: String? = null
-    val roaming = MutableStateFlow(false)
+    val roaming = RoamPlayback.active
     val recommendationEngine = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getString("recommendation_engine", "netease") ?: "netease")
     fun setRecommendationEngine(value: String) {
         if (value !in setOf("netease", "ytm")) return
         recommendationEngine.value = value
         app.getSharedPreferences("eplayer_ui", 0).edit().putString("recommendation_engine", value).apply()
-        if (roaming.value) {
-            radioGeneration++; radioJob?.cancel(); loadingRadio = false; nextRadioAttempt = 0; ytmFallbackNotified = false
-            refillRadio(force = true)
-        }
+        RoamPlayback.retry()
     }
-    private var roamPlanner: RoamPlanner? = null
-    private var nextRadioAttempt = 0L
-    private var ytmFallbackNotified = false
-    private var radioGeneration = 0
-    private var radioJob: Job? = null
-    private var loadingRadio = false
     private val future = MediaController.Builder(app, SessionToken(app, ComponentName(app, MusicService::class.java))).setListener(object : MediaController.Listener {
         override fun onExtrasChanged(controller: MediaController, extras: Bundle) {
             sleepDeadline.value = extras.getLong(PlaybackSleepTimer.DEADLINE)
@@ -154,9 +144,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
             publish(queueChanged = events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_METADATA_CHANGED))
             if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) {
                 viewModelScope.launch { recent.value = withContext(Dispatchers.IO) { RecentStore.read(app) } }
-                refillRadio()
             }
-            if (events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED) && player.playbackState == Player.STATE_ENDED) refillRadio()
         }
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             playback.value.source?.let(SourceStore::clearResolved)
@@ -164,6 +152,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
     init {
+        viewModelScope.launch { RoamPlayback.messages.collect { message.value = it } }
         ListeningStatsStore.refresh(app)
         viewModelScope.launch { reloadLibrary(); recent.value = withContext(Dispatchers.IO) { RecentStore.read(app) } }
         future.addListener({
@@ -237,17 +226,18 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         try { scanned = withContext(Dispatchers.IO) { catalog.scan() }; reloadLibrary() }
         catch (error: Exception) { message.value = error.message ?: "读取失败" }
     }
-    fun play(track: Track, queue: List<Track>, radio: Boolean = false, origin: String? = null) {
+    fun play(track: Track, queue: List<Track>, radio: Boolean = false, origin: String? = null, afterStart: (() -> Unit)? = null) {
         queueOrigin.value = origin ?: track.song.artist.takeIf { it.isNotBlank() }
         app.getSharedPreferences("eplayer_ui", 0).edit().putString("queue_origin", queueOrigin.value).apply()
-        radioGeneration++; radioJob?.cancel(); loadingRadio = false; roaming.value = false; roamPlanner = null; nextRadioAttempt = 0; ytmFallbackNotified = false
-        radioSource = if (radio) track.source else null
+        RoamPlayback.stop()
         val action = {
             controller?.let { player ->
                 val tracks = (if (queue.isEmpty()) listOf(track) else queue).distinctBy { it.song.id to it.source }
                 val index = tracks.indexOf(track).coerceAtLeast(0)
                 player.setMediaItems(tracks.map { it.mediaItem(quality.value) }, index, 0)
                 player.prepare(); player.play()
+                if (radio) track.source?.let { RoamPlayback.start(it, tracks, personal = true) }
+                afterStart?.invoke()
             }
             Unit
         }
@@ -257,82 +247,23 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         val source = pick.source ?: return
         val allowed = tracks.filter { it.source == source && it.recommendationKey() !in noInterest.value }
         if (allowed.isEmpty()) { message.value = "没有可漫游的歌曲"; return }
-        play(allowed.first(), allowed, origin = pick.title)
-        radioSource = source; roaming.value = true
-        roamPlanner = RoamPlanner(source, allowed, original).apply { remember(allowed) }
+        play(allowed.first(), allowed, origin = pick.title, afterStart = { RoamPlayback.start(source, allowed, original) })
         rememberPick(pick)
-        refillRadio(force = true)
     }
     fun toggleRoaming() {
-        if (roaming.value) {
-            radioSource = null; roaming.value = false; roamPlanner = null
-            radioGeneration++; radioJob?.cancel(); loadingRadio = false
-        } else {
+        if (roaming.value) RoamPlayback.stop() else {
             val track = currentTrack() ?: return
             val source = track.source ?: run { message.value = "请播放网易云歌曲后开启漫游"; return }
-            val queue = currentQueueTracks()
-            radioGeneration++; radioJob?.cancel(); loadingRadio = false; nextRadioAttempt = 0; ytmFallbackNotified = false
-            radioSource = source; roaming.value = true
-            roamPlanner = RoamPlanner(source, listOf(track) + queue).apply { remember(queue) }
-            refillRadio(force = true)
-        }
-    }
-    private fun refillRadio(force: Boolean = false) {
-        val source = radioSource ?: return
-        val player = controller ?: return
-        if (loadingRadio || !player.playWhenReady || player.mediaItemCount == 0 ||
-            !force && (player.currentMediaItemIndex < player.mediaItemCount - 5 || android.os.SystemClock.elapsedRealtime() < nextRadioAttempt)) return
-        loadingRadio = true
-        val generation = radioGeneration
-        val planner = roamPlanner
-        val seeds = planner?.seeds(currentTrack()).orEmpty()
-        val useYtm = roaming.value && recommendationEngine.value == "ytm"
-        radioJob = viewModelScope.launch {
-            try {
-                val repo = MusicRepository(app, source)
-                val queue = currentQueueTracks()
-                var next = emptyList<Track>()
-                if (useYtm) {
-                    try { next = planner?.fresh(YtmRecommendations(app, source).recommend(seeds), noInterest.value, queue).orEmpty() }
-                    catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
-                    catch (_: Exception) { /* NCM remains the playable fallback. */ }
-                }
-                if (next.isEmpty() && planner != null) {
-                    if (useYtm && generation == radioGeneration && !ytmFallbackNotified) {
-                        ytmFallbackNotified = true; message.value = "YTM 暂不可用或无可靠匹配，使用网易云推荐"
-                    }
-                    for (seed in seeds) {
-                        try { next = planner.fresh(repo.similar(seed.remoteId ?: seed.song.id), noInterest.value, queue) }
-                        catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
-                        catch (_: Exception) { continue }
-                        if (next.isNotEmpty()) break
-                    }
-                }
-                if (next.isEmpty()) next = repo.radio()
-                if (radioSource == source && generation == radioGeneration) {
-                    val current = controller ?: return@launch
-                    val currentQueue = currentQueueTracks()
-                    val fresh = planner?.fresh(next, noInterest.value, currentQueue)
-                        ?: diverseTracks(next.filter { it.source == source }, currentQueue.map { it.recommendationKey() }.toSet() + noInterest.value)
-                    if (fresh.isEmpty()) { nextRadioAttempt = android.os.SystemClock.elapsedRealtime() + 30_000; return@launch }
-                    val ended = current.playbackState == Player.STATE_ENDED
-                    planner?.remember(fresh)
-                    current.addMediaItems(fresh.map { it.mediaItem(quality.value) })
-                    if (ended && current.playWhenReady && current.hasNextMediaItem()) { current.seekToNextMediaItem(); current.prepare(); current.play() }
-                    if (current.currentMediaItemIndex > 20) current.removeMediaItems(0, current.currentMediaItemIndex - 5)
-                }
-            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
-            catch (failure: Exception) { if (generation == radioGeneration) { message.value = failure.message ?: "漫游加载失败"; nextRadioAttempt = android.os.SystemClock.elapsedRealtime() + 30_000 } }
-            finally { if (generation == radioGeneration) loadingRadio = false }
+            RoamPlayback.start(source, listOf(track) + currentQueueTracks())
         }
     }
     fun playPause() { controller?.let { player ->
-        if (radioSource != null && player.playbackState == Player.STATE_ENDED) { player.playWhenReady = true; refillRadio(force = true) }
+        if (roaming.value && player.playbackState == Player.STATE_ENDED) { player.playWhenReady = true; RoamPlayback.retry() }
         else player.togglePlayback()
     } }
     fun previous() { controller?.seekToPreviousMediaItem() }
     fun next() { controller?.let { player ->
-        if (radioSource != null && !player.hasNextMediaItem()) refillRadio(force = true) else player.seekToNextMediaItem()
+        if (roaming.value && !player.hasNextMediaItem()) RoamPlayback.retry() else player.seekToNextMediaItem()
     } }
     fun seek(position: Long) { controller?.seekTo(position); publish(snapshotPosition = true) }
     fun setQuality(value: String) {
@@ -360,7 +291,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     } }
     fun clearQueue() {
-        radioSource = null; roaming.value = false; roamPlanner = null; radioGeneration++; radioJob?.cancel(); loadingRadio = false; pendingPlay = null
+        RoamPlayback.stop(); pendingPlay = null
         controller?.let { it.pause(); it.stop(); it.clearMediaItems() }
     }
     fun moveQueue(from: Int, to: Int) { controller?.let { if (from in 0 until it.mediaItemCount && to in 0 until it.mediaItemCount) it.moveMediaItem(from, to) } }

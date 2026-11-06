@@ -32,7 +32,8 @@ object JsonUtils {
 
         val artists = obj.get("ar")?.arr ?: obj.get("artists")?.arr
         val artistObj = artists?.firstOrNull()?.obj
-        val artistName = artistObj?.get("name")?.str ?: "Unknown"
+        val artistName = artists?.mapNotNull { it.obj?.get("name")?.str?.takeIf(String::isNotBlank) }
+            ?.joinToString(" / ")?.takeIf(String::isNotBlank) ?: "Unknown"
         val artistId = artistObj?.get("id")?.str
         val album = obj.get("al")?.obj ?: obj.get("album")?.obj
         val albumName = album?.get("name")?.str ?: "Unknown"

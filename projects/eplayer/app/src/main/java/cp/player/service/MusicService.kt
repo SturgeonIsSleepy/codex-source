@@ -81,6 +81,8 @@ class MusicService : MediaSessionService() {
     }
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
+            if (events.containsAny(Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_TIMELINE_CHANGED,
+                    Player.EVENT_PLAY_WHEN_READY_CHANGED, Player.EVENT_PLAYBACK_STATE_CHANGED)) cp.player.app.RoamPlayback.changed()
             if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED)) updatePriorityShuffle()
             if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION)) checkpointListening()
             if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION,
@@ -103,6 +105,7 @@ class MusicService : MediaSessionService() {
         rustFocus = if (engine == 1) RustAudioFocus(audio, player, handler) else null
         QueueStore.restore(this, player)
         player.addListener(listener)
+        cp.player.app.RoamPlayback.attach(this) { player }
         val activity = PendingIntent.getActivity(this, 0,
             Intent(this, MainActivity::class.java).setAction("ACTION_SHOW_PLAYER"),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
@@ -202,6 +205,7 @@ class MusicService : MediaSessionService() {
     }
     override fun onTaskRemoved(rootIntent: Intent?) { if (!player.playWhenReady) stopSelf() }
     override fun onDestroy() {
+        cp.player.app.RoamPlayback.detach()
         checkpointListening(finishing = true)
         sleepTimer.set(0)
         rustFocus?.close(); rustFocus = null

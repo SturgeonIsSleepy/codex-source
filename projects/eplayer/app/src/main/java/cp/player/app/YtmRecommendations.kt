@@ -25,7 +25,11 @@ internal class YtmRecommendations(context: Context, private val source: String) 
     }
     suspend fun recommend(seeds: List<Track>): List<Track> = withContext(Dispatchers.IO) {
         val candidates = linkedMapOf<String, Recording>()
-        for (seed in seeds.filter { it.source == source }.take(2)) {
+        val requested = seeds.filter { it.source == source }.take(2)
+        // Older saved queues only stored the first performer. Refresh native IDs before crossing catalogs.
+        val verified = ncm.songs(requested.map { it.remoteId ?: it.song.id }).associateBy { it.remoteId ?: it.song.id }
+        for (input in requested) {
+            val seed = verified[input.remoteId ?: input.song.id] ?: continue
             val expected = seed.recording()
             val id = RecordingMatch.choose(expected, ytm.search(expected)) ?: continue
             ytm.radio(id).filter { it.id != id }.forEach { candidates.putIfAbsent(it.id, it) }

@@ -30,4 +30,12 @@ class RecordingMatchTest {
         assertEquals("123", RecordingMatch.choose(expected, listOf(actual)))
         assertNull(RecordingMatch.choose(expected, listOf(actual.copy(title = "test song acoustic"))))
     }
+    @Test fun nativeMetadataRetainsEveryPerformerAndBandNamesAreNotInventedCollaborations() {
+        val native = cp.player.util.JsonUtils.parseSong(com.google.gson.JsonParser.parseString("""{"id":1,"name":"Duet","ar":[{"id":10,"name":"Artist A"},{"id":11,"name":"Artist B"}],"al":{"name":"Album"},"dt":180000}""").asJsonObject)!!
+        val expected = Recording("ytm", "Duet", listOf("Artist B", "Artist A"), 180000, "Album")
+        assertEquals("1", RecordingMatch.choose(expected, listOf(Track(native, source = "ncm").recording())))
+        assertNull(RecordingMatch.choose(expected, listOf(expected.copy(id = "wrong", artists = listOf("Artist A")))))
+        val band = expected.copy(artists = listOf("AC/DC"))
+        assertNull(RecordingMatch.choose(band, listOf(band.copy(id = "wrong", artists = listOf("AC", "DC")))))
+    }
 }

@@ -12,8 +12,8 @@ internal object RecordingMatch {
     fun text(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFKC).lowercase(Locale.ROOT)
         .filter { it.isLetterOrDigit() }
     private fun title(value: String): String = text(value.replace(Regex("(?i)\\s*[\\[(]?(?:official (?:audio|music video|lyric video)|lyrics? video|official video)[\\])]?\\s*"), ""))
-    private fun artists(values: List<String>) = values.flatMap { it.split(Regex("\\s+(?:&|feat\\.?|ft\\.?|and|x)\\s+|[、;/]", RegexOption.IGNORE_CASE)) }
-        .map(::text).filter { it.isNotEmpty() }.toSet()
+    private fun artists(values: List<String>) = values.flatMap { it.split(Regex("\\s+/\\s+")) }
+        .map(::text).filter { it.isNotEmpty() && it !in setOf("unknown", "unknownartist", "未知歌手") }.toSet()
     fun choose(expected: Recording, candidates: List<Recording>): String? {
         val name = title(expected.title)
         val performers = artists(expected.artists)
