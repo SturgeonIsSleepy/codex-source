@@ -127,9 +127,11 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private var progressVisible = false
     private var ticker: Job? = null
     val roaming = RoamPlayback.active
+    val roamFailure = RoamPlayback.failure
     val recommendationEngine = MutableStateFlow(app.getSharedPreferences("eplayer_ui", 0).getString("recommendation_engine", "netease") ?: "netease")
     fun setRecommendationEngine(value: String) {
         if (value !in setOf("netease", "ytm")) return
+        if (value != recommendationEngine.value) RoamPlayback.clearFailure()
         recommendationEngine.value = value
         app.getSharedPreferences("eplayer_ui", 0).edit().putString("recommendation_engine", value).apply()
         RoamPlayback.retry()
@@ -252,6 +254,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     }
     fun toggleRoaming() {
         if (roaming.value) RoamPlayback.stop() else {
+            if (RoamPlayback.retryFailed()) return
             val track = currentTrack() ?: return
             val source = track.source ?: run { message.value = "请播放网易云歌曲后开启漫游"; return }
             RoamPlayback.start(source, listOf(track) + currentQueueTracks())

@@ -28,6 +28,7 @@ internal class YtmRadio {
         private var bootstrap: Pair<Long, JsonObject>? = null
         @Synchronized private fun cached(key: String): List<Recording>? = cache[key]?.takeIf { System.currentTimeMillis() - it.at < 10 * 60_000 }?.value
         @Synchronized private fun store(key: String, value: List<Recording>) {
+            if (value.isEmpty()) return
             cache[key] = Cached(System.currentTimeMillis(), value)
             while (cache.size > 32) cache.remove(cache.keys.first())
         }

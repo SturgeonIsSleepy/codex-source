@@ -113,8 +113,9 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); model.message.value = null } }
     LaunchedEffect(cloudMessage) { cloudMessage?.let { snackbar.showSnackbar(it); cloud.message.value = null } }
 
-    var revealingBack by remember { mutableStateOf(false) }
-    val revealBack: (Boolean) -> Unit = remember { { revealingBack = it } }
+    val revealingPages = remember { mutableStateMapOf<Any, Boolean>() }
+    val revealingBack = revealingPages.isNotEmpty()
+    val revealBack: (Any, Boolean) -> Unit = remember { { token, visible -> if (visible) revealingPages[token] = true else revealingPages.remove(token); Unit } }
     val chromeVisible = (!showPlayer && detailPages.isEmpty() && !playbackSettings && !visualSettings && settingsSection == null && !searchOpen) || revealingBack
     @Composable
     fun RootContents(selectedPage: Int) {
@@ -193,8 +194,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             ThemeBackdrop(Modifier.matchParentSize())
             AnimatedContent(page, modifier = Modifier.fillMaxSize(), transitionSpec = {
-                (fadeIn(tween(160)) + slideInHorizontally(tween(180)) { if (targetState > initialState) it / 18 else -it / 18 })
-                    .togetherWith(fadeOut(tween(110)))
+                fadeIn(AppMotion.page()).togetherWith(fadeOut(AppMotion.page()))
             }, label = "root-tab") { selectedPage -> RootContents(selectedPage) }
         }
         Box(Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (chromeVisible) 1f else 0f }.navigationBarsPadding()) {
@@ -207,11 +207,10 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 180.dp))
     }
     settingsSection?.let { section ->
-        SettingsPanel(when (section) { "profile" -> "账号"; "settings" -> "设置"; "account" -> "账号"; "source" -> "音源"; else -> "关于" }, ::backSettings) {
+        SettingsPanel(when (section) { "profile" -> "账号"; "settings" -> "设置"; "account" -> "账号"; "source" -> "音源"; else -> "关于" }, ::backSettings, animateDismiss = settingsPath.size <= 1) {
+          val entrance = rememberSceneEntrance(settingsPath.size to section)
           key(settingsPath.size, section) {
-            val entrance = remember { androidx.compose.animation.core.Animatable(0f) }
-            LaunchedEffect(Unit) { entrance.animateTo(1f, tween(160)) }
-            Column(Modifier.fillMaxWidth().graphicsLayer { alpha = entrance.value; translationX = (1 - entrance.value) * 12.dp.toPx() }.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+            Column(Modifier.fillMaxWidth().graphicsLayer { alpha = entrance.value }.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 when (section) {
                     "profile" -> {
                         Row(Modifier.fillMaxWidth().clickable { openSettings("account") }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {

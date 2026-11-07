@@ -4,6 +4,9 @@ import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,7 +24,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
-internal val LocalBackPreviewVisibility = compositionLocalOf<((Boolean) -> Unit)?> { null }
+internal val LocalBackPreviewVisibility = compositionLocalOf<((Any, Boolean) -> Unit)?> { null }
+internal val LocalDialogDismiss = staticCompositionLocalOf<(() -> Unit)?> { null }
 
 /** A cancelled edge gesture never mutates navigation or commits a dialog action. */
 @Stable
@@ -45,10 +49,10 @@ internal fun PreviewBackHandler(preview: BackPreview, enabled: Boolean = true, o
                 preview.progress.snapTo(event.progress)
             }
             // Commit immediately: gesture progress has already supplied the exit preview.
-            preview.progress.snapTo(0f)
             latestBack()
+            preview.progress.snapTo(0f)
         } catch (cancelled: CancellationException) {
-            scope.launch { preview.progress.animateTo(0f, tween(100)) }
+            scope.launch { preview.progress.animateTo(0f, AppMotion.fast()) }
             throw cancelled
         }
     }
@@ -69,16 +73,41 @@ internal fun Modifier.backPreview(preview: BackPreview, fullPage: Boolean = true
 internal fun TravelDialog(onDismissRequest: () -> Unit,
     properties: DialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     destination: (@Composable () -> Unit)? = null,
+    animateDismiss: Boolean = destination == null,
     content: @Composable () -> Unit) {
     val preview = rememberBackPreview()
-    Dialog(onDismissRequest, properties = properties.copyForPredictiveBack()) {
-        PreviewBackHandler(preview, onBack = onDismissRequest)
-        PreviewWindow(preview)
-        val entrance = remember { Animatable(0f) }
-        LaunchedEffect(Unit) { entrance.animateTo(1f, tween(150)) }
-        Box(Modifier.fillMaxSize().graphicsLayer { alpha = .75f + .25f * entrance.value; translationY = (1 - entrance.value) * 20.dp.toPx() }) {
+    val entrance = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    var closing by remember { mutableStateOf(false) }
+    val latestDismiss by rememberUpdatedState(onDismissRequest)
+    val exitEnabled by rememberUpdatedState(animateDismiss)
+    fun dismiss() {
+        if (closing) return
+        if (!exitEnabled) { latestDismiss(); return }
+        closing = true
+        scope.launch { entrance.animateTo(0f, AppMotion.fast()); latestDismiss() }
+    }
+    Dialog(::dismiss, properties = properties.copyForPredictiveBack()) {
+        PreviewBackHandler(preview, enabled = !closing) {
+            if (preview.progress.value > 0f) latestDismiss() else dismiss()
+        }
+        PreviewWindow(preview, entrance.value, closing)
+        LaunchedEffect(Unit) { entrance.animateTo(1f, AppMotion.page()) }
+        Box(Modifier.fillMaxSize().graphicsLayer {
+            alpha = entrance.value
+            translationY = (1 - entrance.value) * 12.dp.toPx()
+        }.then(if (closing) Modifier.pointerInput(Unit) {
+            awaitEachGesture {
+                do {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    event.changes.forEach { it.consume() }
+                } while (event.changes.any { it.pressed })
+            }
+        } else Modifier)) {
             if (preview.progress.value > 0f) destination?.invoke()
-            Box(Modifier.fillMaxSize().backPreview(preview).testTag("predictive-page")) { content() }
+            CompositionLocalProvider(LocalDialogDismiss provides ::dismiss) {
+                Box(Modifier.fillMaxSize().backPreview(preview).testTag("predictive-page")) { content() }
+            }
         }
     }
 }
@@ -119,17 +148,17 @@ internal fun TravelMenu(expanded: Boolean, onDismissRequest: () -> Unit, content
 }
 
 @Composable
-private fun PreviewWindow(preview: BackPreview) {
+private fun PreviewWindow(preview: BackPreview, visibility: Float = 1f, exiting: Boolean = false) {
     val reveal = LocalBackPreviewVisibility.current
-    val active = preview.progress.value > 0f
+    val active = preview.progress.value > 0f || exiting
     DisposableEffect(active, reveal) {
-        reveal?.invoke(active)
-        onDispose { if (active) reveal?.invoke(false) }
+        reveal?.invoke(preview, active)
+        onDispose { if (active) reveal?.invoke(preview, false) }
     }
     val view = LocalView.current
     val window = (view.parent as? DialogWindowProvider)?.window
     val light = MaterialTheme.colorScheme.background.luminance() >= .3f
-    val dim = .20f * (1f - preview.progress.value)
+    val dim = .20f * visibility * (1f - preview.progress.value)
     SideEffect {
         window?.let {
             it.setWindowAnimations(0)

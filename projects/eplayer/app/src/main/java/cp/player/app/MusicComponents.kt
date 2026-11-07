@@ -142,7 +142,7 @@ internal fun MusicDock(state: Playback, page: Int, discovery: Boolean, choose: (
                 .clickable { showPlayer() }.padding(start = 8.dp, end = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 MusicCover(state.song, Modifier.size(36.dp))
                 AnimatedContent(state.song, contentKey = { it?.id }, modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-                    transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) }, label = "mini-track") { song ->
+                    transitionSpec = { fadeIn(AppMotion.page()) togetherWith fadeOut(AppMotion.page()) }, label = "mini-track") { song ->
                     Column {
                         Text(song?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
                         Text(song?.artist.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -206,7 +206,7 @@ private data class ArtworkKey(val id: String?, val url: String?)
 internal fun TrackArtwork(song: Song?, modifier: Modifier, size: Int, fallback: String? = null) {
     val context = LocalContext.current
     AnimatedContent(ArtworkKey(song?.id, songArtwork(song)), modifier = modifier,
-        transitionSpec = { (fadeIn(tween(240)) + scaleIn(tween(240), initialScale = .97f)) togetherWith fadeOut(tween(160)) },
+        transitionSpec = { fadeIn(AppMotion.artwork()) togetherWith fadeOut(AppMotion.artwork()) },
         label = "track-artwork") { target ->
         val request = remember(context, target.url, size, fallback) {
             ImageRequest.Builder(context).data(target.url ?: fallback).size(size).build()

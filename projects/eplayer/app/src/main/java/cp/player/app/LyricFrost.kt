@@ -31,6 +31,7 @@ import kotlinx.coroutines.withContext
 /** Notification-material treatment, computed once per cover/theme; no live GPU blur. */
 internal object LyricFrost {
     private val cache = LruCache<String, Bitmap>(4)
+    fun peek(artwork: String?, night: Boolean): Bitmap? = if (artwork == null) null else synchronized(cache) { cache.get("$night:$artwork") }
     suspend fun load(context: android.content.Context, artwork: String, night: Boolean): Bitmap? {
         val key = "$night:$artwork"
         synchronized(cache) { cache.get(key)?.let { return it } }
@@ -113,19 +114,20 @@ internal object LyricFrost {
 }
 
 @Composable
-internal fun LyricFrostBackground(song: Song?, modifier: Modifier = Modifier) {
+internal fun LyricFrostBackground(song: Song?, modifier: Modifier = Modifier,
+    fetch: suspend (android.content.Context, String, Boolean) -> Bitmap? = LyricFrost::load) {
     val context = LocalContext.current.applicationContext
     val base = MaterialTheme.colorScheme.background
     val night = base.luminance() < .3f
     val artwork = songArtwork(song)
-    val bitmap by produceState<Bitmap?>(null, artwork, night) {
-        value = null
-        if (artwork != null) value = try { LyricFrost.load(context, artwork, night) }
+    val bitmap by produceState<Bitmap?>(LyricFrost.peek(artwork, night), artwork, night) {
+        if (artwork == null) value = null
+        else value = try { fetch(context, artwork, night) }
             catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
             catch (_: Exception) { null }
     }
     Box(modifier.background(base).testTag("lyric-frost")) {
-        Crossfade(bitmap, animationSpec = tween(320), label = "cover-material") { image ->
+        Crossfade(bitmap, animationSpec = AppMotion.artwork(), label = "cover-material") { image ->
             if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         }
         Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(base.copy(alpha = .12f), Color.Transparent, base.copy(alpha = .18f)))))
@@ -135,12 +137,13 @@ internal fun LyricFrostBackground(song: Song?, modifier: Modifier = Modifier) {
 /** Small CPU-blurred images are cached; character frames never run a blur shader. */
 internal object StageCoverCache {
     private val cache = LruCache<String, Bitmap>(4)
+    fun peek(artwork: String?, radius: Float): Bitmap? = if (artwork == null) null else synchronized(cache) { cache.get("${radius.toBits()}:$artwork") }
     suspend fun load(context: android.content.Context, artwork: String, radius: Float): Bitmap? {
         val key = "${radius.toBits()}:$artwork"
         synchronized(cache) { cache.get(key)?.let { return it } }
-        val request = ImageRequest.Builder(context).data(artwork).size(256).allowHardware(false).build()
+        val request = ImageRequest.Builder(context).data(artwork).size(if (radius <= 0f) 512 else 256).allowHardware(false).build()
         val result = SingletonImageLoader.get(context).execute(request) as? SuccessResult ?: return null
-        val bitmap = withContext(Dispatchers.Default) { LyricFrost.soften(result.image.toBitmap(), radius) }
+        val bitmap = withContext(Dispatchers.Default) { if (radius <= 0f) result.image.toBitmap() else LyricFrost.soften(result.image.toBitmap(), radius) }
         synchronized(cache) { cache.put(key, bitmap) }
         return bitmap
     }
@@ -151,15 +154,15 @@ internal fun SoftStageCover(song: Song?, radius: Float, modifier: Modifier = Mod
     val artwork = songArtwork(song)
     val context = LocalContext.current.applicationContext
     val amount = radius.coerceIn(0f, 24f)
-    val image by produceState<Bitmap?>(null, artwork, amount) {
+    val image by produceState<Bitmap?>(StageCoverCache.peek(artwork, amount), artwork, amount) {
         kotlinx.coroutines.delay(24)
-        if (artwork == null || amount <= 0f) value = null
+        if (artwork == null) value = null
         else value = try { StageCoverCache.load(context, artwork, amount) }
             catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
             catch (_: Exception) { null }
     }
-    Crossfade(image, modifier = modifier, animationSpec = tween(200), label = "soft-cover") { bitmap ->
+    Crossfade(image, modifier = modifier, animationSpec = AppMotion.artwork(), label = "soft-cover") { bitmap ->
         if (bitmap != null) Image(bitmap.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        else TrackArtwork(song, Modifier.fillMaxSize(), 512)
+        else Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primaryContainer))
     }
 }

@@ -1,6 +1,7 @@
 package cp.player.app
 
 import android.os.SystemClock
+import androidx.compose.animation.Crossfade
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
@@ -32,6 +33,7 @@ internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
         if (showSound) { store.dismissImport(); showSound = false } else close()
     }
     TravelDialog(onDismissRequest = back,
+        animateDismiss = !showSound,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         destination = {
             if (showSound) Surface(Modifier.fillMaxSize()) {
@@ -41,17 +43,20 @@ internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
                 }
             }
         }) {
+        val dismiss = LocalDialogDismiss.current ?: back
         Surface(Modifier.fillMaxSize().testTag("settings-panel")) {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(if (showSound) "均衡器与音效" else "播放设置", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
-                    TextButton(onClick = back) { Text(if (showSound) "返回设置" else "完成") }
+                    TextButton(onClick = dismiss) { Text(if (showSound) "返回设置" else "完成") }
                 }
                 HorizontalDivider()
-                if (showSound) {
-                    SoundSettingsScreen(sound, store::equalizer, store::band, store::flat, store::toggle,
-                        store::amount, editBand = store::editBand) { importFile.launch(arrayOf("text/*")) }
-                } else PlaybackSettings(model, sound.engine) { showSound = true }
+                Crossfade(showSound, animationSpec = AppMotion.page(), label = "playback-settings-page") { soundPage ->
+                    if (soundPage) {
+                        SoundSettingsScreen(sound, store::equalizer, store::band, store::flat, store::toggle,
+                            store::amount, editBand = store::editBand) { importFile.launch(arrayOf("text/*")) }
+                    } else PlaybackSettings(model, sound.engine) { showSound = true }
+                }
             }
         }
     }
@@ -147,11 +152,12 @@ internal fun VisualSettings(model: EPlayerViewModel, close: () -> Unit) {
     val playback by model.playback.collectAsState()
     val preview = if (background != null) (playback.song ?: cp.player.model.Song("background", "", "", album = "")).copy(albumArtUrl = background) else playback.song
     TravelDialog(close) {
+        val dismiss = LocalDialogDismiss.current ?: close
         Surface(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 24.dp)) {
                 Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("画面设置", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
-                    TextButton(onClick = close) { Text("完成") }
+                    TextButton(onClick = dismiss) { Text("完成") }
                 }
                 SettingsCard {
                     SettingsRow("显示模式", when (appearance) { "light" -> "浅色"; "system" -> "跟随系统"; else -> "深色" }) { themeOpen = true }

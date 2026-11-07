@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -25,12 +26,13 @@ internal fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-internal fun SettingsPanel(title: String, close: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
-    TravelDialog(close) {
+internal fun SettingsPanel(title: String, close: () -> Unit, animateDismiss: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
+    TravelDialog(close, animateDismiss = animateDismiss) {
+        val dismiss = LocalDialogDismiss.current ?: close
         Surface(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 24.dp)) {
                 Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = close) { Icon(androidx.compose.material.icons.Icons.Default.Close, "关闭") }
+                    IconButton(onClick = dismiss) { Icon(if (animateDismiss) androidx.compose.material.icons.Icons.Default.Close else androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, if (animateDismiss) "关闭" else "返回") }
                     Text(title, Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.headlineSmall)
                 }
                 content()

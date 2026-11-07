@@ -38,6 +38,7 @@ internal fun SearchScreen(query: String, change: (String) -> Unit, cloud: CloudV
     val recent by player.recent.collectAsState()
     val context = LocalContext.current.applicationContext
     TravelDialog(close) {
+        val dismiss = LocalDialogDismiss.current ?: close
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
     val requester = remember { FocusRequester() }

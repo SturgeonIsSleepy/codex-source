@@ -17,6 +17,7 @@ internal class YtmRecommendations(context: Context, private val source: String) 
     companion object {
         private data class Match(val at: Long, val track: Track?)
         private val matches = linkedMapOf<String, Match>()
+        @Synchronized fun forgetUnmatched() { matches.entries.removeAll { it.value.track == null } }
         @Synchronized private fun cached(key: String) = matches[key]?.takeIf { System.currentTimeMillis() - it.at < 30 * 60_000 }
         @Synchronized private fun cache(key: String, track: Track?) {
             matches[key] = Match(System.currentTimeMillis(), track)

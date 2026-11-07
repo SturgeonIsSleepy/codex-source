@@ -37,18 +37,24 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
+private data class RenderedLyrics(val owner: String, val text: LyricsText, val lines: List<TimedLine>)
+
 @Composable
-internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, close: () -> Unit) {
-    val entrance = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { entrance.animateTo(1f, tween(220, easing = FastOutSlowInEasing)) }
+internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel,
+    parse: suspend (LyricsText, Long) -> List<TimedLine> = { source, duration -> withContext(Dispatchers.Default) { LyricParser.document(source, duration) } },
+    close: () -> Unit) {
     val sampled by model.position.collectAsState()
     val playback by model.playback.collectAsState()
     val quality by model.quality.collectAsState()
     val context = LocalContext.current
     val duration = playback.duration.takeIf { it > 0 } ?: playback.song?.durationMs ?: 0
-    val lines by produceState<List<TimedLine>>(emptyList(), text, duration) {
-        value = withContext(Dispatchers.Default) { text?.let { LyricParser.document(it, duration) }.orEmpty() }
+    val owner = "${playback.source}:${playback.remoteId ?: playback.song?.id}"
+    val parsed by produceState<RenderedLyrics?>(null, owner, text, duration) {
+        if (text != null) value = RenderedLyrics(owner, text, parse(text, duration))
     }
+    val document = parsed?.takeIf { it.owner == owner }
+    val lines = document?.lines.orEmpty()
+    val loading = text == null || document == null || (lines.isEmpty() && document.text != text)
     val list = rememberLazyListState()
     var located by remember(playback.song?.id) { mutableStateOf(false) }
     val dragged by list.interactionSource.collectIsDraggedAsState()
@@ -88,21 +94,19 @@ internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, close: () 
             val anchor = (list.layoutInfo.viewportEndOffset * .24f).toInt()
             val item = list.layoutInfo.visibleItemsInfo.firstOrNull { it.index == active }
             if (!located || item == null) list.scrollToItem(active, -anchor)
-            else list.animateScrollBy((item.offset - anchor).toFloat(), tween(320))
+            else list.animateScrollBy((item.offset - anchor).toFloat(), tween(AppMotion.Scroll, easing = AppMotion.Ease))
             located = true
         }
     }
     TravelDialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        val dismiss = LocalDialogDismiss.current ?: close
         val ink = MaterialTheme.colorScheme.onBackground
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).testTag("lyrics-page").graphicsLayer {
-            alpha = entrance.value
-            translationY = (1 - entrance.value) * 20.dp.toPx()
-        }) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).testTag("lyrics-page")) {
             LyricFrostBackground(playback.song, Modifier.matchParentSize())
             Column(Modifier.fillMaxSize()
                 .systemBarsPadding().padding(horizontal = 20.dp)) {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = close) { Icon(Icons.Default.KeyboardArrowDown, "关闭歌词", tint = ink) }
+                    IconButton(onClick = dismiss) { Icon(Icons.Default.KeyboardArrowDown, "关闭歌词", tint = ink) }
                     MusicCover(playback.song, Modifier.size(44.dp))
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                         Text(playback.song?.name.orEmpty(), color = ink, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -114,8 +118,8 @@ internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, close: () 
                     IconButton(onClick = { options = true }) { Icon(Icons.Default.MoreHoriz, "歌词选项", tint = ink) }
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) {
-                    if (text == null) CircularProgressIndicator(Modifier.align(Alignment.Center).size(28.dp), color = ink, strokeWidth = 2.dp)
-                    if (text != null && lines.isEmpty()) Text("暂无歌词", Modifier.align(Alignment.Center), color = ink.copy(alpha = .65f))
+                    if (loading) CircularProgressIndicator(Modifier.align(Alignment.Center).size(28.dp).testTag("lyrics-loading"), color = ink, strokeWidth = 2.dp)
+                    if (!loading && lines.isEmpty()) Text("暂无歌词", Modifier.align(Alignment.Center), color = ink.copy(alpha = .65f))
                     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(top = 80.dp, bottom = 260.dp)) {
                         itemsIndexed(lines, key = { index, line -> "${line.time}:${line.speaker}:$index" }) { index, line ->
                             val highlighted by remember(line, index, clock, timed, activeState) { derivedStateOf {
@@ -123,7 +127,7 @@ internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel, close: () 
                                 if (!timed) true else now >= line.time && (line.end?.let { now < it } ?: (index == activeState.value))
                             } }
                             LyricVerse(line, clock, highlighted, duet, translate, romanized, ink,
-                                Modifier.clip(RoundedCornerShape(10.dp))
+                                Modifier.testTag("lyric-line-$index").clip(RoundedCornerShape(10.dp))
                                     .then(if (timed && !line.credit) Modifier.clickable { model.seek(line.time); follow = true } else Modifier)
                                     .padding(horizontal = 6.dp, vertical = if (line.credit) 6.dp else if (line.background) 9.dp else 22.dp))
                         }

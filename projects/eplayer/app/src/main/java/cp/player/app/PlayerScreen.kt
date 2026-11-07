@@ -61,18 +61,18 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
     var queue by remember { mutableStateOf(false) }
     var qualitySheet by remember { mutableStateOf(false) }
     val quality by model.quality.collectAsState()
-    var lyrics by remember { mutableStateOf<LyricsText?>(null) }
+    var lyrics by remember(state.source, state.remoteId, state.song?.id) { mutableStateOf<LyricsText?>(null) }
     var showLyrics by remember { mutableStateOf(false) }
     var seeking by remember(state.song?.id) { mutableStateOf<Float?>(null) }
     val liked = state.song?.let { song ->
         if (state.source == null) song.id in favorites else (state.remoteId ?: song.id) in likes[state.source].orEmpty()
     } ?: false
     LaunchedEffect(showLyrics, state.source, state.remoteId, state.song?.id) {
-        lyrics = null
         if (showLyrics) lyrics = model.lyrics { lyrics = it }
     }
     val openLyrics = { showLyrics = true }
     TravelDialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        val dismiss = LocalDialogDismiss.current ?: close
         YtmPlayerPanel(model, cloud, state, customBackground,
             artwork = { modifier, characterVisible ->
                 CharacterStage(state.song, modifier, coverBlur, customBackground) { portrait ->
@@ -94,7 +94,7 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
             }, showFavorite = false) },
             liked = liked, like = { state.song?.let { song -> if (state.source == null) model.favorite(song) else model.currentTrack()?.let(cloud::like) } },
             lyrics = openLyrics, comments = if (state.source != null) comments else null,
-            quality = { qualitySheet = true }, more = more, songOptions = queueOptions, close = close)
+            quality = { qualitySheet = true }, more = more, songOptions = queueOptions, close = dismiss)
     }
     if (qualitySheet) QualitySheet(model) { qualitySheet = false }
     if (showLyrics) LyricsScreen(lyrics, model) { showLyrics = false }

@@ -106,18 +106,18 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
     val reorder = rememberSongReorder(keys, listState, headerCount = reorderHeaders) { from, to -> cloud.movePlaylist(target, from, to) }
     val editable = target.kind == MusicKind.PLAYLIST
 
+    val entrance = rememberSceneEntrance(page.instanceId)
     TravelDialog(onDismissRequest = cloud::back,
+        animateDismiss = pages.size <= 1,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         destination = { pages.getOrNull(pages.lastIndex - 1)?.let { previous -> val previousScroll = scrollStates[previous.instanceId]; CloudReturnPreview(previous, previousScroll?.firstVisibleItemIndex ?: 0, previousScroll?.firstVisibleItemScrollOffset ?: 0) } }) {
         key(page.instanceId) {
-        val entrance = remember { androidx.compose.animation.core.Animatable(0f) }
-        LaunchedEffect(Unit) { entrance.animateTo(1f, androidx.compose.animation.core.tween(150)) }
         Surface(Modifier.fillMaxSize()) {
           Box(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().graphicsLayer { alpha = .9f + entrance.value * .1f; translationX = (1 - entrance.value) * 10.dp.toPx() }
+            Column(Modifier.fillMaxSize().graphicsLayer { alpha = entrance.value }
                 .systemBarsPadding().padding(bottom = if (playback.song != null) 128.dp else 76.dp)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = cloud::back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
+                    IconButton(onClick = (LocalDialogDismiss.current ?: cloud::back)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
                     Text(if (editing) "已选 ${selected.size}" else target.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (editable && tracks.isNotEmpty()) TextButton(enabled = !home.loading && !page.loading && !busy, onClick = { reorder.finish(false); editing = !editing; selected = emptySet() }) { Text(if (editing) "完成" else "编辑") }
                     if (own && !target.special && target.kind == MusicKind.PLAYLIST) Box {
