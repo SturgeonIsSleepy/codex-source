@@ -1,6 +1,9 @@
 package cp.player.engine
 
 import android.util.Log
+import android.os.SystemClock
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.withTimeoutOrNull
 import cp.player.util.DebugLog
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -66,6 +69,12 @@ object RustEngine {
     val audioEvents: SharedFlow<AudioEvent> = _audioEvents.asSharedFlow()
 
     private var pollJob: Job? = null
+    private val pollWake = Channel<Unit>(Channel.CONFLATED)
+    @Volatile private var fastPollUntil = 0L
+    private fun wakePoller() {
+        fastPollUntil = SystemClock.elapsedRealtime() + 1500
+        pollWake.trySend(Unit)
+    }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
@@ -79,6 +88,7 @@ object RustEngine {
     }
 
     fun initEngine(context: android.content.Context): Boolean {
+        wakePoller()
         DebugLog.i("RustEngine: initEngine() called. isInitialized: $isInitialized")
         if (!isInitialized) return false
 
@@ -95,6 +105,7 @@ object RustEngine {
     }
 
     fun play(path: String): Boolean {
+        wakePoller()
         DebugLog.i("RustEngine: play() called with path: $path, isInitialized: $isInitialized")
         if (!isInitialized) {
             DebugLog.e("RustEngine: Cannot play, RustEngine is not initialized")
@@ -106,22 +117,26 @@ object RustEngine {
     }
 
     fun pause(): Boolean {
+        wakePoller()
         if (!isInitialized) return false
         return nativePause()
     }
 
     fun resume(): Boolean {
+        wakePoller()
         if (!isInitialized) return false
         return nativeResume()
     }
 
     fun stop(reason: String = "unspecified"): Boolean {
+        wakePoller()
         if (!isInitialized) return false
         Log.i(TAG, "Native Stop requested; reason=$reason")
         return nativeStop()
     }
 
     fun seek(positionSecs: Double): Boolean {
+        wakePoller()
         if (!isInitialized) return false
         return nativeSeek(positionSecs)
     }
@@ -173,7 +188,7 @@ object RustEngine {
                 bufferLevel = json.optDouble("buffer_level", 0.0)
             )
             _engineProgress.value = progress
-            MusicPulse.publish(nativeGetAmplitude())
+            if (MusicPulse.shouldMeasure()) MusicPulse.publish(nativeGetAmplitude())
             return progress
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse progress JSON: $jsonStr", e)
@@ -219,8 +234,12 @@ object RustEngine {
                     if (eventStr != null && eventStr != "null") {
                         handleEventJson(eventStr)
                     } else {
-                        // No event, delay a bit
-                        delay(50)
+                        val state = _engineState.value
+                        val active = state.equals("playing", true) || state.equals("buffering", true) || state.equals("crossfading", true)
+                        if (active || SystemClock.elapsedRealtime() < fastPollUntil) delay(50)
+                        else withTimeoutOrNull(500) { pollWake.receive() }
+                        // Commands wake the idle wait immediately; their asynchronous
+                        // acknowledgements retain the existing 50 ms startup cadence.
                     }
                 } catch (cancel: CancellationException) {
                     throw cancel
@@ -245,7 +264,7 @@ object RustEngine {
                     _audioEvents.tryEmit(AudioEvent.StateChanged(state, path))
                 }
                 "Progress" -> {
-                    MusicPulse.publish(nativeGetAmplitude())
+                    if (MusicPulse.shouldMeasure()) MusicPulse.publish(nativeGetAmplitude())
                     val progress = AudioEvent.Progress(
                         positionSecs = json.optDouble("position_secs", 0.0),
                         durationSecs = json.optDouble("duration_secs", 0.0),

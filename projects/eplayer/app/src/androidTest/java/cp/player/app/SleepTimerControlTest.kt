@@ -27,19 +27,18 @@ class SleepTimerControlTest {
                 } }
             }
         }
-        compose.onNodeWithText("设置").performClick()
+        compose.onNodeWithText("关闭").performClick()
         compose.onNodeWithText("30 分钟").performClick()
-        compose.onNodeWithText("约 30 分钟后暂停").assertIsDisplayed()
-        compose.onNodeWithText("调整").performClick()
+        compose.onNodeWithText("30 分钟").assertIsDisplayed().performClick()
         compose.onNodeWithText("60 分钟").performClick()
-        compose.onNodeWithText("约 60 分钟后暂停").assertIsDisplayed()
+        compose.onNodeWithText("60 分钟").assertIsDisplayed()
         val folder = File(compose.activity.getExternalFilesDir(null), "layout-check").apply { mkdirs() }
         File(folder, "sleep-timer.png").outputStream().use {
             compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
         }
-        compose.onNodeWithText("调整").performClick()
+        compose.onNodeWithText("60 分钟").performClick()
         compose.onNodeWithText("关闭定时").performClick()
-        compose.onNodeWithText("设置").assertIsDisplayed()
+        compose.onNodeWithText("关闭").assertIsDisplayed()
         assertEquals(listOf(30, 60, 0), commands)
     }
 }
