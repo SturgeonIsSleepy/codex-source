@@ -58,9 +58,9 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     fun roam(pick: QuickPick) { cloud.roam(pick, excluded) { tracks, original -> model.startRoaming(pick, tracks, original); onShowPlayer(true) } }
     fun beginRoaming() {
         val pick = picks.firstOrNull { it.entry?.special == true } ?: picks.firstOrNull { it.kind == 1000 } ?: picks.firstOrNull()
-        if (pick != null) roam(pick) else cloud.radio { tracks -> tracks.firstOrNull()?.let {
-            model.startRoaming(QuickPick("personal", "私人漫游", track = it), tracks); onShowPlayer(true)
-        } }
+        if (pick != null) roam(pick)
+        else if (home.source != null) roamPicker = 1
+        else model.message.value = "请先添加音源"
     }
     var query by rememberSaveable { mutableStateOf("") }
     var libraryMode by rememberSaveable { mutableIntStateOf(0) }
