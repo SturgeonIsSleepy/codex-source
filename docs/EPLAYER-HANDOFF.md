@@ -1,5 +1,7 @@
 # ePlayer 转移交接
 
+0.6.6 已完成推荐失败不切换算法、播放器手势/切歌/歌词动画修复及代码去重。[下载](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.6.6) · [检查与迁移记录](../projects/eplayer/docs/MOTION-0.6.6.md)。应用源码 `9b524efea3a84c8c4bb55e5c98e4081dc3f105c3` / CI 42445610860，最终21项逻辑、9项UI通过；正式包普通返回连续收回已录屏核对。项目实体迁D，C仅兼容链接，私有密钥/原音源/账号用户磁盘保留；旧构建与RAM缓存回收约4.72GiB。最新APK57,035,823字节，按用户最新指示自行交付不再做SHA256或生成SUMS；只记录版本、来源、大小、签名可安装与对齐。公开验证包不含实际截图/视频/历史记录。
+
 0.6.5 已完成推荐与连续漫游实现，[说明与边界](../projects/eplayer/docs/RECOMMENDATIONS-0.6.5.md) · [下载](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.6.5)。源码 `be458624478b1e408e8c73ed7406d9ecbd2ad890` / CI 42219531243，15 项定向 JVM、2 项入口检查通过。默认网易云，可选纯 Kotlin YTM 元数据 Radio，实际播放始终网易云；CI 匿名接口返回搜索 20 条、Radio 50 条，本机完整跨平台播放链路尚未成功验证。APK 增量 32 KiB，SHA256 `9f4202addeeb9176ac4ee737ed7992db93660b58a16373823bfa0a51b15f2463`。0.6.4 已先交付；本地保留源码与最新安装包，密钥保持私有。
 
 0.6.4 已完成跟手队列、拖动与多选分离、角色视图复用及底栏/过渡调整。[下载](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.6.4) · [定向检查记录](../projects/eplayer/docs/QA-0.6.4.md)。应用源码 `743513b1b19a7d8e082a9e0cea704d176bba9358` / CI 41446618286，12 项改动相关设备检查全部通过，最终 R8 包已手动检查。自用通用 APK SHA256 `ddceba95fe51dc07f25525e1518dced5a3ae59b242548b82aecdc341333280de`；本地保留源码、最新 APK 与签名密钥。没有重跑完整功能或实机功耗回归。
