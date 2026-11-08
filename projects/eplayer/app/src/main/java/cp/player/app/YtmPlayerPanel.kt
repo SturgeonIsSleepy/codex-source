@@ -71,7 +71,10 @@ internal fun YtmPlayerPanel(model: EPlayerViewModel, cloud: CloudViewModel, stat
     val queueOpen by remember { derivedStateOf { expansion > 0f } }
     fun visualProgress() = (expansion * (1f - queueBack.progress.value)).coerceIn(0f, 1f)
     val characterVisible by remember { derivedStateOf { expansion * (1f - queueBack.progress.value) < .999f } }
-    PreviewBackHandler(queueBack, enabled = queueOpen) { settling?.cancel(); restingOpen = false; expansion = 0f }
+    PreviewBackHandler(queueBack, enabled = queueOpen) {
+        if (queueBack.progress.value > 0f) { settling?.cancel(); restingOpen = false; expansion = 0f }
+        else settle(false)
+    }
     val swipe = Modifier.pointerInput(Unit) {
         val velocity = VelocityTracker()
         detectVerticalDragGestures(

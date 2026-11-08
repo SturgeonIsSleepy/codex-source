@@ -4,7 +4,6 @@
 The module and signing key are never uploaded by this tool.
 """
 import argparse
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -45,7 +44,7 @@ def main():
                 target.writestr(entry, source.read(entry))
             target.write(args.module, 'assets/bundled-provider.zip', compress_type=zipfile.ZIP_STORED)
         subprocess.run([str(args.build_tools / ('zipalign' + suffix)), '-f', '-P', '16', '4', str(unsigned), str(args.output)], check=True)
-    print(json.dumps({'output': str(args.output), 'module_sha256': hashlib.sha256(args.module.read_bytes()).hexdigest(), 'signed': False}))
+    print(json.dumps({'output': str(args.output), 'module_bytes': args.module.stat().st_size, 'signed': False}))
 
 
 if __name__ == '__main__':

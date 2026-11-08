@@ -74,6 +74,22 @@ class AnimationContinuityTest {
         compose.onNodeWithTag("queue-list").assertIsDisplayed()
         compose.onNodeWithTag("motion-character").assertDoesNotExist()
     }
+    @Test fun ordinaryBackClosesQueueThroughIntermediateFrames() {
+        panel()
+        compose.onNodeWithTag("queue-peek").performClick()
+        compose.onNodeWithTag("queue-list").assertIsDisplayed()
+        compose.mainClock.autoAdvance=false
+        try {
+            val command=androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("input keyevent 4")
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(command).use { it.readBytes() }
+            compose.mainClock.advanceTimeBy(64)
+            val page=compose.onNodeWithTag("player-page").fetchSemanticsNode().boundsInRoot
+            val surface=compose.onNodeWithTag("player-queue-surface").fetchSemanticsNode().boundsInRoot
+            assertTrue("Hardware back must have an intermediate closing frame",surface.top>page.top+10 && surface.top<page.bottom-10)
+            compose.mainClock.advanceTimeBy(500)
+            compose.onNodeWithTag("queue-list").assertDoesNotExist()
+        } finally { compose.mainClock.autoAdvance=true }
+    }
     @Test fun parsingLyricsNeverFlashesAnEmptyResultBeforeTheDocumentIsReady() {
         val player=model(); val gate=CompletableDeferred<Unit>()
         compose.runOnUiThread { compose.activity.setContent { EPlayerTheme {
