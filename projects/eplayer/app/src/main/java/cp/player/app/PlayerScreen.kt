@@ -1,13 +1,9 @@
 package cp.player.app
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -26,12 +22,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.DialogProperties
-import cp.player.model.Song
 import cp.player.ui.artwork.WitchPlayerView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -58,9 +52,7 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
     val likes by cloud.likes.collectAsState()
     val position by model.position.collectAsState()
     DisposableEffect(model) { model.setProgressVisible(true); onDispose { model.setProgressVisible(false) } }
-    var queue by remember { mutableStateOf(false) }
     var qualitySheet by remember { mutableStateOf(false) }
-    val quality by model.quality.collectAsState()
     var lyrics by remember(state.source, state.remoteId, state.song?.id) { mutableStateOf<LyricsText?>(null) }
     var showLyrics by remember { mutableStateOf(false) }
     var seeking by remember(state.song?.id) { mutableStateOf<Float?>(null) }
@@ -98,59 +90,6 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
     }
     if (qualitySheet) QualitySheet(model) { qualitySheet = false }
     if (showLyrics) LyricsScreen(lyrics, model) { showLyrics = false }
-}
-
-/** Portrait keeps transport visible. Wide screens reserve a separate, unclipped artwork pane.
- * Metadata can scroll at large font sizes without extending underneath the character.
- */
-@Composable
-internal fun PlayerLayout(song: Song?, buffering: Boolean, header: @Composable () -> Unit,
-                          artwork: @Composable (Modifier) -> Unit, controls: @Composable () -> Unit) {
-    BoxWithConstraints(Modifier.fillMaxSize().systemBarsPadding()) {
-        if (maxWidth >= 600.dp && maxWidth > maxHeight) {
-            Row(Modifier.fillMaxSize().padding(horizontal = 16.dp).testTag("player-wide")) {
-                artwork(Modifier.weight(.45f).fillMaxHeight().testTag("player-artwork"))
-                Column(Modifier.weight(.55f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(start = 12.dp)) {
-                    header()
-                    PlayerMetadata(song)
-                    if (buffering) LinearProgressIndicator(Modifier.fillMaxWidth())
-                    controls()
-                }
-            }
-        } else {
-            Column(Modifier.fillMaxSize().padding(horizontal = 20.dp).testTag("player-portrait")) {
-                header()
-                artwork(Modifier.weight(1f).fillMaxWidth().testTag("player-artwork"))
-                PlayerMetadata(song)
-                if (buffering) LinearProgressIndicator(Modifier.fillMaxWidth())
-                controls()
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlayerMetadata(song: Song?) {
-    AnimatedContent(song, contentKey = { it?.id },
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp).testTag("player-metadata"),
-        transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(140)) }, label = "track-metadata") { display ->
-        Column(Modifier.fillMaxWidth()) {
-            Text(display?.name ?: "未选择音乐", style = MaterialTheme.typography.headlineSmall,
-                maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (!display?.artist.isNullOrBlank()) Text(display!!.artist, style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-internal fun PlayerHeader(close: () -> Unit, lyrics: () -> Unit, comments: (() -> Unit)?, more: () -> Unit, queue: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = close) { Icon(Icons.Default.KeyboardArrowDown, "收起播放器") }
-        Spacer(Modifier.weight(1f))
-        if (comments != null) IconButton(onClick = comments) { Icon(Icons.Default.ChatBubbleOutline, "评论") }
-        IconButton(onClick = more) { Icon(Icons.Default.MoreHoriz, "更多歌曲操作") }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -3,9 +3,6 @@ package cp.player.app
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -75,8 +72,10 @@ internal fun LyricsScreen(text: LyricsText?, model: EPlayerViewModel,
     val animateVisible by remember(list, coarseFocus) { derivedStateOf {
         list.layoutInfo.visibleItemsInfo.any { it.index in maxOf(0, coarseFocus - 1)..(coarseFocus + 1) }
     } }
-    val fineTiming = lines.subList(maxOf(0, coarseFocus - 1).coerceAtMost(lines.size), (coarseFocus + 2).coerceIn(0, lines.size))
-        .any { it.instrumental || it.words.any(TimedWord::timed) }
+    val fineTiming = remember(lines, coarseFocus) {
+        lines.subList(maxOf(0, coarseFocus - 1).coerceAtMost(lines.size), (coarseFocus + 2).coerceIn(0, lines.size))
+            .any { it.instrumental || it.words.any(TimedWord::timed) }
+    }
     val moving = playback.playing && foreground && animateVisible && fineTiming && !qualityOpen && !options
     // The MediaController already estimates the audio clock locally. No new service IPC or decoder polling.
     LaunchedEffect(playback.song?.id, sampled, moving) {

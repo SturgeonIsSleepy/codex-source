@@ -39,12 +39,15 @@ class DarkAppearanceTest {
         val state = Playback(song = song, duration = 60000, queue = listOf(song, song.copy(id = "second")))
         compose.runOnUiThread { compose.activity.setContent { EPlayerTheme(darkTheme = true) {
             val background = MaterialTheme.colorScheme.background.toArgb()
-            PlayerLayout(song, false, header = { PlayerHeader({}, {}, null, {}, {}) },
-                artwork = { modifier -> CharacterStage(song, modifier) { child ->
+            val model = androidx.lifecycle.ViewModelProvider(compose.activity)[EPlayerViewModel::class.java]
+            val cloud = androidx.lifecycle.ViewModelProvider(compose.activity)[CloudViewModel::class.java]
+            YtmPlayerPanel(model, cloud, state, null,
+                artwork = { modifier, _ -> CharacterStage(song, modifier) { child ->
                     AndroidView(factory = { WitchPlayerView(it).apply { setMotionEnabled(false) } },
                         modifier = child, update = { it.setAppearance(true, background, 1); it.setCoverBackdropEnabled(true) })
                 } },
-                controls = { PlayerTransport(state, 0, null, {}, {}, {}, {}, {}, {}, {}, false, {}) })
+                transport = { PlayerTransport(state, 0, null, {}, {}, {}, {}, {}, {}, {}, false, {}, showFavorite = false) },
+                liked = false, like = {}, lyrics = {}, comments = null, quality = {}, more = {}, songOptions = {}, close = {})
         } } }
         val stage = compose.onNodeWithTag("character-stage").fetchSemanticsNode().boundsInRoot
         val coverBounds = compose.onNodeWithTag("stage-cover").fetchSemanticsNode().boundsInRoot
