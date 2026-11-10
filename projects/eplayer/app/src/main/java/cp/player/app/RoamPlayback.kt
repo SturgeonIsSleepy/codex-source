@@ -46,6 +46,7 @@ internal object RoamPlayback {
         if (failure.value == null || source == null) return false
         if (player?.invoke()?.currentMediaItem?.mediaMetadata?.extras?.getString("source") != source) { stop(); return false }
         YtmRecommendations.forgetUnmatched()
+        YtmRadio.forgetRouteMetadata()
         active.value = true
         retry()
         return true
@@ -113,14 +114,14 @@ internal object RoamPlayback {
                 if (!active.value || this@RoamPlayback.source != source || owner != generation) return@launch
                 val current = this@RoamPlayback.player?.invoke() ?: return@launch
                 val fresh = planner.fresh(next, excluded(), queue(current))
-                if (fresh.isEmpty()) { fail("${backend.title} 暂无可靠的新推荐，请重试"); return@launch }
+                if (fresh.isEmpty()) { fail("${backend.title} 推荐均已在队列或已听过，请更换种子"); return@launch }
                 val ended = current.playbackState == Player.STATE_ENDED
                 planner.remember(fresh)
                 current.addMediaItems(fresh.map { it.mediaItem(prefs.getString("quality", "standard") ?: "standard") })
                 if (ended && current.playWhenReady && current.hasNextMediaItem()) { current.seekToNextMediaItem(); current.prepare(); current.play() }
                 if (current.currentMediaItemIndex > 20) current.removeMediaItems(0, current.currentMediaItemIndex - 5)
             } catch (cancelled: CancellationException) { throw cancelled }
-            catch (failure: Exception) { if (owner == generation) { fail("${backend.title} 推荐失败，请重试") } }
+            catch (failure: Exception) { android.util.Log.w("EPlayerRoam", "refill failed type=${failure.javaClass.simpleName} cause=${failure.cause?.javaClass?.simpleName} reason=${if (failure is RecommendationUnavailable) failure.message else "request"}"); if (owner == generation) { fail(if (failure is RecommendationUnavailable) failure.message ?: "${backend.title} 推荐暂不可用" else "${backend.title} 推荐请求失败，请检查连接后重试") } }
             finally { if (owner == generation) loading = false }
         }
     }

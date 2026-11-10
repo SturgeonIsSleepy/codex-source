@@ -2,6 +2,8 @@ package cp.player.app
 
 import kotlinx.coroutines.CancellationException
 
+internal class RecommendationUnavailable(message: String) : java.io.IOException(message)
+
 internal enum class RecommendationBackend(val title: String) { YTM("YTM"), NETEASE("网易云"), PERSONAL("网易云私人 FM") }
 
 /** Only the selected backend may run. Empty results and errors never select a different algorithm. */

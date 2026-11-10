@@ -60,4 +60,29 @@ class RecordingMatchCatalogTest {
         assertNull(RecordingMatch.choose(native("アイドル", "YOASOBI", 213000, "アイドル"),
             listOf(ytm("ytm", "アイドル (Cover Ver.) [Mixed]", "Amaris", 38000, ""))))
     }
+    @Test fun swayBilingualTitleAndVerifiedArtistAliasesMatchTheRealSeed() {
+        val ncm = Recording("2648828636", "一世風靡", listOf("花譜", "星街すいせい"), 191733,
+            "一世風靡", listOf("kaf", "かふ", "花谱", "Suisei Hoshimachi", "星街彗星"), listOf("一世风靡"))
+        val ytm = Recording("MvhCmi3bTv8", "一世風靡 - SWAY", listOf("KAF", "Hoshimachi Suisei"), 192000, "SWAY")
+        assertEquals(ytm.id, RecordingMatch.choose(ncm, listOf(ytm)))
+        assertEquals(ncm.id, RecordingMatch.choose(ytm, listOf(ncm)))
+    }
+    @Test fun translatedTwoWordArtistOrderUsesOnlyTheCatalogIdentity() {
+        val ncm = native("Song", "星街すいせい", 205000).copy(artistAliases = listOf("Suisei Hoshimachi"))
+        assertEquals("ytm", RecordingMatch.choose(ncm, listOf(ytm("ytm", "Song", "Hoshimachi Suisei", 205000))))
+        assertNull(RecordingMatch.choose(ncm, listOf(ytm("wrong", "Song", "Other Artist", 205000))))
+    }
+    @Test fun featureCreditIsRemovedOnlyWhenThePerformerIsKnown() {
+        val ncm = native("DEADPOOL", "Hoshimachi Suisei", 205000).copy(artists = listOf("Hoshimachi Suisei", "KAF"))
+        assertEquals("ytm", RecordingMatch.choose(ncm, listOf(ytm("ytm", "DEADPOOL (feat. KAF)", "Hoshimachi Suisei", 205000))))
+        assertNull(RecordingMatch.choose(ncm, listOf(ytm("wrong", "DEADPOOL (feat. Other)", "Hoshimachi Suisei", 205000))))
+    }
+    @Test fun bilingualDisplayDoesNotHideAnotherVersionOrPart() {
+        val song = native("一世風靡", "KAF", 192000)
+        for (suffix in listOf("Live", "Cover", "Remix", "English Version", "Part 2", "Off Vocal")) {
+            assertNull(suffix, RecordingMatch.choose(song, listOf(ytm("wrong", "一世風靡 - $suffix", "KAF", 192000))))
+        }
+        assertNull(RecordingMatch.choose(native("Song", "Artist", 180000), listOf(ytm("wrong", "Song - Different Song", "Artist", 180000))))
+    }
+
 }

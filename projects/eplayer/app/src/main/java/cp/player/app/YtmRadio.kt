@@ -21,10 +21,18 @@ import okhttp3.Response
 /** Metadata-only anonymous Radio. No player/stream requests, account cookies or remote playlist writes. */
 internal class YtmRadio {
     companion object {
+        // WEB_REMIX requires a supported browser identity; a bare Mozilla/5.0 can return
+        // a region-unavailable shell and an empty song catalog on the very same proxy.
+        private const val USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
         /** Rebuilt whenever the configured proxy changes, so a new setting is never served by a stale client. */
         @Volatile private var client: OkHttpClient = build(null)
         private var currentProxy: YtmProxy.Config? = null
         private var routeGeneration = 0L
+        @Volatile private var regionUnavailable = false
+        @Synchronized fun forgetRouteMetadata() {
+            routeGeneration++; cache.clear(); bootstrap = null; regionUnavailable = false
+            client.connectionPool.evictAll()
+        }
 
         private fun build(proxy: YtmProxy.Config?): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(4, TimeUnit.SECONDS).readTimeout(6, TimeUnit.SECONDS)
@@ -41,7 +49,7 @@ internal class YtmRadio {
             currentProxy = wanted
             client.connectionPool.evictAll()
             client = build(wanted)
-            routeGeneration++
+            routeGeneration++; regionUnavailable = false
             cache.clear()
             bootstrap = null
         }
@@ -59,18 +67,20 @@ internal class YtmRadio {
     private val route = synchronized(Companion) { client to routeGeneration }
     private val requestClient = route.first
     private val generation = route.second
-    private suspend fun response(request: Request): String = suspendCancellableCoroutine { continuation ->
+    private suspend fun response(request: Request, prefixLimit: Long? = null): String = suspendCancellableCoroutine { continuation ->
         val call = requestClient.newCall(request)
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) { if (!continuation.isCancelled) continuation.resumeWith(Result.failure(e)) }
             override fun onResponse(call: Call, response: Response) {
                 val result = runCatching { response.use {
+                    android.util.Log.i("EPlayerRoam", "stage=ytm-http status=${it.code}")
                     check(it.isSuccessful) { "YTM 请求失败 (${it.code})" }
                     it.body.source().use { source ->
-                        source.request(2_000_001)
-                        check(source.buffer.size <= 2_000_000) { "YTM 响应过大" }
-                        source.buffer.readUtf8()
+                        val limit = prefixLimit ?: 2_000_000L
+                        source.request(limit + 1)
+                        if (prefixLimit == null) check(source.buffer.size <= limit) { "YTM 响应过大" }
+                        source.buffer.readUtf8(minOf(source.buffer.size, limit))
                     }
                 } }
                 if (!continuation.isCancelled) continuation.resumeWith(result)
@@ -79,9 +89,10 @@ internal class YtmRadio {
     }
     private suspend fun context(): JsonObject {
         synchronized(Companion) { bootstrap?.takeIf { System.currentTimeMillis() - it.first < 6 * 60 * 60_000 }?.let { return it.second } }
-        val html = try { response(Request.Builder().url("https://music.youtube.com/").header("User-Agent", "Mozilla/5.0").header("Cookie", "SOCS=CAI").build()) }
+        val html = try { response(Request.Builder().url("https://music.youtube.com/").header("User-Agent", USER_AGENT).header("Cookie", "SOCS=CAI").build(), prefixLimit = 128 * 1024L) }
             catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { "" }
+        if (html.isNotEmpty()) regionUnavailable = html.contains("not available in your area", ignoreCase = true)
         // ytmusicapi initialize_context uses a UTC date version; the landing page is optional.
         val version = Regex("\"(?:INNERTUBE_CLIENT_VERSION|INNERTUBE_CONTEXT_CLIENT_VERSION|clientVersion)\"\\s*:\\s*\"([0-9.]+)\"").find(html)?.groupValues?.get(1)
             ?: "1.${LocalDate.now(ZoneOffset.UTC).format(DateTimeFormatter.BASIC_ISO_DATE)}.01.00"
@@ -97,7 +108,7 @@ internal class YtmRadio {
         val context = context()
         body.add("context", context)
         val request = Request.Builder().url("https://music.youtube.com/youtubei/v1/$endpoint?prettyPrint=false")
-            .header("User-Agent", "Mozilla/5.0").header("Origin", "https://music.youtube.com")
+            .header("User-Agent", USER_AGENT).header("Origin", "https://music.youtube.com")
             // Public, non-login consent marker also used by ytmusicapi; no account cookies.
             .header("Cookie", "SOCS=CAI")
             .header("X-Youtube-Client-Name", "67").header("X-Youtube-Client-Version", context.obj("client")!!.str("clientVersion")!!)
@@ -113,6 +124,8 @@ internal class YtmRadio {
             addProperty("query", query)
             addProperty("params", "EgWKAQIIAWoMEA4QChADEAQQCRAF")
         }))
+        if (result.isEmpty() && regionUnavailable)
+            throw RecommendationUnavailable("当前 YTM 出口不提供歌曲目录，请更换代理节点")
         synchronized(Companion) { if (generation == routeGeneration) store(key, result) }; return result
     }
     suspend fun radio(id: String): List<Recording> {
@@ -121,6 +134,7 @@ internal class YtmRadio {
         val result = YtmMetadata.radio(request("next", JsonObject().apply {
             addProperty("videoId", id); addProperty("playlistId", "RDAMVM$id"); addProperty("params", "wAEB")
             addProperty("isAudioOnly", true); addProperty("enablePersistentPlaylistPanel", true)
+            addProperty("tunerSettingValue", "AUTOMIX_SETTING_NORMAL")
         }))
         synchronized(Companion) { if (generation == routeGeneration) store("radio:$id", result) }; return result
     }

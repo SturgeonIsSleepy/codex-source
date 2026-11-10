@@ -5,7 +5,7 @@
 | 工具 | 用途 | 入口 |
 | --- | --- | --- |
 | [Android Cloud](tools/android-cloud/) | Android 16 一键配置、自动选择 KVM 或软件模拟、后台启动 | [说明](tools/android-cloud/README.md) · [Skill](tools/android-cloud/SKILL.md) · [部署脚本](tools/android-cloud/android-cloud) |
-| [ePlayer](projects/eplayer/) | 0.6.7 可关闭音频分流、漫游匹配与队列交互修复，自用通用包 | [交接与验收](docs/EPLAYER-HANDOFF.md) · [源码](projects/eplayer/) · [0.6.7 记录](projects/eplayer/docs/ROUTING-0.6.7.md) |
+| [ePlayer](projects/eplayer/) | 0.6.8 实机修复音频直连与 YTM 漫游，自用通用包 | [交接与验收](docs/EPLAYER-HANDOFF.md) · [源码](projects/eplayer/) · [0.6.8 记录](projects/eplayer/docs/ROAM-0.6.8.md) |
 | [Witch Player](projects/witch-player/) | 1.8 独立双曲播放器与角色动画参考 | [说明](projects/witch-player/README.md) · [历史产物](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/witch-player-v1.8.0) |
 
 ## Android 16：其他 cloud 会话直接用

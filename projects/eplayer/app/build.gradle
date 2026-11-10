@@ -27,7 +27,7 @@ def gitDescribeProvider = providers.exec {
 def resolvedSha = gitShaProvider.getOrElse('unknown')
 // Keep local 0.6.6 hotfixes (through versionCode 187) upgradeable.
 // -PversionCodeBase=n lifts the counter so a local rebuild installs over an already shipped build.
-def resolvedVersionCode = Math.max(188, gitVersionCodeProvider.getOrElse(1) + providers.gradleProperty('versionCodeBase').getOrElse('0').toInteger())
+def resolvedVersionCode = Math.max(189, gitVersionCodeProvider.getOrElse(1) + providers.gradleProperty('versionCodeBase').getOrElse('0').toInteger())
 def resolvedDescribe = gitDescribeProvider.getOrElse('')
 def resolvedVersionName = resolvedDescribe.matches('^v?\\d+.*') ? resolvedDescribe.replaceFirst(/^v/, '') : "1.0.${resolvedVersionCode}"
 
@@ -70,7 +70,7 @@ android {
         minSdk 28
         targetSdk 36
         versionCode resolvedVersionCode
-        versionName "0.6.7"
+        versionName "0.6.8"
         buildConfigField "String", "GIT_SHA", "\"${resolvedSha}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

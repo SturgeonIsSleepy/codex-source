@@ -59,21 +59,29 @@ internal class YtmRecommendations(context: Context, private val source: String) 
         val requested = seeds.filter { it.source == source }.take(2)
         // Older saved queues only stored the first performer. Refresh native IDs before crossing catalogs.
         val verified = ncm.songs(requested.map { it.remoteId ?: it.song.id }).associateBy { it.remoteId ?: it.song.id }
+        android.util.Log.i("EPlayerRoam", "stage=native-seed count=${verified.size}")
+        if (verified.isEmpty()) throw RecommendationUnavailable("音源未返回种子歌曲资料，请重新点播后重试")
+        var seedMatches = 0
         for (input in requested) {
             val seed = verified[input.remoteId ?: input.song.id] ?: continue
             val expected = seed.recording()
             val searched = ytm.search(expected).toMutableList()
+            android.util.Log.i("EPlayerRoam", "stage=seed-search count=${searched.size}")
             var id = RecordingMatch.choose(expected, searched)
             if (id == null) {
                 searched += ytm.search(expected, expected.title)
                 id = RecordingMatch.choose(identity(seed), searched)
             }
             if (id == null) continue
+            seedMatches++
             ytm.radio(id).filter { it.id != id }.forEach { candidates.putIfAbsent(it.id, it) }
             if (candidates.size >= 12) break
         }
+        android.util.Log.i("EPlayerRoam", "stage=radio seeds=$seedMatches candidates=${candidates.size}")
+        if (seedMatches == 0) throw RecommendationUnavailable("YTM 未找到对应原曲，请更换种子后重试")
+        if (candidates.isEmpty()) throw RecommendationUnavailable("YTM 未返回新的推荐曲目，请稍后重试")
         val permits = Semaphore(2)
-        coroutineScope {
+        val mapped = coroutineScope {
             candidates.values.take(12).map { expected -> async {
                 permits.withPermit {
                     val key = "$source:${expected.id}:${expected.title}:${expected.artists}:${expected.durationMs}:${expected.album}"
@@ -105,5 +113,8 @@ internal class YtmRecommendations(context: Context, private val source: String) 
                 }
             } }.awaitAll().filterNotNull().distinctBy { it.recommendationKey() }
         }
+        android.util.Log.i("EPlayerRoam", "stage=native-match count=${mapped.size}")
+        if (mapped.isEmpty()) throw RecommendationUnavailable("已取得 YTM 推荐，但未匹配到网易云原曲")
+        mapped
     }
 }

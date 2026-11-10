@@ -140,6 +140,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     /** The proxy only affects YTM metadata, so a stale failure and its cache are dropped on change. */
     fun onYtmProxyChanged() {
+        YtmRadio.forgetRouteMetadata()
         YtmRadio.configure(app)
         if (!RoamPlayback.retryFailed()) RoamPlayback.retry()
     }
@@ -148,6 +149,9 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
             sleepDeadline.value = extras.getLong(PlaybackSleepTimer.DEADLINE)
         }
     }).buildAsync()
+    private fun playbackErrorMessage(error: androidx.media3.common.PlaybackException): String? =
+        generateSequence<Throwable>(error) { it.cause }.take(8)
+            .filterIsInstance<cp.player.network.PlaybackNetwork.RouteUnavailable>().firstOrNull()?.message ?: error.message
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
             publish(queueChanged = events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_METADATA_CHANGED))
@@ -157,7 +161,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             playback.value.source?.let(SourceStore::clearResolved)
-            message.value = "播放失败：${error.message ?: error.errorCodeName}"
+            message.value = "播放失败：${playbackErrorMessage(error) ?: error.errorCodeName}"
         }
     }
     init {
@@ -184,7 +188,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
             player.playbackState == Player.STATE_BUFFERING, displayedPosition,
             player.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: song?.durationMs?.coerceAtLeast(0) ?: 0,
             queueSnapshot,
-            player.shuffleModeEnabled, player.repeatMode, player.playerError?.message, player.currentMediaItem?.mediaMetadata?.extras?.getString("source"), player.currentMediaItem?.mediaMetadata?.extras?.getString("remoteId"),
+            player.shuffleModeEnabled, player.repeatMode, player.playerError?.let(::playbackErrorMessage), player.currentMediaItem?.mediaMetadata?.extras?.getString("source"), player.currentMediaItem?.mediaMetadata?.extras?.getString("remoteId"),
             playRequested = player.playWhenReady && player.playbackState != Player.STATE_ENDED && player.playerError == null, queueIndex = player.currentMediaItemIndex, playOrder = player.playbackOrder())
         position.value = currentPosition
         restartTicker()
