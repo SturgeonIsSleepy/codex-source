@@ -21,8 +21,31 @@ import okhttp3.Response
 /** Metadata-only anonymous Radio. No player/stream requests, account cookies or remote playlist writes. */
 internal class YtmRadio {
     companion object {
-        private val client = OkHttpClient.Builder().connectTimeout(4, TimeUnit.SECONDS).readTimeout(6, TimeUnit.SECONDS)
-            .callTimeout(10, TimeUnit.SECONDS).retryOnConnectionFailure(false).followRedirects(false).build()
+        /** Rebuilt whenever the configured proxy changes, so a new setting is never served by a stale client. */
+        @Volatile private var client: OkHttpClient = build(null)
+        private var currentProxy: YtmProxy.Config? = null
+        private var routeGeneration = 0L
+
+        private fun build(proxy: YtmProxy.Config?): OkHttpClient = OkHttpClient.Builder()
+            .connectTimeout(4, TimeUnit.SECONDS).readTimeout(6, TimeUnit.SECONDS)
+            .callTimeout(10, TimeUnit.SECONDS).retryOnConnectionFailure(false).followRedirects(false)
+            .apply { proxy?.let { proxy(it.toProxy()) } }
+            .build()
+
+        /** Applies the user's proxy and drops cached metadata tied to the previous route. */
+        @Synchronized fun configure(context: android.content.Context) {
+            val raw = if (cp.player.network.PlaybackNetwork.splitEnabled(context)) YtmProxy.raw(context) else ""
+            val wanted = YtmProxy.parse(raw)
+            require(raw.isBlank() || wanted != null) { "YTM 代理地址无效，请重新设置" }
+            if (wanted == currentProxy) return
+            currentProxy = wanted
+            client.connectionPool.evictAll()
+            client = build(wanted)
+            routeGeneration++
+            cache.clear()
+            bootstrap = null
+        }
+
         private data class Cached(val at: Long, val value: List<Recording>)
         private val cache = linkedMapOf<String, Cached>()
         private var bootstrap: Pair<Long, JsonObject>? = null
@@ -33,8 +56,11 @@ internal class YtmRadio {
             while (cache.size > 32) cache.remove(cache.keys.first())
         }
     }
+    private val route = synchronized(Companion) { client to routeGeneration }
+    private val requestClient = route.first
+    private val generation = route.second
     private suspend fun response(request: Request): String = suspendCancellableCoroutine { continuation ->
-        val call = client.newCall(request)
+        val call = requestClient.newCall(request)
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) { if (!continuation.isCancelled) continuation.resumeWith(Result.failure(e)) }
@@ -52,7 +78,7 @@ internal class YtmRadio {
         })
     }
     private suspend fun context(): JsonObject {
-        synchronized(YtmRadio::class.java) { bootstrap?.takeIf { System.currentTimeMillis() - it.first < 6 * 60 * 60_000 }?.let { return it.second } }
+        synchronized(Companion) { bootstrap?.takeIf { System.currentTimeMillis() - it.first < 6 * 60 * 60_000 }?.let { return it.second } }
         val html = try { response(Request.Builder().url("https://music.youtube.com/").header("User-Agent", "Mozilla/5.0").header("Cookie", "SOCS=CAI").build()) }
             catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { "" }
@@ -64,7 +90,7 @@ internal class YtmRadio {
             addProperty("clientName", "WEB_REMIX"); addProperty("clientVersion", version)
             addProperty("hl", "en"); visitor?.let { addProperty("visitorData", it) }
         }) }
-        synchronized(YtmRadio::class.java) { bootstrap = System.currentTimeMillis() to value }
+        synchronized(Companion) { if (generation == routeGeneration) bootstrap = System.currentTimeMillis() to value }
         return value
     }
     private suspend fun request(endpoint: String, body: JsonObject): JsonObject {
@@ -80,14 +106,14 @@ internal class YtmRadio {
         check(result.obj("error") == null) { "YTM 推荐暂不可用" }
         return result
     }
-    suspend fun search(song: Recording): List<Recording> {
-        val key = "search:${song.title}:${song.artists.joinToString()}"
+    suspend fun search(song: Recording, query: String = "${song.title} ${song.artists.joinToString(" ")}"): List<Recording> {
+        val key = "search:$query"
         cached(key)?.let { return it }
         val result = YtmMetadata.search(request("search", JsonObject().apply {
-            addProperty("query", "${song.title} ${song.artists.joinToString(" ")}")
+            addProperty("query", query)
             addProperty("params", "EgWKAQIIAWoMEA4QChADEAQQCRAF")
         }))
-        store(key, result); return result
+        synchronized(Companion) { if (generation == routeGeneration) store(key, result) }; return result
     }
     suspend fun radio(id: String): List<Recording> {
         require(id.matches(Regex("[A-Za-z0-9_-]{11}")))
@@ -96,7 +122,7 @@ internal class YtmRadio {
             addProperty("videoId", id); addProperty("playlistId", "RDAMVM$id"); addProperty("params", "wAEB")
             addProperty("isAudioOnly", true); addProperty("enablePersistentPlaylistPanel", true)
         }))
-        store("radio:$id", result); return result
+        synchronized(Companion) { if (generation == routeGeneration) store("radio:$id", result) }; return result
     }
 }
 

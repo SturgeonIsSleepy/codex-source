@@ -45,6 +45,13 @@ class MusicRepository(private val context: Context, val source: String) {
             item.number("trackCount").takeIf { it > 0 } ?: item.number("size"), item.flag("subscribed") || item.flag("followed"), item.number("specialType") == 5)
     }
     private fun entries(array: JsonArray, kind: MusicKind): List<MusicEntry> = array.mapNotNull { entry(it, kind) }
+    suspend fun artistAliases(id: String): List<String> {
+        val result = request("artist/detail", mapOf("id" to id))
+        val artist = result.obj("data")?.obj("artist") ?: result.obj("artist") ?: return emptyList()
+        return (listOfNotNull(artist.str("name")) + listOf("alias", "transNames", "tns").flatMap { key ->
+            artist.array(key).mapNotNull { it.takeIf { value -> value.isJsonPrimitive }?.asString }
+        }).distinct()
+    }
     suspend fun account(): Account? {
         val response = request("login/status")
         val profile = (response.obj("data") ?: response).obj("profile") ?: return null

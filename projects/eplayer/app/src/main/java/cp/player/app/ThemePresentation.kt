@@ -26,17 +26,24 @@ internal fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-internal fun SettingsPanel(title: String, close: () -> Unit, animateDismiss: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
-    TravelDialog(close, animateDismiss = animateDismiss) {
-        val dismiss = LocalDialogDismiss.current ?: close
-        Surface(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 24.dp)) {
-                Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = dismiss) { Icon(if (animateDismiss) androidx.compose.material.icons.Icons.Default.Close else androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, if (animateDismiss) "关闭" else "返回") }
-                    Text(title, Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.headlineSmall)
-                }
-                content()
+internal fun SettingsPanel(title: String, close: () -> Unit, animateDismiss: Boolean = true,
+    destination: (@Composable () -> Unit)? = null, revealRoot: Boolean = destination == null,
+    content: @Composable ColumnScope.() -> Unit) {
+    TravelDialog(close, animateDismiss = animateDismiss, destination = destination, revealRoot = revealRoot) {
+        SettingsSurface(title, LocalDialogDismiss.current ?: close, animateDismiss, content)
+    }
+}
+
+@Composable
+internal fun SettingsSurface(title: String, close: () -> Unit, canClose: Boolean,
+    content: @Composable ColumnScope.() -> Unit) {
+    Surface(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 24.dp)) {
+            Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = close) { Icon(if (canClose) androidx.compose.material.icons.Icons.Default.Close else androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, if (canClose) "关闭" else "返回") }
+                Text(title, Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.headlineSmall)
             }
+            content()
         }
     }
 }
@@ -44,7 +51,7 @@ internal fun SettingsPanel(title: String, close: () -> Unit, animateDismiss: Boo
 @Composable
 internal fun ThemeSettings(model: EPlayerViewModel, close: () -> Unit) {
     val appearance by model.appearance.collectAsState()
-    SettingsPanel("显示模式", close) {
+    SettingsPanel("显示模式", close, revealRoot = false) {
         listOf("深色" to "dark", "浅色" to "light", "跟随系统" to "system").forEach { (label, value) ->
             SettingsRow(label, if (appearance == value) "✓" else null) { model.setAppearance(value) }
         }

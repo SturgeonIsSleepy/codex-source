@@ -254,6 +254,20 @@ internal fun SongOptions(track: Track, playlist: MusicEntry?, cloud: CloudViewMo
     val home by cloud.home.collectAsState()
     val likes by cloud.likes.collectAsState()
     var choosePlaylist by remember { mutableStateOf(false) }
+    var chooseArtist by remember { mutableStateOf(false) }
+    var artistSong by remember(track) { mutableStateOf(track.song) }
+    var artistLoading by remember { mutableStateOf(false) }
+    var artistIssue by remember { mutableStateOf<String?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    LaunchedEffect(chooseArtist) {
+        if (chooseArtist && artistSong.artists.orEmpty().isEmpty() && track.source != null) {
+            artistLoading = true
+            try { MusicRepository(context, track.source).songs(listOf(track.remoteId ?: track.song.id)).firstOrNull()?.let { artistSong = it.song } }
+            catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (failure: Exception) { artistIssue = failure.message ?: "歌手加载失败" }
+            finally { artistLoading = false }
+        }
+    }
     TravelSheet(onDismissRequest = close) {
         Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 32.dp)) {
             Text(track.song.name, style = MaterialTheme.typography.titleLarge)
@@ -265,11 +279,25 @@ internal fun SongOptions(track: Track, playlist: MusicEntry?, cloud: CloudViewMo
                 TextButton(onClick = { choosePlaylist = true }) { Text("添加到歌单") }
                 TextButton(onClick = { player.download(track); close() }) { Text("下载") }
                 TextButton(onClick = { comments(track); close() }) { Text("评论") }
-                track.song.artistId?.let { id -> TextButton(onClick = { open(MusicEntry(id, track.song.artist, track.source, MusicKind.ARTIST)); close() }) { Text("查看歌手") } }
+                TextButton(onClick = { chooseArtist = true }) { Text("查看歌手") }
                 track.song.albumId?.let { id -> TextButton(onClick = { open(MusicEntry(id, track.song.album, track.source, MusicKind.ALBUM)); close() }) { Text("查看专辑") } }
             }
             if (playlist != null) TextButton(onClick = { cloud.removeFromPlaylist(playlist, track); close() }) { Text("从歌单移除") }
         }
+    }
+    if (chooseArtist) TravelSheet({ chooseArtist = false }) {
+        if (artistLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        artistIssue?.let { Text(it, Modifier.padding(20.dp), color = MaterialTheme.colorScheme.error) }
+        val performers = artistSong.artists.orEmpty().ifEmpty {
+            artistSong.artistId?.let { listOf(cp.player.model.SongArtist(it, artistSong.artist.substringBefore(" / "))) }.orEmpty()
+        }
+        performers.distinctBy { it.id }.forEach { artist ->
+            TextButton(onClick = {
+                track.source?.let { source -> open(MusicEntry(artist.id, artist.name, source, MusicKind.ARTIST)) }
+                chooseArtist = false; close()
+            }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { Text(artist.name) }
+        }
+        if (!artistLoading && performers.isEmpty() && artistIssue == null) Text("暂无歌手信息", Modifier.padding(20.dp))
     }
     if (choosePlaylist) TravelAlertDialog(onDismissRequest = { choosePlaylist = false }, title = { Text("添加到歌单") }, text = {
         LazyColumn { items(home.playlists.filter { it.owner == home.account?.id && it.source == track.source }) { target ->

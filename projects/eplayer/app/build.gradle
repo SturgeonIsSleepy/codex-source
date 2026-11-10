@@ -25,8 +25,9 @@ def gitDescribeProvider = providers.exec {
 
 // 在 defaultConfig 中使用这些 provider 值
 def resolvedSha = gitShaProvider.getOrElse('unknown')
-// The transferred preview has versionCode 6; a new repository must not downgrade it.
-def resolvedVersionCode = Math.max(6, gitVersionCodeProvider.getOrElse(1))
+// Keep local 0.6.6 hotfixes (through versionCode 187) upgradeable.
+// -PversionCodeBase=n lifts the counter so a local rebuild installs over an already shipped build.
+def resolvedVersionCode = Math.max(188, gitVersionCodeProvider.getOrElse(1) + providers.gradleProperty('versionCodeBase').getOrElse('0').toInteger())
 def resolvedDescribe = gitDescribeProvider.getOrElse('')
 def resolvedVersionName = resolvedDescribe.matches('^v?\\d+.*') ? resolvedDescribe.replaceFirst(/^v/, '') : "1.0.${resolvedVersionCode}"
 
@@ -69,7 +70,7 @@ android {
         minSdk 28
         targetSdk 36
         versionCode resolvedVersionCode
-        versionName "0.6.6"
+        versionName "0.6.7"
         buildConfigField "String", "GIT_SHA", "\"${resolvedSha}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -169,6 +170,7 @@ dependencies {
     implementation libs.androidx.media3.exoplayer
     implementation libs.androidx.media3.session
     implementation libs.androidx.media3.datasource
+    implementation "androidx.media3:media3-datasource-okhttp:1.10.0"
     implementation libs.androidx.media3.database
 
     // Networking

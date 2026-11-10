@@ -189,28 +189,11 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
             }
         }
     }
-    CompositionLocalProvider(LocalBackPreviewVisibility provides revealBack) {
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            ThemeBackdrop(Modifier.matchParentSize())
-            AnimatedContent(page, modifier = Modifier.fillMaxSize(), transitionSpec = {
-                fadeIn(AppMotion.page()).togetherWith(fadeOut(AppMotion.page()))
-            }, label = "root-tab") { selectedPage -> RootContents(selectedPage) }
-        }
-        Box(Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (chromeVisible) 1f else 0f }.navigationBarsPadding()) {
-            MusicDock(state, page, discovery, { target ->
-                if (target != page) { query = ""; cloud.clearSearch(); if (target == 2) libraryMode = 0 }
-                page = target; searchOpen = false
-            },
-                { onShowPlayer(true) }, model::playPause, model::next, { queueOpen = true })
-        }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 180.dp))
-    }
-    settingsSection?.let { section ->
-        SettingsPanel(when (section) { "profile" -> "账号"; "settings" -> "设置"; "account" -> "账号"; "source" -> "音源"; else -> "关于" }, ::backSettings, animateDismiss = settingsPath.size <= 1) {
-          val entrance = rememberSceneEntrance(settingsPath.size to section)
-          key(settingsPath.size, section) {
-            Column(Modifier.fillMaxWidth().graphicsLayer { alpha = entrance.value }.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+    val settingsScrolls = remember { mutableMapOf<String, androidx.compose.foundation.ScrollState>() }
+    fun settingsTitle(section: String) = when (section) { "profile", "account" -> "账号"; "settings" -> "设置"; "source" -> "音源"; else -> "关于" }
+    @Composable
+    fun SettingsContents(section: String, preview: Boolean = false) {
+            Column(Modifier.fillMaxWidth().verticalScroll(settingsScrolls.getOrPut(section) { androidx.compose.foundation.ScrollState(0) }), verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 when (section) {
                     "profile" -> {
                         Row(Modifier.fillMaxWidth().clickable { openSettings("account") }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -233,7 +216,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                     "account" -> {
                         home.account?.let { Text(it.name, style = MaterialTheme.typography.titleLarge) }
                         val source = active
-                        if (source != null) SourceLogin(source.id)
+                        if (source != null && !preview) SourceLogin(source.id)
                         else SettingsCard { SettingsRow("添加音源") { openSettings("source") } }
                         if (home.account != null) TextButton(onClick = { logout = true }) { Text("退出登录") }
                     }
@@ -259,8 +242,36 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                 }
                 Spacer(Modifier.height(24.dp))
             }
-        }
     }
+    CompositionLocalProvider(LocalBackPreviewVisibility provides revealBack) {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            ThemeBackdrop(Modifier.matchParentSize())
+            AnimatedContent(page, modifier = Modifier.fillMaxSize(), transitionSpec = {
+                fadeIn(AppMotion.page()).togetherWith(fadeOut(AppMotion.page()))
+            }, label = "root-tab") { selectedPage -> RootContents(selectedPage) }
+        }
+        Box(Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (chromeVisible) 1f else 0f }.navigationBarsPadding()) {
+            MusicDock(state, page, discovery, { target ->
+                if (target != page) { query = ""; cloud.clearSearch(); if (target == 2) libraryMode = 0 }
+                page = target; searchOpen = false
+            },
+                { onShowPlayer(true) }, model::playPause, model::next, { queueOpen = true })
+        }
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 180.dp))
+    }
+    settingsSection?.let { section ->
+        val previousDepth = remember { intArrayOf(settingsPath.size) }
+        val entrance = remember(settingsPath) {
+            androidx.compose.animation.core.Animatable(if (settingsPath.size > previousDepth[0]) .92f else 1f)
+        }
+        LaunchedEffect(settingsPath) { previousDepth[0] = settingsPath.size; entrance.animateTo(1f, AppMotion.fast()) }
+        val parent = settingsPath.getOrNull(settingsPath.lastIndex - 1)
+        SettingsPanel(settingsTitle(section), ::backSettings, animateDismiss = parent == null,
+            revealRoot = parent == null,
+            destination = parent?.let { previous -> { SettingsSurface(settingsTitle(previous), {}, settingsPath.size <= 2) { SettingsContents(previous, preview = true) } } }) {
+            Box(Modifier.fillMaxSize().graphicsLayer { alpha = entrance.value }) { SettingsContents(section) }
+        }
     }
     if (searchOpen) SearchScreen(query, { query = it }, cloud, model, { onShowPlayer(true) }, { track -> selectedTrack = track to null }) {
         searchOpen = false; query = ""; cloud.clearSearch()

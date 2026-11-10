@@ -53,7 +53,17 @@ object JsonUtils {
             album = albumName,
             albumArtUrl = picUrl,
             durationMs = obj.get("dt")?.long ?: obj.get("duration")?.long ?: 0L,
-            albumId = album?.get("id")?.str
+            albumId = album?.get("id")?.str,
+            artists = artists?.mapNotNull { value ->
+                val a = value.obj ?: return@mapNotNull null
+                val aid = a.get("id")?.str ?: return@mapNotNull null
+                val aname = a.get("name")?.str ?: return@mapNotNull null
+                cp.player.model.SongArtist(aid, aname)
+            }.orEmpty(),
+            artistAliases = artists?.flatMap { value ->
+                listOf("alias", "tns", "transNames").flatMap { key -> value.obj?.get(key)?.arr?.mapNotNull { it.str }.orEmpty() }
+            }.orEmpty(),
+            titleAliases = listOf("alia", "tns").flatMap { key -> obj.get(key)?.arr?.mapNotNull { it.str }.orEmpty() }
         )
     }
 

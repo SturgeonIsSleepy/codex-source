@@ -134,7 +134,7 @@ internal fun FloatingBar(modifier: Modifier = Modifier, content: @Composable Box
 
 @Composable
 internal fun MusicDock(state: Playback, page: Int, discovery: Boolean, choose: (Int) -> Unit,
-    showPlayer: () -> Unit, playPause: () -> Unit, next: () -> Unit, queue: () -> Unit = {}) {
+    showPlayer: () -> Unit, playPause: () -> Unit, next: () -> Unit, queue: () -> Unit = {}, showNavigation: Boolean = true) {
     Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).testTag("music-dock")) {
         if (state.song != null) {
             Row(Modifier.padding(horizontal = 8.dp).padding(top = 4.dp, bottom = 3.dp).fillMaxWidth().height(52.dp).testTag("dock-now-playing")
@@ -153,7 +153,7 @@ internal fun MusicDock(state: Playback, page: Int, discovery: Boolean, choose: (
                 IconButton(onClick = queue, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.QueueMusic, "播放列表", Modifier.size(22.dp)) }
             }
         }
-        Row(Modifier.fillMaxWidth().height(54.dp).testTag("dock-navigation"), verticalAlignment = Alignment.CenterVertically) {
+        if (showNavigation) Row(Modifier.fillMaxWidth().height(54.dp).testTag("dock-navigation"), verticalAlignment = Alignment.CenterVertically) {
             listOf("首页" to Icons.Default.Home, "探索" to Icons.Default.Explore, "媒体库" to Icons.Default.LibraryMusic).forEachIndexed { index, (label, icon) ->
                 Column(Modifier.weight(1f).fillMaxHeight().clickable { choose(index) }
                     .semantics { contentDescription = label; role = Role.Tab; selected = page == index },

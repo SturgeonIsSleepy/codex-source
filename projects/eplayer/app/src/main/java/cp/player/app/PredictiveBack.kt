@@ -74,6 +74,7 @@ internal fun TravelDialog(onDismissRequest: () -> Unit,
     properties: DialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     destination: (@Composable () -> Unit)? = null,
     animateDismiss: Boolean = destination == null,
+    revealRoot: Boolean = destination == null,
     content: @Composable () -> Unit) {
     val preview = rememberBackPreview()
     val entrance = remember { Animatable(0f) }
@@ -91,7 +92,7 @@ internal fun TravelDialog(onDismissRequest: () -> Unit,
         PreviewBackHandler(preview, enabled = !closing) {
             if (preview.progress.value > 0f) latestDismiss() else dismiss()
         }
-        PreviewWindow(preview, entrance.value, closing)
+        PreviewWindow(preview, entrance.value, closing, revealRoot)
         LaunchedEffect(Unit) { entrance.animateTo(1f, AppMotion.page()) }
         Box(Modifier.fillMaxSize().graphicsLayer {
             alpha = entrance.value
@@ -148,9 +149,9 @@ internal fun TravelMenu(expanded: Boolean, onDismissRequest: () -> Unit, content
 }
 
 @Composable
-private fun PreviewWindow(preview: BackPreview, visibility: Float = 1f, exiting: Boolean = false) {
+private fun PreviewWindow(preview: BackPreview, visibility: Float = 1f, exiting: Boolean = false, revealRoot: Boolean = true) {
     val reveal = LocalBackPreviewVisibility.current
-    val active = preview.progress.value > 0f || exiting
+    val active = revealRoot && (preview.progress.value > 0f || exiting)
     DisposableEffect(active, reveal) {
         reveal?.invoke(preview, active)
         onDispose { if (active) reveal?.invoke(preview, false) }

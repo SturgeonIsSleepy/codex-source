@@ -26,6 +26,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import cp.player.MainActivity
 import cp.player.app.QueueStore
 import cp.player.core.playback.togglePlayback
+import cp.player.core.playback.playbackOrder
 import cp.player.core.playback.PlaybackSleepTimer
 import cp.player.engine.CPPlayerManager
 import cp.player.util.UserPreferences
@@ -51,7 +52,7 @@ class MusicService : MediaSessionService() {
         if (lastPriorityOrder == signature) return
         lastPriorityOrder = signature
         val fixed = (listOf(current) + pending).toSet()
-        val order = listOf(current) + pending + items.indices.filter { it !in fixed }.shuffled()
+        val order = listOf(current) + pending + player.playbackOrder().filter { it !in fixed }
         exo.setShuffleOrder(androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), System.nanoTime()))
     }
     private val handler = Handler(Looper.getMainLooper())
@@ -115,6 +116,7 @@ class MusicService : MediaSessionService() {
                     return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                         .setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
                             .add(SessionCommand("SET_ENGINE", Bundle.EMPTY))
+                            .add(SessionCommand("MOVE_SHUFFLE_ITEM", Bundle.EMPTY))
                             .add(SessionCommand(PlaybackSleepTimer.COMMAND, Bundle.EMPTY)).build()).build()
                 }
                 override fun onPlayerInteractionFinished(session: MediaSession,
@@ -146,6 +148,20 @@ class MusicService : MediaSessionService() {
                         if (duration !in 0..PlaybackSleepTimer.MAX_DURATION_MS)
                             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
                         sleepTimer.set(duration)
+                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+                    if (command.customAction == "MOVE_SHUFFLE_ITEM") {
+                        val from = args.getInt("from", -1); val to = args.getInt("to", -1)
+                        val order = player.playbackOrder().toMutableList()
+                        val first = order.indexOf(from); val last = order.indexOf(to)
+                        if (!player.shuffleModeEnabled || first < 0 || last < 0)
+                            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+                        order.add(last, order.removeAt(first))
+                        when (val enginePlayer = player) {
+                            is androidx.media3.exoplayer.ExoPlayer -> enginePlayer.setShuffleOrder(
+                                androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), System.nanoTime()))
+                            is cp.player.engine.FlickPlayer -> enginePlayer.setShufflePlaybackOrder(order)
+                        }
                         return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                     }
                     if (command.customAction != "SET_ENGINE") return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))

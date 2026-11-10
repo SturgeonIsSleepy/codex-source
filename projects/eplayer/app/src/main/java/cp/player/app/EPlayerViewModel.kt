@@ -13,6 +13,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import cp.player.core.playback.togglePlayback
+import cp.player.core.playback.playbackOrder
 import cp.player.core.playback.PlaybackSleepTimer
 import cp.player.manager.DownloadRegistry
 import cp.player.model.Song
@@ -33,7 +34,7 @@ import kotlinx.coroutines.withContext
 
 data class Playback(val song: Song? = null, val playing: Boolean = false, val buffering: Boolean = false,
     val position: Long = 0, val duration: Long = 0, val queue: List<Song> = emptyList(),
-    val shuffle: Boolean = false, val repeat: Int = Player.REPEAT_MODE_OFF, val error: String? = null, val source: String? = null, val remoteId: String? = null, val playRequested: Boolean = playing, val queueIndex: Int = -1)
+    val shuffle: Boolean = false, val repeat: Int = Player.REPEAT_MODE_OFF, val error: String? = null, val source: String? = null, val remoteId: String? = null, val playRequested: Boolean = playing, val queueIndex: Int = -1, val playOrder: List<Int> = emptyList())
 
 class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private val soundSettingsDelegate = lazy { SoundSettingsStore(app, viewModelScope) }
@@ -136,6 +137,12 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         app.getSharedPreferences("eplayer_ui", 0).edit().putString("recommendation_engine", value).apply()
         RoamPlayback.retry()
     }
+
+    /** The proxy only affects YTM metadata, so a stale failure and its cache are dropped on change. */
+    fun onYtmProxyChanged() {
+        YtmRadio.configure(app)
+        if (!RoamPlayback.retryFailed()) RoamPlayback.retry()
+    }
     private val future = MediaController.Builder(app, SessionToken(app, ComponentName(app, MusicService::class.java))).setListener(object : MediaController.Listener {
         override fun onExtrasChanged(controller: MediaController, extras: Bundle) {
             sleepDeadline.value = extras.getLong(PlaybackSleepTimer.DEADLINE)
@@ -178,7 +185,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
             player.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: song?.durationMs?.coerceAtLeast(0) ?: 0,
             queueSnapshot,
             player.shuffleModeEnabled, player.repeatMode, player.playerError?.message, player.currentMediaItem?.mediaMetadata?.extras?.getString("source"), player.currentMediaItem?.mediaMetadata?.extras?.getString("remoteId"),
-            playRequested = player.playWhenReady && player.playbackState != Player.STATE_ENDED && player.playerError == null, queueIndex = player.currentMediaItemIndex)
+            playRequested = player.playWhenReady && player.playbackState != Player.STATE_ENDED && player.playerError == null, queueIndex = player.currentMediaItemIndex, playOrder = player.playbackOrder())
         position.value = currentPosition
         restartTicker()
     }
@@ -235,7 +242,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         val action = {
             controller?.let { player ->
                 val tracks = (if (queue.isEmpty()) listOf(track) else queue).distinctBy { it.song.id to it.source }
-                val index = tracks.indexOf(track).coerceAtLeast(0)
+                val index = tracks.indexOfFirst { it.recommendationKey() == track.recommendationKey() }.coerceAtLeast(0)
                 player.setMediaItems(tracks.map { it.mediaItem(quality.value) }, index, 0)
                 player.prepare(); player.play()
                 if (radio) track.source?.let { RoamPlayback.start(it, tracks, personal = true) }
@@ -244,6 +251,10 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
             Unit
         }
         if (controller == null) pendingPlay = action else action()
+    }
+    fun playSearch(track: Track, results: List<Track>) {
+        val queue = if (results.size > 1) results else (results + currentQueueTracks()).distinctBy { it.recommendationKey() }
+        play(track, queue, origin = "搜索")
     }
     internal fun startRoaming(pick: QuickPick, tracks: List<Track>, original: Set<String> = emptySet()) {
         val source = pick.source ?: return
@@ -297,7 +308,12 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         RoamPlayback.stop(); pendingPlay = null
         controller?.let { it.pause(); it.stop(); it.clearMediaItems() }
     }
-    fun moveQueue(from: Int, to: Int) { controller?.let { if (from in 0 until it.mediaItemCount && to in 0 until it.mediaItemCount) it.moveMediaItem(from, to) } }
+    fun moveQueue(from: Int, to: Int) { controller?.let { player ->
+        if (from !in 0 until player.mediaItemCount || to !in 0 until player.mediaItemCount) return@let
+        if (player.shuffleModeEnabled) player.sendCustomCommand(SessionCommand("MOVE_SHUFFLE_ITEM", Bundle.EMPTY),
+            Bundle().apply { putInt("from", from); putInt("to", to) })
+        else player.moveMediaItem(from, to)
+    } }
     fun addNext(track: Track) { controller?.let { it.addMediaItem((it.currentMediaItemIndex + 1).coerceIn(0, it.mediaItemCount), cp.player.core.playback.PlayNextOrder.mark(track.mediaItem(quality.value))) } }
     fun addQueue(track: Track) { controller?.addMediaItem(track.mediaItem(quality.value)) }
     fun removeQueueItems(indices: List<Int>) {

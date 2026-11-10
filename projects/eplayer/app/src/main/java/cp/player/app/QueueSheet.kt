@@ -26,6 +26,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int) -> Unit,
@@ -47,7 +48,17 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
         }
     }
     LaunchedEffect(keys) { selected = selected.intersect(keys.toSet()) }
-    val reorder = rememberSongReorder(keys, list, move = move)
+    val displayed = remember(keys, state.shuffle, state.playOrder) {
+        if (state.shuffle && state.playOrder.size == keys.size && state.playOrder.toSet() == keys.indices.toSet()) state.playOrder.map(keys::get) else keys
+    }
+    val reorder = rememberSongReorder(displayed, list, move = { from, to -> move(keys.indexOf(displayed[from]), keys.indexOf(displayed[to])) })
+    val currentKey = keys.getOrNull(state.queueIndex) ?: keys.getOrNull(state.queue.indexOfFirst { it.id == state.song?.id })
+    var positioned by remember { mutableStateOf(false) }
+    LaunchedEffect(displayed, currentKey) {
+        val index = displayed.indexOf(currentKey)
+        if (!positioned && index >= 0) { list.scrollToItem(index); positioned = true }
+    }
+    val scope = rememberCoroutineScope()
     fun toggle(key: String) { selected = if (key in selected) selected - key else selected + key }
     val contents: @Composable () -> Unit = {
       Column(Modifier.fillMaxWidth().then(if (inline) Modifier.fillMaxHeight() else if (expanded) Modifier.fillMaxHeight(.88f) else Modifier).testTag("queue-panel")) {
@@ -58,6 +69,10 @@ internal fun QueueSheet(state: Playback, select: (Int) -> Unit, move: (Int, Int)
                 TextButton(onClick = { selected = if (selected.size == keys.size) emptySet() else keys.toSet() }) { Text(if (selected.size == keys.size) "取消全选" else "全选") }
                 IconButton(enabled = selected.isNotEmpty(), onClick = { confirmClear = true }) { Icon(Icons.Default.DeleteOutline, "移除所选") }
             }
+            if (!editing && currentKey != null) IconButton(onClick = {
+                val index = reorder.order.indexOf(currentKey)
+                if (index >= 0) scope.launch { list.animateScrollToItem(index) }
+            }, modifier = Modifier.testTag("locate-current")) { Icon(Icons.Default.MyLocation, "定位当前歌曲") }
             if (!editing && saveAction != null) TextButton(onClick = saveAction) { Text("保存") }
             TextButton(onClick = { reorder.finish(false); editing = !editing; selected = emptySet() }) { Text(if (editing) "完成" else "编辑") }
         }

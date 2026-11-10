@@ -16,6 +16,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -33,12 +34,16 @@ internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
         if (showSound) { store.dismissImport(); showSound = false } else close()
     }
     TravelDialog(onDismissRequest = back,
-        animateDismiss = !showSound,
+        animateDismiss = !showSound, revealRoot = false,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         destination = {
             if (showSound) Surface(Modifier.fillMaxSize()) {
                 Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-                    Text("播放设置", Modifier.padding(24.dp), style = MaterialTheme.typography.headlineSmall)
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("播放设置", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
+                        TextButton({}) { Text("完成") }
+                    }
+                    HorizontalDivider()
                     PlaybackSettings(model, sound.engine) {}
                 }
             }
@@ -51,7 +56,7 @@ internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
                     TextButton(onClick = dismiss) { Text(if (showSound) "返回设置" else "完成") }
                 }
                 HorizontalDivider()
-                Crossfade(showSound, animationSpec = AppMotion.page(), label = "playback-settings-page") { soundPage ->
+                Crossfade(showSound, animationSpec = if (showSound) AppMotion.page() else androidx.compose.animation.core.tween(0), label = "playback-settings-page") { soundPage ->
                     if (soundPage) {
                         SoundSettingsScreen(sound, store::equalizer, store::band, store::flat, store::toggle,
                             store::amount, editBand = store::editBand) { importFile.launch(arrayOf("text/*")) }
@@ -81,12 +86,23 @@ internal fun Settings(model: EPlayerViewModel, close: () -> Unit) {
 private fun PlaybackSettings(model: EPlayerViewModel, engine: Int, openSound: () -> Unit) {
     val recommendation by model.recommendationEngine.collectAsState()
     var chooseRecommendation by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var split by remember { mutableStateOf(cp.player.network.PlaybackNetwork.splitEnabled(context)) }
     Column(Modifier.verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedButton(onClick = { openSound() }, modifier = Modifier.fillMaxWidth().testTag("open-sound-settings")) { Text("均衡器与音效") }
+        OutlinedButton(onClick = openSound, modifier = Modifier.fillMaxWidth().testTag("open-sound-settings")) { Text("均衡器与音效") }
         SleepTimerSetting(model)
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
         QualitySetting(model)
         SettingsRow("推荐", if (recommendation == "ytm") "YTM" else "网易云") { chooseRecommendation = true }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("独立分流", Modifier.weight(1f))
+            Switch(split, { value ->
+                split = value
+                context.getSharedPreferences("eplayer_ui", 0).edit().putBoolean(cp.player.network.PlaybackNetwork.SPLIT, value).apply()
+                model.onYtmProxyChanged()
+            }, modifier = Modifier.testTag("split-routing"))
+        }
+        if (recommendation == "ytm" && split) YtmProxyField(model)
         listOf("系统音频", "Rust 音频").forEachIndexed { index, label ->
             Row(Modifier.fillMaxWidth().testTag("audio-engine-$index").clickable { model.setEngine(index) }, verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(engine == index, { model.setEngine(index) }); Text(label)
@@ -98,6 +114,52 @@ private fun PlaybackSettings(model: EPlayerViewModel, engine: Int, openSound: ()
             Row(Modifier.fillMaxWidth().clickable { model.setRecommendationEngine(value); chooseRecommendation = false }.padding(horizontal = 20.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(recommendation == value, { model.setRecommendationEngine(value); chooseRecommendation = false })
                 Text(label)
+            }
+        }
+    }
+}
+
+/**
+ * The YTM metadata hop is the only thing that needs a route. Keeping the address here means the
+ * audio route remains independent, so a slow node cannot stall listening.
+ */
+@Composable
+private fun YtmProxyField(model: EPlayerViewModel) {
+    val context = LocalContext.current
+    var editable by remember { mutableStateOf(false) }
+    var draft by remember { mutableStateOf(YtmProxy.raw(context)) }
+    val saved = YtmProxy.read(context)
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)) {
+        if (!editable) {
+            Row(Modifier.fillMaxWidth().clickable { draft = YtmProxy.raw(context); editable = true }.heightIn(min = 44.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text("YTM 代理", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                Text(if (saved == null) "系统 VPN" else saved.address(), style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            val tunnel = YtmProxy.isTunnelLink(draft)
+            OutlinedTextField(draft, { draft = it }, Modifier.fillMaxWidth().testTag("ytm-proxy-input"),
+                singleLine = true, label = { Text("SOCKS5 地址") },
+                placeholder = { Text("127.0.0.1:10808") },
+                isError = draft.isNotBlank() && YtmProxy.parse(draft) == null,
+                supportingText = {
+                    Text(
+                        when {
+                            draft.isBlank() -> "跟随系统 VPN"
+                            tunnel -> "这是节点链接，请先在 v2rayNG 导入并开启，再填它的本地端口（v2rayNG 默认 10808）"
+                            YtmProxy.parse(draft) != null -> "将使用 SOCKS5 ${YtmProxy.parse(draft)!!.address()}"
+                            else -> "格式应为 host:port，例如 127.0.0.1:10808"
+                        }
+                    )
+                })
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton({ editable = false }) { Text("取消") }
+                TextButton({
+                    YtmProxy.write(context, draft)
+                    model.onYtmProxyChanged()
+                    editable = false
+                }, enabled = draft.isBlank() || YtmProxy.parse(draft) != null) { Text("保存") }
             }
         }
     }
@@ -151,7 +213,7 @@ internal fun VisualSettings(model: EPlayerViewModel, close: () -> Unit) {
     var lastTickAt by remember { mutableLongStateOf(0L) }
     val playback by model.playback.collectAsState()
     val preview = if (background != null) (playback.song ?: cp.player.model.Song("background", "", "", album = "")).copy(albumArtUrl = background) else playback.song
-    TravelDialog(close) {
+    TravelDialog(close, revealRoot = false) {
         val dismiss = LocalDialogDismiss.current ?: close
         Surface(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 24.dp)) {

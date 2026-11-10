@@ -36,6 +36,8 @@ internal fun SearchScreen(query: String, change: (String) -> Unit, cloud: CloudV
     val searchType by cloud.searchType.collectAsState()
     val error by cloud.searchError.collectAsState()
     val recent by player.recent.collectAsState()
+    val playback by player.playback.collectAsState()
+    var queue by remember { mutableStateOf(false) }
     val context = LocalContext.current.applicationContext
     TravelDialog(close) {
         val dismiss = LocalDialogDismiss.current ?: close
@@ -82,7 +84,7 @@ internal fun SearchScreen(query: String, change: (String) -> Unit, cloud: CloudV
                 if (searching) LinearProgressIndicator(Modifier.fillMaxWidth())
                 LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp)) {
                     items(found.entries, key = { "${it.kind}:${it.id}" }) { entry -> MusicEntryRow(entry) { cloud.open(entry) } }
-                    items(found.tracks, key = { "${it.source}:${it.song.id}" }) { track -> SongRow(track, false, { player.play(track, found.tracks); showPlayer() }) {
+                    items(found.tracks, key = { "${it.source}:${it.song.id}" }) { track -> SongRow(track, playback.song?.id == track.song.id && playback.source == track.source, { player.playSearch(track, found.tracks.toList()); showPlayer() }) {
                         IconButton(onClick = { options(track) }) { Icon(Icons.Default.MoreVert, "歌曲操作") }
                     } }
                     if (!searching && found.tracks.isEmpty() && found.entries.isEmpty()) item { Text(error ?: "没有找到音乐") }
@@ -98,6 +100,11 @@ internal fun SearchScreen(query: String, change: (String) -> Unit, cloud: CloudV
                 }
                 if (query.isNotBlank()) item { TextButton(onClick = { submit(query) }, modifier = Modifier.fillMaxWidth().padding(8.dp)) { Text("搜索「$query」") } }
             }
+            val imeVisible = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
+            if (!imeVisible) MusicDock(playback, 0, false, {}, showPlayer, player::playPause, player::next,
+                { queue = true }, showNavigation = false)
         }
     }
+    if (queue) QueueSheet(playback, player::queueIndex, player::moveQueue, player::removeQueue, player::clearQueue,
+        removeSelected = player::removeQueueItems, options = { index -> player.currentQueueTracks().getOrNull(index)?.let(options) }) { queue = false }
 }
