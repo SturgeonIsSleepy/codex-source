@@ -31,9 +31,14 @@ internal class YtmRadio {
         @Volatile private var regionUnavailable = false
         @Synchronized fun forgetRouteMetadata() {
             routeGeneration++; cache.clear(); bootstrap = null; regionUnavailable = false
-            client.connectionPool.evictAll()
+            val previous = client
+            client = previous.newBuilder().connectionPool(okhttp3.ConnectionPool()).build()
+            closeIdle(previous)
         }
 
+        private fun closeIdle(previous: OkHttpClient) {
+            previous.dispatcher.executorService.execute { previous.connectionPool.evictAll() }
+        }
         private fun build(proxy: YtmProxy.Config?): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(4, TimeUnit.SECONDS).readTimeout(6, TimeUnit.SECONDS)
             .callTimeout(10, TimeUnit.SECONDS).retryOnConnectionFailure(false).followRedirects(false)
@@ -47,8 +52,9 @@ internal class YtmRadio {
             require(raw.isBlank() || wanted != null) { "YTM 代理地址无效，请重新设置" }
             if (wanted == currentProxy) return
             currentProxy = wanted
-            client.connectionPool.evictAll()
+            val previous = client
             client = build(wanted)
+            closeIdle(previous)
             routeGeneration++; regionUnavailable = false
             cache.clear()
             bootstrap = null

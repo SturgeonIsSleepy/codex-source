@@ -168,8 +168,8 @@ internal fun MusicDock(state: Playback, page: Int, discovery: Boolean, choose: (
 }
 
 @Composable
-internal fun AppHeader(title: String, avatar: String?, account: () -> Unit, search: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+internal fun AppHeader(title: String, avatar: String?, account: () -> Unit, search: () -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
         if (title == "ePlayer") Icon(Icons.Default.PlayCircle, null, tint = Color(0xFFFF334D), modifier = Modifier.padding(end = 8.dp).size(30.dp))
         Text(title, Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
         IconButton(onClick = search) { Icon(Icons.Default.Search, "搜索", Modifier.size(27.dp)) }

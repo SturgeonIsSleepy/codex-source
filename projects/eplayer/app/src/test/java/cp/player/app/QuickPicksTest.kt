@@ -11,7 +11,7 @@ class QuickPicksTest {
         val saved = (0..23).map { QuickPick("ARTIST:saved-$it", "旧歌手 $it", entry = MusicEntry("saved-$it", "旧歌手 $it", "ncm", MusicKind.ARTIST)) }
         val picks = quickPicks(home, recent, saved)
         assertEquals(setOf(1, 10, 100, 1000), picks.take(9).map { it.kind }.toSet())
-        assertTrue(picks.size <= 24)
+        assertTrue(picks.size <= 48)
     }
     @Test fun sourceDislikesAndCanonicalSeedDuplicatesAreFiltered() {
         val track = recent.first()
@@ -26,4 +26,24 @@ class QuickPicksTest {
         val result = quickPicks(CloudHome(source = "ncm", recommendations = listOf(candidate)), emptyList(), emptyList())
         assertEquals(candidate, result.single().entry)
     }
+    @Test fun sameArtworkIsNotRepeatedAcrossCategoriesOrCdnSizes() {
+        val a = "https://p1.music.126.net/hash/123.jpg?param=300y300"
+        val b = "http://p2.music.126.net/other/123.jpg?param=600y600"
+        val picks = listOf(QuickPick("song:1", "one", a, track = recent[0]),
+            QuickPick("album:1", "album", b, MusicEntry("1", "album", "ncm", MusicKind.ALBUM)),
+            QuickPick("album:2", "other", "https://p1.music.126.net/hash/456.jpg", MusicEntry("2", "other", "ncm", MusicKind.ALBUM)))
+        val visible = visibleQuickPicks(picks, 0)
+        assertEquals(2, visible.size)
+        assertEquals(2, visible.mapNotNull { coverIdentity(it.image) }.toSet().size)
+        assertEquals(setOf(1, 10), visible.map { it.kind }.toSet())
+        assertEquals(2, visibleQuickPicks(picks, 10).size)
+    }
+    @Test fun artIdentityKeepsFunctionalQueryParametersAndArtistsDoNotBorrowAlbumCovers() {
+        assertNotEquals(coverIdentity("https://covers.test/art?id=1&w=200"), coverIdentity("https://covers.test/art?id=2&w=200"))
+        val tracks = recent.map { it.copy(song = it.song.copy(albumArtUrl = "https://covers.test/album.jpg")) }
+        assertTrue(quickPicks(home, tracks, emptyList()).filter { it.kind == 100 }.all { it.image == null })
+        val populated = quickPicks(home, tracks, emptyList(), artistImages = mapOf("ncm:artist-0" to "https://covers.test/avatar.jpg"))
+        assertEquals("https://covers.test/avatar.jpg", populated.first { it.kind == 100 }.image)
+    }
+
 }

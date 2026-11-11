@@ -21,8 +21,8 @@ internal object RoamPlayback {
     private var generation = 0
     private var loading = false
     private var personal = false
-    private var wanted = emptySet<String>()
-    private var waitingForQueue = false
+    const val START = "START_ROAMING"
+    private var changingQueue = false
     private var initialRefill = false
 
     fun attach(context: Context, player: () -> Player) {
@@ -34,11 +34,12 @@ internal object RoamPlayback {
     fun stop() {
         generation++; job?.cancel(); job = null; loading = false
         active.value = false; source = null; planner = null; failure.value = null
-        wanted = emptySet(); waitingForQueue = false; initialRefill = false
+        initialRefill = false
     }
     private fun fail(message: String) {
         generation++; loading = false; job = null
         active.value = false; failure.value = message
+        context?.let { AppNotice.show(it, message) }
         messages.tryEmit(message)
     }
     fun clearFailure() { failure.value = null }
@@ -58,27 +59,42 @@ internal object RoamPlayback {
     fun start(source: String, anchors: List<Track>, original: Set<String> = emptySet(), personal: Boolean = false) {
         stop()
         val player = player?.invoke() ?: run { messages.tryEmit("播放服务尚未连接"); return }
+        val current = player.currentMediaItem ?: run { messages.tryEmit("请先播放歌曲"); return }
+        if (current.mediaMetadata.extras?.getString("source") != source) { messages.tryEmit("播放源已变化，请重新点播"); return }
         this.source = source; this.personal = personal
         planner = RoamPlanner(source, anchors, original)
-        wanted = anchors.filter { it.source == source }.map { it.recommendationKey() }.toSet()
-        waitingForQueue = true; initialRefill = true
-        active.value = true
+        changingQueue = true
+        try {
+            player.shuffleModeEnabled = false
+            player.repeatMode = Player.REPEAT_MODE_OFF
+            val index = player.currentMediaItemIndex
+            if (index !in 0 until player.mediaItemCount) { stop(); return }
+            if (index + 1 < player.mediaItemCount) player.removeMediaItems(index + 1, player.mediaItemCount)
+            if (index > 0) player.removeMediaItems(0, index)
+            planner?.remember(queue(player))
+        } catch (_: IllegalStateException) {
+            stop(); messages.tryEmit("播放队列正在更新，请重试"); return
+        } finally { changingQueue = false }
+        initialRefill = true; active.value = true
         changed()
+    }
+    private fun enforceModes(player: Player) {
+        if (!player.shuffleModeEnabled && player.repeatMode == Player.REPEAT_MODE_OFF) return
+        changingQueue = true
+        try { player.shuffleModeEnabled = false; player.repeatMode = Player.REPEAT_MODE_OFF }
+        finally { changingQueue = false }
     }
     fun retry() {
         if (!active.value) return
+        player?.invoke()?.let(::enforceModes)
         generation++; job?.cancel(); loading = false; failure.value = null
         initialRefill = true
         refill(force = true)
     }
     fun changed() {
-        if (!active.value) return
+        if (!active.value || changingQueue) return
         val player = player?.invoke() ?: return
-        if (waitingForQueue) {
-            val current = queue(player)
-            if (player.currentMediaItem?.mediaMetadata?.extras?.getString("source") != source || !current.map { it.recommendationKey() }.toSet().containsAll(wanted)) return
-            waitingForQueue = false; planner?.remember(current)
-        }
+        enforceModes(player)
         if (player.mediaItemCount == 0 || player.currentMediaItem?.mediaMetadata?.extras?.getString("source") != source) { stop(); return }
         if (!player.playWhenReady) {
             if (loading) { generation++; job?.cancel(); loading = false }

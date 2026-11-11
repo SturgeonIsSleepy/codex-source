@@ -30,18 +30,20 @@ internal data class QuickPick(val key: String, val title: String, val image: Str
     val source: String? get() = entry?.source ?: track?.source
 }
 
-internal fun quickPicks(home: CloudHome, recent: List<Track>, saved: List<QuickPick>, excluded: Set<String> = emptySet()): List<QuickPick> {
+internal fun quickPicks(home: CloudHome, recent: List<Track>, saved: List<QuickPick>, excluded: Set<String> = emptySet(), artistImages: Map<String, String> = emptyMap()): List<QuickPick> {
     val source = home.source ?: return emptyList()
     val tracks = recent.filter { it.source == source && it.recommendationKey() !in excluded }.distinctBy { it.recommendationKey() }
     val artists = tracks.mapNotNull { track -> track.song.artistId?.takeIf { it.isNotBlank() }?.let {
-        QuickPick("artist:$it", track.song.artist, track.song.albumArtUrl, MusicEntry(it, track.song.artist, source, MusicKind.ARTIST))
-    } }.distinctBy { it.key }.take(8)
+        QuickPick("artist:$it", track.song.artists.orEmpty().firstOrNull()?.name ?: track.song.artist.substringBefore(" / "), artistImages["$source:$it"], MusicEntry(it, track.song.artist.substringBefore(" / "), source, MusicKind.ARTIST, image = artistImages["$source:$it"]))
+    } }.distinctBy { it.key }.take(16)
     val albums = tracks.mapNotNull { track -> track.song.albumId?.takeIf { it.isNotBlank() }?.let {
         QuickPick("album:$it", track.song.album, track.song.albumArtUrl, MusicEntry(it, track.song.album, source, MusicKind.ALBUM))
-    } }.distinctBy { it.key }.take(8)
+    } }.distinctBy { it.key }.take(16)
     val playlists = (home.playlists + home.recommendations).distinctBy { it.id }.take(12).map { QuickPick("playlist:${it.id}", if (it.special) "我喜欢的音乐" else it.name, it.image, it) }
-    val singles = tracks.take(8).map { QuickPick("song:${it.remoteId ?: it.song.id}", it.song.name, it.song.albumArtUrl, track = it) }
-    val remembered = saved.filter { it.source == source && (it.track == null || it.track.recommendationKey() !in excluded) }
+    val singles = tracks.take(32).map { QuickPick("song:${it.remoteId ?: it.song.id}", it.song.name, it.song.albumArtUrl, track = it) }
+    val remembered = saved.filter { it.source == source && (it.track == null || it.track.recommendationKey() !in excluded) }.map {
+        if (it.kind == 100) it.copy(image = artistImages["$source:${it.entry?.id}"]) else it
+    }
     val candidates = remembered + playlists + artists + albums + singles
     fun identity(pick: QuickPick) = "${pick.kind}:${pick.entry?.id ?: pick.track?.remoteId ?: pick.track?.song?.id ?: pick.key}"
     val grouped = candidates.distinctBy(::identity).groupBy { it.kind }.mapValues { (_, values) ->
@@ -57,15 +59,45 @@ internal fun quickPicks(home: CloudHome, recent: List<Track>, saved: List<QuickP
         }
     }
     // History can influence each category, but cannot bury every other category in the first grid.
-    return (0 until 9).flatMap { i -> listOf(1000, 100, 1, 10).mapNotNull { grouped[it]?.getOrNull(i) } }.take(24)
+    return (0 until 16).flatMap { i -> listOf(1000, 100, 1, 10).mapNotNull { grouped[it]?.getOrNull(i) } }.take(48)
+}
+
+internal fun coverIdentity(url: String?): String? {
+    if (url.isNullOrBlank()) return null
+    return try {
+        val uri = java.net.URI(url)
+        val path = uri.path.orEmpty()
+        if (uri.host.orEmpty().endsWith("music.126.net")) "ncm:" + path.substringAfterLast('/')
+        else {
+            val ignored = setOf("param", "w", "h", "width", "height", "quality", "thumbnail", "imageView")
+            val query = uri.rawQuery.orEmpty().split('&').filter { it.isNotEmpty() && it.substringBefore('=') !in ignored }.sorted().joinToString("&")
+            "${uri.host.orEmpty()}$path?$query"
+        }
+    } catch (_: Exception) { url.substringBefore('#') }
+}
+
+/** Choose an unused image from each category, so album/song duplicates do not erase a whole tab. */
+internal fun visibleQuickPicks(picks: List<QuickPick>, filter: Int, limit: Int = 9): List<QuickPick> {
+    val groups = picks.filter { filter == 0 || it.kind == filter }.groupBy { it.kind }.mapValues { it.value.toMutableList() }
+    val seen = mutableSetOf<String>(); val result = mutableListOf<QuickPick>()
+    while (result.size < limit) {
+        var added = false
+        for (kind in if (filter == 0) listOf(1000, 100, 1, 10) else listOf(filter)) {
+            val group = groups[kind] ?: continue
+            val pick = group.firstOrNull { coverIdentity(it.image)?.let { image -> image !in seen } != false } ?: continue
+            group.remove(pick); coverIdentity(pick.image)?.let(seen::add); result += pick; added = true
+            if (result.size == limit) break
+        }
+        if (!added) break
+    }
+    return result
 }
 
 @Composable
-internal fun QuickPickGrid(picks: List<QuickPick>, choose: (QuickPick) -> Unit, openPicker: (Int) -> Unit, roam: () -> Unit = {}) {
+internal fun QuickPickGrid(picks: List<QuickPick>, choose: (QuickPick) -> Unit, openPicker: (Int) -> Unit) {
     var filter by remember { mutableIntStateOf(0) }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text("一键点歌", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
-        TextButton(onClick = roam) { Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp)); Text("漫游", Modifier.padding(start = 5.dp)) }
         IconButton(onClick = { openPicker(if (filter == 0) 1 else filter) }) { Icon(Icons.Default.Add, "添加漫游种子") }
     }
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -77,7 +109,7 @@ internal fun QuickPickGrid(picks: List<QuickPick>, choose: (QuickPick) -> Unit, 
         }
     }
     Spacer(Modifier.height(12.dp))
-    val visible = picks.filter { filter == 0 || it.kind == filter }.take(9)
+    val visible = remember(picks, filter) { visibleQuickPicks(picks, filter) }
     if (visible.isEmpty()) OutlinedButton(onClick = { openPicker(if (filter == 0) 1 else filter) }, modifier = Modifier.fillMaxWidth()) { Text(when (filter) { 100 -> "选择歌手"; 1000 -> "选择歌单"; 10 -> "选择专辑"; else -> "选择歌曲" }) }
     visible.chunked(3).forEach { row ->
         Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

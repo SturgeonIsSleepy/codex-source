@@ -83,7 +83,7 @@ class MusicService : MediaSessionService() {
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
             if (events.containsAny(Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_TIMELINE_CHANGED,
-                    Player.EVENT_PLAY_WHEN_READY_CHANGED, Player.EVENT_PLAYBACK_STATE_CHANGED)) cp.player.app.RoamPlayback.changed()
+                    Player.EVENT_PLAY_WHEN_READY_CHANGED, Player.EVENT_PLAYBACK_STATE_CHANGED, Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED, Player.EVENT_REPEAT_MODE_CHANGED)) cp.player.app.RoamPlayback.changed()
             if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED)) updatePriorityShuffle()
             if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION)) checkpointListening()
             if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION,
@@ -116,6 +116,7 @@ class MusicService : MediaSessionService() {
                     return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                         .setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
                             .add(SessionCommand("SET_ENGINE", Bundle.EMPTY))
+                            .add(SessionCommand(cp.player.app.RoamPlayback.START, Bundle.EMPTY))
                             .add(SessionCommand("MOVE_SHUFFLE_ITEM", Bundle.EMPTY))
                             .add(SessionCommand(PlaybackSleepTimer.COMMAND, Bundle.EMPTY)).build()).build()
                 }
@@ -141,6 +142,14 @@ class MusicService : MediaSessionService() {
                 }
                 override fun onCustomCommand(session: MediaSession, controller: MediaSession.ControllerInfo,
                     command: SessionCommand, args: Bundle): ListenableFuture<SessionResult> {
+                    if (command.customAction == cp.player.app.RoamPlayback.START) {
+                        val source = args.getString("source") ?: return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+                        val type = object : com.google.gson.reflect.TypeToken<List<cp.player.app.Track>>() {}.type
+                        val anchors = runCatching { com.google.gson.Gson().fromJson<List<cp.player.app.Track>>(args.getString("anchors"), type) }.getOrNull()
+                            ?: return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+                        cp.player.app.RoamPlayback.start(source, anchors, args.getStringArrayList("original").orEmpty().toSet())
+                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
                     if (command.customAction == PlaybackSleepTimer.COMMAND) {
                         if (!args.containsKey(PlaybackSleepTimer.DURATION_MS))
                             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))

@@ -10,9 +10,9 @@ enum class MusicKind { PLAYLIST, ALBUM, ARTIST, LIKED, DAILY, CHARTS, BROWSE, CL
 data class Account(val id: String, val name: String, val avatar: String?)
 data class MusicEntry(val id: String, val name: String, val source: String, val kind: MusicKind,
     val subtitle: String = "", val image: String? = null, val owner: String? = null,
-    val count: Int = 0, val subscribed: Boolean = false, val special: Boolean = false)
+    val count: Int = 0, val subscribed: Boolean = false, val special: Boolean = false, val section: String = "", val query: String = "")
 data class MusicDetail(val entry: MusicEntry, val tracks: List<Track> = emptyList(),
-    val entries: List<MusicEntry> = emptyList(), val description: String = "", val total: Int = 0, val records: List<ListeningRecord> = emptyList())
+    val entries: List<MusicEntry> = emptyList(), val description: String = "", val total: Int = 0, val records: List<ListeningRecord> = emptyList(), val nextOffset: Int = 0, val hasMore: Boolean = false)
 data class MusicSearch(val tracks: List<Track> = emptyList(), val entries: List<MusicEntry> = emptyList())
 data class MusicComment(val id: String, val user: String, val text: String, val avatar: String?, val liked: Boolean, val likes: Int)
 
@@ -24,6 +24,24 @@ internal fun JsonObject.flag(key: String): Boolean = str(key) == "true"
 
 /** NCM-compatible capabilities over the source gateway; no account data is logged. */
 class MusicRepository(private val context: Context, val source: String) {
+    companion object {
+        private val artistHeaders = linkedMapOf<String, Pair<Long, MusicDetail>>()
+        @Synchronized private fun cachedArtist(key: String) = artistHeaders[key]?.takeIf { System.currentTimeMillis() - it.first < 6 * 60 * 60_000 }?.second
+        @Synchronized private fun rememberArtist(key: String, value: MusicDetail) {
+            artistHeaders[key] = System.currentTimeMillis() to value
+            while (artistHeaders.size > 64) artistHeaders.remove(artistHeaders.keys.first())
+        }
+    }
+    suspend fun artistHeader(target: MusicEntry): MusicDetail {
+        val key = "$source:${target.id}"
+        cachedArtist(key)?.let { return it.copy(entry = it.entry.copy(section = target.section, query = target.query)) }
+        val response = request("artist/detail", mapOf("id" to target.id))
+        val data = response.obj("data") ?: response
+        val artist = data.obj("artist") ?: error("歌手资料暂不可用")
+        val header = MusicDetail((entry(artist, MusicKind.ARTIST) ?: target).copy(section = target.section, query = target.query), description = artist.str("briefDesc").orEmpty())
+        rememberArtist(key, header)
+        return header
+    }
     private suspend fun request(method: String, params: Map<String, String> = emptyMap()): JsonObject {
         val response = SourceStore.call(context, source, method, params)
         val code = response.str("code")?.toIntOrNull()
@@ -41,7 +59,7 @@ class MusicRepository(private val context: Context, val source: String) {
         val artist = item.obj("artist") ?: item.array("artists").firstOrNull()?.takeIf { it.isJsonObject }?.asJsonObject
         return MusicEntry(item.str("id") ?: return null, item.str("name") ?: return null, source, kind,
             creator?.str("nickname") ?: artist?.str("name").orEmpty(),
-            item.str("coverImgUrl") ?: item.str("picUrl") ?: item.str("img1v1Url"), creator?.str("userId"),
+            item.str("coverImgUrl") ?: item.str("cover") ?: item.str("avatar") ?: item.str("picUrl") ?: item.str("img1v1Url"), creator?.str("userId"),
             item.number("trackCount").takeIf { it > 0 } ?: item.number("size"), item.flag("subscribed") || item.flag("followed"), item.number("specialType") == 5)
     }
     private fun entries(array: JsonArray, kind: MusicKind): List<MusicEntry> = array.mapNotNull { entry(it, kind) }
@@ -96,11 +114,33 @@ class MusicRepository(private val context: Context, val source: String) {
             MusicDetail(albumEntry.copy(subscribed = information?.flag("isSub") ?: albumEntry.subscribed), tracks(response.array("songs")), description = album?.str("description").orEmpty())
         }
         MusicKind.ARTIST -> {
-            val response = request("artists", mapOf("id" to target.id))
-            val artist = response.obj("artist")
-            val albums = request("artist/album", mapOf("id" to target.id, "limit" to "50"))
-            MusicDetail(artist?.let { entry(it, target.kind) } ?: target, tracks(response.array("hotSongs")),
-                entries(albums.array("hotAlbums"), MusicKind.ALBUM), artist?.str("briefDesc").orEmpty())
+            val header = artistHeader(target)
+            val params = mapOf("id" to target.id, "limit" to "50", "offset" to offset.toString())
+            if (target.query.isBlank()) {
+                val albums = target.section == "albums"
+                val response = request(if (albums) "artist/album" else "artist/songs", params + ("order" to "hot"))
+                val raw = response.array(if (albums) "hotAlbums" else "songs")
+                val next = offset + raw.size()
+                val total = response.number("total").takeIf { it > 0 }
+                    ?: if (response.flag("more")) next + 1 else next
+                header.copy(tracks = if (albums) emptyList() else tracks(raw),
+                    entries = if (albums) entries(raw, MusicKind.ALBUM) else emptyList(),
+                    total = total, nextOffset = next, hasMore = response.flag("more") || next < total)
+            } else {
+                val albums = target.section == "albums"
+                val result = request("cloudsearch", mapOf("keywords" to "${header.entry.name} ${target.query}",
+                    "type" to if (albums) "10" else "1", "limit" to "50", "offset" to offset.toString())).obj("result") ?: JsonObject()
+                val raw = result.array(if (albums) "albums" else "songs")
+                val matched = JsonArray().apply { raw.forEach { value ->
+                    val obj = value.takeIf { it.isJsonObject }?.asJsonObject ?: return@forEach
+                    val performers = if (obj.array("ar").size() > 0) obj.array("ar") else obj.array("artists")
+                    if (obj.obj("artist")?.str("id") == target.id || performers.any { it.isJsonObject && it.asJsonObject.str("id") == target.id }) add(value)
+                } }
+                val next = offset + raw.size(); val total = result.number(if (albums) "albumCount" else "songCount")
+                header.copy(tracks = if (albums) emptyList() else tracks(matched),
+                    entries = if (albums) entries(matched, MusicKind.ALBUM) else emptyList(),
+                    total = matched.size(), nextOffset = next, hasMore = raw.size() > 0 && next < total)
+            }
         }
         MusicKind.DAILY -> MusicDetail(target, daily())
         MusicKind.LIKED -> {

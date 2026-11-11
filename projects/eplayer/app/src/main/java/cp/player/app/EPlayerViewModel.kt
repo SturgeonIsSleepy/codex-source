@@ -264,15 +264,22 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         val source = pick.source ?: return
         val allowed = tracks.filter { it.source == source && it.recommendationKey() !in noInterest.value }
         if (allowed.isEmpty()) { message.value = "没有可漫游的歌曲"; return }
-        play(allowed.first(), allowed, origin = pick.title, afterStart = { RoamPlayback.start(source, allowed, original) })
+        play(allowed.first(), allowed, origin = pick.title, afterStart = { requestRoaming(source, allowed, original) })
         rememberPick(pick)
+    }
+    private fun requestRoaming(source: String, anchors: List<Track>, original: Set<String> = emptySet()) {
+        controller?.sendCustomCommand(SessionCommand(RoamPlayback.START, Bundle.EMPTY), Bundle().apply {
+            putString("source", source)
+            putString("anchors", com.google.gson.Gson().toJson(anchors.take(16)))
+            putStringArrayList("original", ArrayList(original))
+        })
     }
     fun toggleRoaming() {
         if (roaming.value) RoamPlayback.stop() else {
             if (RoamPlayback.retryFailed()) return
             val track = currentTrack() ?: return
             val source = track.source ?: run { message.value = "请播放网易云歌曲后开启漫游"; return }
-            RoamPlayback.start(source, listOf(track) + currentQueueTracks())
+            requestRoaming(source, listOf(track) + currentQueueTracks())
         }
     }
     fun playPause() { controller?.let { player ->
@@ -334,8 +341,8 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     fun addQueueTracks(tracks: List<Track>) { controller?.addMediaItems(tracks.map { it.mediaItem(quality.value) }) }
     fun currentTrack(): Track? = playback.value.song?.let { Track(it, source = playback.value.source, remoteId = playback.value.remoteId) }
     fun queueIndex(index: Int) { controller?.let { it.seekToDefaultPosition(index); it.prepare(); it.play() } }
-    fun shuffle() { controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled } }
-    fun repeat() { controller?.let { it.repeatMode = (it.repeatMode + 1) % 3 } }
+    fun shuffle() { if (!roaming.value) controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled } }
+    fun repeat() { if (!roaming.value) controller?.let { it.repeatMode = (it.repeatMode + 1) % 3 } }
     fun favorite(song: Song) {
         val next = favorites.value.toMutableSet().apply { if (!add(song.id)) remove(song.id) }
         favorites.value = next

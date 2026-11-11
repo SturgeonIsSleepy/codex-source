@@ -37,6 +37,7 @@ import java.util.Locale
 internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state: Playback,
                           more: () -> Unit, comments: () -> Unit, queueOptions: (Int) -> Unit = {}, close: () -> Unit) {
     val animate by model.animate.collectAsState()
+    val roaming by model.roaming.collectAsState()
     val coverBlur by model.coverBlur.collectAsState()
     val customBackground by model.playerBackground.collectAsState()
     val context = LocalContext.current.applicationContext
@@ -83,7 +84,7 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
                 seeking?.let { model.seek(it.toLong()) }; seeking = null
             }, model::playPause, model::previous, model::next, model::shuffle, model::repeat, liked, {
                 state.song?.let { song -> if (state.source == null) model.favorite(song) else model.currentTrack()?.let(cloud::like) }
-            }, showFavorite = false) },
+            }, showFavorite = false, modesLocked = roaming) },
             liked = liked, like = { state.song?.let { song -> if (state.source == null) model.favorite(song) else model.currentTrack()?.let(cloud::like) } },
             lyrics = openLyrics, comments = if (state.source != null) comments else null,
             quality = { qualitySheet = true }, more = more, songOptions = queueOptions, close = dismiss)
@@ -96,7 +97,7 @@ internal fun PlayerScreen(model: EPlayerViewModel, cloud: CloudViewModel, state:
 @Composable
 internal fun PlayerTransport(state: Playback, position: Long, seeking: Float?, seek: (Float) -> Unit, finishSeek: () -> Unit,
                              playPause: () -> Unit, previous: () -> Unit, next: () -> Unit, shuffle: () -> Unit,
-                             repeat: () -> Unit, liked: Boolean, favorite: () -> Unit, showFavorite: Boolean = true) {
+                             repeat: () -> Unit, liked: Boolean, favorite: () -> Unit, showFavorite: Boolean = true, modesLocked: Boolean = false) {
     Column(Modifier.fillMaxWidth().testTag("player-transport")) {
         val limit = state.duration.coerceAtLeast(1).toFloat()
         val value = (seeking ?: position.toFloat()).coerceIn(0f, limit)
@@ -126,7 +127,7 @@ internal fun PlayerTransport(state: Playback, position: Long, seeking: Float?, s
         Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-            IconToggleButton(checked = state.shuffle, onCheckedChange = { shuffle(); haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) },
+            IconToggleButton(checked = state.shuffle, enabled = !modesLocked, onCheckedChange = { shuffle(); haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) },
                 modifier = Modifier.semantics { stateDescription = if (state.shuffle) "随机播放已开启" else "顺序播放" }) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.Shuffle, if (state.shuffle) "关闭随机播放" else "开启随机播放",
@@ -140,7 +141,7 @@ internal fun PlayerTransport(state: Playback, position: Long, seeking: Float?, s
                 if (state.playRequested) Icons.Default.Pause else Icons.Default.PlayArrow,
                 if (state.playRequested) "暂停" else "播放", Modifier.size(36.dp)) }
             IconButton(onClick = next, enabled = state.queue.size > 1) { Icon(Icons.Default.SkipNext, "下一首", Modifier.size(29.dp)) }
-            IconButton(onClick = repeat) {
+            IconButton(onClick = repeat, enabled = !modesLocked) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(if (state.repeat == 1) Icons.Default.RepeatOne else Icons.Default.Repeat,
                         when (state.repeat) { 1 -> "单曲循环"; 2 -> "列表循环"; else -> "循环关闭" },

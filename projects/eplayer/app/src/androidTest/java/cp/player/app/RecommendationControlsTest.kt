@@ -13,13 +13,15 @@ import org.junit.Test
 
 class RecommendationControlsTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
-    @Test fun homepageRoamIsASeparateSingleTapAction() {
-        var roam = 0; var picker = 0; var chosen = 0
+    @Test fun singlePickUsesOneTapAndThereIsNoRedundantDefaultRoamButton() {
+        var picker = 0; var chosen = 0
+        val track = Track(cp.player.model.Song("fixture", "单曲夹具", "歌手", album = "专辑"), source = "fixture")
         compose.runOnUiThread { compose.activity.setContent { EPlayerTheme {
-            Column { QuickPickGrid(emptyList(), { chosen++ }, { picker++ }, { roam++ }) }
+            Column { QuickPickGrid(listOf(QuickPick("song:fixture", "单曲夹具", track = track)), { chosen++ }, { picker++ }) }
         } } }
-        compose.onNodeWithText("漫游").performClick()
-        compose.runOnIdle { assertEquals(1, roam); assertEquals(0, picker); assertEquals(0, chosen) }
+        compose.onNodeWithText("单曲夹具").performClick()
+        compose.onNodeWithText("漫游").assertDoesNotExist()
+        compose.runOnIdle { assertEquals(0, picker); assertEquals(1, chosen) }
     }
     @Test fun recommendationSettingChangesOnlyTheEngineAndCanBeRestored() {
         val model = ViewModelProvider(compose.activity)[EPlayerViewModel::class.java]

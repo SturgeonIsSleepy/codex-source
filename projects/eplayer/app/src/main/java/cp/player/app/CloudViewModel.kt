@@ -27,6 +27,24 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
     val pages = MutableStateFlow<List<DetailPage>>(emptyList())
     val message = MutableStateFlow<String?>(null)
     val busy = MutableStateFlow(false)
+    val artistImages = MutableStateFlow<Map<String, String>>(emptyMap())
+    private val attemptedArtists = linkedSetOf<String>()
+    private val detailJobs = mutableMapOf<String, Job>()
+    fun ensureArtistImages(tracks: List<Track>) {
+        val source = home.value.source ?: return
+        val artists = tracks.filter { it.source == source }.flatMap { track -> track.song.artists.orEmpty().ifEmpty {
+            track.song.artistId?.let { listOf(cp.player.model.SongArtist(it, track.song.artist.substringBefore(" / "))) }.orEmpty()
+        } }.distinctBy { it.id }.take(6).filter { attemptedArtists.add("$source:${it.id}") }
+        while (attemptedArtists.size > 128) attemptedArtists.remove(attemptedArtists.first())
+        if (artists.isEmpty()) return
+        viewModelScope.launch {
+            val repo = MusicRepository(app, source)
+            for (artist in artists) optional { repo.artistHeader(MusicEntry(artist.id, artist.name, source, MusicKind.ARTIST)) }
+                ?.entry?.image?.takeIf { it.isNotBlank() }?.let { image ->
+                    artistImages.update { old -> (old + ("$source:${artist.id}" to image)).entries.toList().takeLast(64).associate { it.toPair() } }
+                }
+        }
+    }
     private var refreshJob: Job? = null
     private var searchJob: Job? = null
     private var searchGeneration = 0
@@ -93,35 +111,57 @@ class CloudViewModel(private val app: Application) : AndroidViewModel(app) {
     fun clearSearch() { searchGeneration++; searchJob?.cancel(); searching.value = false; searched.value = false; searchError.value = null; searchResult.value = MusicSearch() }
     fun open(target: MusicEntry) {
         ensureLibrary()
-        pages.update { it + DetailPage(target) }
-        load(target)
+        val scene = DetailPage(target)
+        pages.update { it + scene }
+        load(target, scene.instanceId)
     }
-    fun back() { pages.update { it.dropLast(1) } }
-    fun closeDetails() { pages.value = emptyList() }
+    fun back() { pages.value.lastOrNull()?.let { detailJobs.remove(it.instanceId)?.cancel() }; pages.update { it.dropLast(1) } }
+    fun closeDetails() { detailJobs.values.forEach { it.cancel() }; detailJobs.clear(); pages.value = emptyList() }
     fun replaceTop(target: MusicEntry) {
-        pages.update { if (it.isEmpty()) listOf(DetailPage(target)) else it.dropLast(1) + DetailPage(target) }
-        load(target)
+        val scene = DetailPage(target)
+        pages.value.lastOrNull()?.let { detailJobs.remove(it.instanceId)?.cancel() }
+        pages.update { if (it.isEmpty()) listOf(scene) else it.dropLast(1) + scene }
+        load(target, scene.instanceId)
     }
-    fun retry() { pages.value.lastOrNull()?.let { load(it.target) } }
-    private fun updatePage(target: MusicEntry, transform: (DetailPage) -> DetailPage) { pages.update { list -> list.map { if (it.target.id == target.id && it.target.source == target.source && it.target.kind == target.kind) transform(it) else it } } }
-    private fun load(target: MusicEntry) = viewModelScope.launch {
-        updatePage(target) { it.copy(loading = true, error = null) }
-        try {
-            val result = MusicRepository(app, target.source).detail(target)
-            updatePage(target) { it.copy(data = applyLocalOrder(target, result), loading = false) }
-        } catch (error: CancellationException) { throw error }
-        catch (error: Exception) { updatePage(target) { it.copy(loading = false, error = error.message ?: "加载失败") } }
+    fun artistView(section: String, query: String) {
+        val current = pages.value.lastOrNull()?.takeIf { it.target.kind == MusicKind.ARTIST } ?: return
+        val target = current.target.copy(section = section, query = query.trim())
+        if (target == current.target) return
+        pages.update { values -> values.map { if (it.instanceId == current.instanceId) it.copy(target = target, data = it.data?.copy(entry = it.data.entry.copy(section = target.section, query = target.query),
+            tracks = emptyList(), entries = emptyList(), total = 0, nextOffset = 0, hasMore = false), loading = true, error = null) else it } }
+        load(target, current.instanceId)
+    }
+    fun retry() { pages.value.lastOrNull()?.let { load(it.target, it.instanceId) } }
+    private fun updatePage(target: MusicEntry, scene: String? = null, transform: (DetailPage) -> DetailPage) { pages.update { list -> list.map { if ((scene == null || it.instanceId == scene) && it.target.id == target.id && it.target.source == target.source && it.target.kind == target.kind && it.target.section == target.section && it.target.query == target.query) transform(it) else it } } }
+    private fun load(target: MusicEntry) {
+        pages.value.filter { it.target == target }.forEach { load(target, it.instanceId) }
+    }
+    private fun load(target: MusicEntry, scene: String) {
+        detailJobs.remove(scene)?.cancel()
+        detailJobs[scene] = viewModelScope.launch {
+            updatePage(target, scene) { it.copy(loading = true, error = null) }
+            try {
+                val result = MusicRepository(app, target.source).detail(target)
+                updatePage(target, scene) { it.copy(data = applyLocalOrder(target, result), loading = false) }
+            } catch (error: CancellationException) { throw error }
+            catch (error: Exception) { updatePage(target, scene) { it.copy(loading = false, error = error.message ?: "加载失败") } }
+        }
     }
     fun more() {
         val page = pages.value.lastOrNull() ?: return
         val detail = page.data ?: return
         if (page.loading) return
         viewModelScope.launch {
-            updatePage(page.target) { it.copy(loading = true) }
+            updatePage(page.target, page.instanceId) { it.copy(loading = true) }
             try {
-                val next = MusicRepository(app, page.target.source).detail(page.target, detail.tracks.size)
-                updatePage(page.target) { it.copy(loading = false, data = applyLocalOrder(page.target, detail.copy(tracks = (detail.tracks + next.tracks).distinctBy { it.song.id }, total = if (next.tracks.isEmpty()) detail.tracks.size else detail.total))) }
-            } catch (error: Exception) { updatePage(page.target) { it.copy(loading = false, error = error.message) } }
+                val next = MusicRepository(app, page.target.source).detail(page.target, if (page.target.kind == MusicKind.ARTIST) detail.nextOffset else detail.tracks.size)
+                updatePage(page.target, page.instanceId) { it.copy(loading = false, data = applyLocalOrder(page.target, detail.copy(
+                    tracks = (detail.tracks + next.tracks).distinctBy { it.recommendationKey() },
+                    entries = (detail.entries + next.entries).distinctBy { it.kind to it.id },
+                    nextOffset = next.nextOffset, hasMore = next.hasMore,
+                    total = if (page.target.kind == MusicKind.ARTIST) next.total else if (next.tracks.isEmpty()) detail.tracks.size else detail.total))) }
+            } catch (error: CancellationException) { throw error }
+            catch (error: Exception) { updatePage(page.target, page.instanceId) { it.copy(loading = false, error = error.message) } }
         }
     }
     fun like(track: Track) = action {

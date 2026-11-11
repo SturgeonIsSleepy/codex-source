@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -52,18 +53,14 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var roamPicker by remember { mutableStateOf<Int?>(null) }
     val savedPicks by model.roamHistory.collectAsState()
+    val artistImages by cloud.artistImages.collectAsState()
     val busy by cloud.busy.collectAsState()
     val excluded by model.noInterest.collectAsState()
-    val picks = remember(home.playlists, home.recommendations, home.source, recent, savedPicks, excluded) { quickPicks(home, recent, savedPicks, excluded) }
+    val picks = remember(home.playlists, home.recommendations, home.source, recent, savedPicks, excluded, artistImages) { quickPicks(home, recent, savedPicks, excluded, artistImages) }
     fun roam(pick: QuickPick) { cloud.roam(pick, excluded) { tracks, original -> model.startRoaming(pick, tracks, original); onShowPlayer(true) } }
-    fun beginRoaming() {
-        val pick = picks.firstOrNull { it.entry?.special == true } ?: picks.firstOrNull { it.kind == 1000 } ?: picks.firstOrNull()
-        if (pick != null) roam(pick)
-        else if (home.source != null) roamPicker = 1
-        else model.message.value = "请先添加音源"
-    }
     var query by rememberSaveable { mutableStateOf("") }
     var libraryMode by rememberSaveable { mutableIntStateOf(0) }
+    var libraryMenu by remember { mutableStateOf(false) }
     var createPlaylist by remember { mutableStateOf(false) }
     var playlistName by remember { mutableStateOf("") }
     var privatePlaylist by remember { mutableStateOf(false) }
@@ -83,7 +80,6 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     var visualSettings by remember { mutableStateOf(false) }
     var playbackSettings by remember { mutableStateOf(false) }
     var queueOpen by remember { mutableStateOf(false) }
-    val snackbar = remember { SnackbarHostState() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val lists = remember { List(3) { LazyListState() } }
     val importAudio = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments(), model::importAudio)
@@ -106,12 +102,13 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
         cloud.ensureLibrary()
         if (page == 0) model.refreshPlaybackSnapshot()
     }
+    LaunchedEffect(page, recent, home.source) { if (page == 0) cloud.ensureArtistImages(recent) }
     DisposableEffect(discovery) {
         cloud.setDiscoveryVisible(discovery)
         onDispose { if (discovery) cloud.setDiscoveryVisible(false) }
     }
-    LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); model.message.value = null } }
-    LaunchedEffect(cloudMessage) { cloudMessage?.let { snackbar.showSnackbar(it); cloud.message.value = null } }
+    LaunchedEffect(message) { message?.let { model.message.value = null; AppNotice.show(model.getApplication(), it) } }
+    LaunchedEffect(cloudMessage) { cloudMessage?.let { cloud.message.value = null; AppNotice.show(model.getApplication(), it) } }
 
     val revealingPages = remember { mutableStateMapOf<Any, Boolean>() }
     val revealingBack = revealingPages.isNotEmpty()
@@ -119,72 +116,73 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     val chromeVisible = (!showPlayer && detailPages.isEmpty() && !playbackSettings && !visualSettings && settingsSection == null && !searchOpen) || revealingBack
     @Composable
     fun RootContents(selectedPage: Int) {
-        LazyColumn(Modifier.fillMaxSize().statusBarsPadding().testTag("root-content-$selectedPage"), state = lists[selectedPage],
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = if (state.song != null) 132.dp else 80.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { AppHeader(when (selectedPage) { 1 -> "探索"; 2 -> "媒体库"; else -> "ePlayer" }, home.account?.avatar,
-                { openSettings("profile") }, { searchOpen = true }) }
-            if (busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-            when (selectedPage) {
-                0 -> {
-                    item { ListeningSummary(stats) }
-                    item { Column { QuickPickGrid(picks, ::roam, { roamPicker = it }, ::beginRoaming) } }
-                }
-                1 -> {
-                    if (home.source == null) item { SettingsRow("添加音源") { openSettings("source") } }
-                    else {
-                        item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            listOf("新发行" to "new", "排行榜" to "charts", "心情与流派" to "genres").forEach { (label, id) ->
-                                Column(Modifier.weight(1f).height(112.dp).clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.surfaceContainerLow)
-                                    .clickable { cloud.open(MusicEntry(id, label, home.source!!, if (id == "charts") MusicKind.CHARTS else MusicKind.BROWSE)) }
-                                    .padding(12.dp), verticalArrangement = Arrangement.SpaceBetween) {
-                                    Icon(when (id) { "new" -> Icons.Default.NewReleases; "charts" -> Icons.Default.TrendingUp; else -> Icons.Default.Mood }, null)
-                                    Text(label, style = MaterialTheme.typography.titleMedium)
-                                }
-                            }
-                        } }
-                        item { Text("为你推荐", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 12.dp)) }
-                        if (home.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-                        home.error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
-                        items(home.recommendations.chunked(2)) { entries -> RecommendationRow(entries, cloud::open) }
+        val list = lists[selectedPage]
+        val header = rememberPullHeader(list)
+        Column(Modifier.fillMaxSize().statusBarsPadding().nestedScroll(header.connection)) {
+            AnimatedVisibility(header.shown || !list.canScrollBackward,
+                enter = expandVertically(AppMotion.fast()) + fadeIn(AppMotion.fast()),
+                exit = shrinkVertically(AppMotion.fast()) + fadeOut(AppMotion.fast())) {
+                Column {
+                    AppHeader(when (selectedPage) { 1 -> "探索"; 2 -> "媒体库"; else -> "ePlayer" }, home.account?.avatar,
+                        { openSettings("profile") }, { searchOpen = true }, Modifier.padding(horizontal = 20.dp))
+                    if (selectedPage == 2) Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f)) { MusicSegments(listOf("歌单", "歌曲", "最近"), libraryMode) { libraryMode = it } }
+                        IconButton(onClick = { libraryMenu = true }) { Icon(Icons.Default.MoreVert, "媒体库操作") }
+                        TravelMenu(libraryMenu, { libraryMenu = false }) {
+                            if (home.account != null) DropdownMenuItem(text = { Text("新建歌单") }, onClick = { libraryMenu = false; createPlaylist = true })
+                            DropdownMenuItem(text = { Text("导入音乐") }, onClick = { libraryMenu = false; importAudio.launch(arrayOf("audio/*")) })
+                            DropdownMenuItem(text = { Text("扫描本地音乐") }, onClick = { libraryMenu = false; permission.launch(if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE) })
+                            DropdownMenuItem(text = { Text("刷新") }, onClick = { libraryMenu = false; cloud.refresh() })
+                        }
                     }
                 }
-                else -> {
-                    item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.weight(1f)) { MusicSegments(listOf("歌单", "歌曲", "最近"), libraryMode) { libraryMode = it } }
-                        IconButton(onClick = { importAudio.launch(arrayOf("audio/*")) }) { Icon(Icons.Default.Add, "导入音乐") }
-                    } }
-                            when (libraryMode) {
-                                0 -> {
-                                    item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                        Spacer(Modifier.weight(1f))
-                                        IconButton(onClick = cloud::refresh) { Icon(Icons.Default.Refresh, "刷新账号和歌单", tint = MusicRed) }
-                                        if (home.account != null) IconButton(onClick = { createPlaylist = true }) { Icon(Icons.Default.PlaylistAdd, "创建歌单", tint = MusicRed) }
-                                    } }
-                                    if (home.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-                                    if (home.account == null) item { SettingsRow("登录网易云") { openSettings("account") } }
-                                    home.account?.let { account ->
-                                        item { SettingsRow("听歌排行") { cloud.open(MusicEntry(account.id, "听歌排行", home.source!!, MusicKind.RECORD_ALL)) } }
-                                    }
-                                    items(home.playlists, key = { it.id }) { entry -> MusicEntryRow(entry) { cloud.open(entry) } }
-                                    home.account?.let { account ->
-                                        item { SettingsRow("音乐云盘") { cloud.open(MusicEntry(account.id, "音乐云盘", home.source!!, MusicKind.CLOUD)) } }
+            }
+            LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("root-content-$selectedPage"), state = list,
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = if (state.song != null) 124.dp else 72.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+                when (selectedPage) {
+                    0 -> {
+                        item { ListeningSummary(stats) }
+                        item { Column { QuickPickGrid(picks, ::roam, { roamPicker = it }) } }
+                    }
+                    1 -> {
+                        if (home.source == null) item { SettingsRow("添加音源") { openSettings("source") } }
+                        else {
+                            item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                listOf("新发行" to "new", "排行榜" to "charts", "心情与流派" to "genres").forEach { (label, id) ->
+                                    Column(Modifier.weight(1f).height(100.dp).clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                        .clickable { cloud.open(MusicEntry(id, label, home.source!!, if (id == "charts") MusicKind.CHARTS else MusicKind.BROWSE)) }
+                                        .padding(12.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                                        Icon(when (id) { "new" -> Icons.Default.NewReleases; "charts" -> Icons.Default.TrendingUp; else -> Icons.Default.Mood }, null)
+                                        Text(label, style = MaterialTheme.typography.titleMedium)
                                     }
                                 }
-                                1 -> {
-                                    item { Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text("本地音乐", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-                                        TextButton(onClick = { permission.launch(if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE) }) { Text("扫描") }
-                                    } }
-                                    items(library, key = { it.song.id }) { track -> SongRow(track, state.song?.id == track.song.id, { model.play(track, library); onShowPlayer(true) }) {
-                                        IconButton(onClick = { if (track.song.id.startsWith("import_")) pendingTrackDelete = track else selectedTrack = track to null }) { Icon(Icons.Default.MoreHoriz, "歌曲操作") }
-                                    } }
-                                    item { DownloadsStatus(model) }
-                                }
-                                else -> items(recent, key = { "${it.source}:${it.song.id}" }) { track -> SongRow(track, state.song?.id == track.song.id, { model.play(track, recent); onShowPlayer(true) }) {
-                                    IconButton(onClick = { selectedTrack = track to null }) { Icon(Icons.Default.MoreHoriz, "歌曲操作") }
-                                } }
-                            }
+                            } }
+                            item { Text("为你推荐", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 12.dp)) }
+                            if (home.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+                            home.error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
+                            items(home.recommendations.chunked(2)) { entries -> RecommendationRow(entries, cloud::open) }
+                        }
+                    }
+                    else -> when (libraryMode) {
+                        0 -> {
+                            if (home.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+                            if (home.account == null) item { SettingsRow("登录网易云") { openSettings("account") } }
+                            home.account?.let { account -> item { SettingsRow("听歌排行") { cloud.open(MusicEntry(account.id, "听歌排行", home.source!!, MusicKind.RECORD_ALL)) } } }
+                            items(home.playlists, key = { it.id }) { entry -> MusicEntryRow(entry) { cloud.open(entry) } }
+                            home.account?.let { account -> item { SettingsRow("音乐云盘") { cloud.open(MusicEntry(account.id, "音乐云盘", home.source!!, MusicKind.CLOUD)) } } }
+                        }
+                        1 -> {
+                            items(library, key = { it.song.id }) { track -> SongRow(track, state.song?.id == track.song.id, { model.play(track, library); onShowPlayer(true) }) {
+                                IconButton(onClick = { if (track.song.id.startsWith("import_")) pendingTrackDelete = track else selectedTrack = track to null }) { Icon(Icons.Default.MoreVert, "歌曲操作") }
+                            } }
+                            item { DownloadsStatus(model) }
+                        }
+                        else -> items(recent, key = { "${it.source}:${it.song.id}" }) { track -> SongRow(track, state.song?.id == track.song.id, { model.play(track, recent); onShowPlayer(true) }) {
+                            IconButton(onClick = { selectedTrack = track to null }) { Icon(Icons.Default.MoreVert, "歌曲操作") }
+                        } }
+                    }
                 }
             }
         }
@@ -258,7 +256,6 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
             },
                 { onShowPlayer(true) }, model::playPause, model::next, { queueOpen = true })
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 180.dp))
     }
     settingsSection?.let { section ->
         val previousDepth = remember { intArrayOf(settingsPath.size) }

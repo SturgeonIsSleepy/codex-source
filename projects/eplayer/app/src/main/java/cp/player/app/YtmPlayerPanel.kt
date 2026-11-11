@@ -98,8 +98,6 @@ internal fun YtmPlayerPanel(model: EPlayerViewModel, cloud: CloudViewModel, stat
     val origin by model.queueOrigin.collectAsState()
     val roaming by model.roaming.collectAsState()
     val roamFailure by model.roamFailure.collectAsState()
-    val failureNotice = remember { SnackbarHostState() }
-    LaunchedEffect(roamFailure) { roamFailure?.let { failureNotice.showSnackbar(it) } }
     val busy by cloud.busy.collectAsState()
     var save by remember { mutableStateOf(false) }
     var saveName by remember { mutableStateOf("") }
@@ -212,7 +210,6 @@ internal fun YtmPlayerPanel(model: EPlayerViewModel, cloud: CloudViewModel, stat
         }
         }
       }
-        SnackbarHost(failureNotice, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp))
     }
     if (save) TravelAlertDialog(onDismissRequest = { if (!busy) save = false }, title = { Text("保存播放列表") }, text = { Column {
         OutlinedTextField(saveName, { saveName = it }, singleLine = true, placeholder = { Text("歌单名称") })
