@@ -94,10 +94,7 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
         playerBackground.value = null; app.getSharedPreferences("eplayer_ui", 0).edit().remove("player_background").apply()
         viewModelScope.launch(Dispatchers.IO) { PlayerBackgroundStore.clean(app, null) }
     }
-    internal val roamHistory = MutableStateFlow(runCatching {
-        val raw = app.getSharedPreferences("eplayer_ui", 0).getString("roam_history", "[]")
-        com.google.gson.Gson().fromJson(raw, Array<QuickPick>::class.java).toList()
-    }.getOrDefault(emptyList()))
+    internal val roamHistory = MutableStateFlow(readQuickPickHistory(app.getSharedPreferences("eplayer_ui", 0).getString("roam_history", "[]")))
     private fun rememberPick(pick: QuickPick) {
         roamHistory.value = (listOf(pick) + roamHistory.value).distinctBy { it.source to it.key.lowercase() }.take(24)
         app.getSharedPreferences("eplayer_ui", 0).edit().putString("roam_history", com.google.gson.Gson().toJson(roamHistory.value)).apply()
@@ -139,10 +136,17 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     /** The proxy only affects YTM metadata, so a stale failure and its cache are dropped on change. */
+    private var proxyChange: Job? = null
     fun onYtmProxyChanged() {
         YtmRadio.forgetRouteMetadata()
-        YtmRadio.configure(app)
-        if (!RoamPlayback.retryFailed()) RoamPlayback.retry()
+        proxyChange?.cancel()
+        proxyChange = viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { YtmRadio.configure(app) }
+                if (!RoamPlayback.retryFailed()) RoamPlayback.retry()
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (failure: Exception) { message.value = failure.message ?: "代理配置未生效" }
+        }
     }
     private val future = MediaController.Builder(app, SessionToken(app, ComponentName(app, MusicService::class.java))).setListener(object : MediaController.Listener {
         override fun onExtrasChanged(controller: MediaController, extras: Bundle) {

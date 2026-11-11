@@ -22,9 +22,10 @@ class YtmProxyTest {
         assertEquals("proxy.lan", YtmProxy.parse("  proxy.lan:1080  ")!!.host)
     }
 
-    @Test fun httpAndOtherSchemesAreNoLongerAccepted() {
-        // v2ray is the only supported transport, so an HTTP endpoint is not a valid setting.
-        assertNull(YtmProxy.parse("http://127.0.0.1:7890"))
+    @Test fun httpProxyIsSupportedWithoutPretendingHttpsProxySupport() {
+        val config = YtmProxy.parse("http://127.0.0.1:7890")!!
+        assertEquals(java.net.Proxy.Type.HTTP, config.kind)
+        assertEquals(java.net.Proxy.Type.HTTP, config.toProxy().type())
         assertNull(YtmProxy.parse("https://127.0.0.1:7890"))
     }
 
@@ -38,7 +39,7 @@ class YtmProxyTest {
         assertFalse(YtmProxy.isTunnelLink("127.0.0.1:10808"))
     }
 
-    @Test fun blankOrMalformedInputFallsBackToADirectConnection() {
+    @Test fun blankOrMalformedInputDoesNotBecomeAProxy() {
         for (bad in listOf(null, "", "   ", "10808", "host:", ":10808", "host:abc", "host:0", "host:70000")) {
             assertNull("should reject: $bad", YtmProxy.parse(bad))
         }

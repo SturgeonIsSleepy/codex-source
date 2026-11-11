@@ -126,43 +126,27 @@ private fun PlaybackSettings(model: EPlayerViewModel, engine: Int, openSound: ()
 @Composable
 private fun YtmProxyField(model: EPlayerViewModel) {
     val context = LocalContext.current
+    var selection by remember { mutableStateOf(YtmProxy.mode(context)) }
+    var menu by remember { mutableStateOf(false) }
     var editable by remember { mutableStateOf(false) }
     var draft by remember { mutableStateOf(YtmProxy.raw(context)) }
-    val saved = YtmProxy.read(context)
-    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)) {
-        if (!editable) {
-            Row(Modifier.fillMaxWidth().clickable { draft = YtmProxy.raw(context); editable = true }.heightIn(min = 44.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Text("YTM 代理", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                Text(if (saved == null) "系统 VPN" else saved.address(), style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            val tunnel = YtmProxy.isTunnelLink(draft)
-            OutlinedTextField(draft, { draft = it }, Modifier.fillMaxWidth().testTag("ytm-proxy-input"),
-                singleLine = true, label = { Text("SOCKS5 地址") },
-                placeholder = { Text("127.0.0.1:10808") },
-                isError = draft.isNotBlank() && YtmProxy.parse(draft) == null,
-                supportingText = {
-                    Text(
-                        when {
-                            draft.isBlank() -> "跟随系统 VPN"
-                            tunnel -> "这是节点链接，请先在 v2rayNG 导入并开启，再填它的本地端口（v2rayNG 默认 10808）"
-                            YtmProxy.parse(draft) != null -> "将使用 SOCKS5 ${YtmProxy.parse(draft)!!.address()}"
-                            else -> "格式应为 host:port，例如 127.0.0.1:10808"
-                        }
-                    )
-                })
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton({ editable = false }) { Text("取消") }
-                TextButton({
-                    YtmProxy.write(context, draft)
-                    model.onYtmProxyChanged()
-                    editable = false
-                }, enabled = draft.isBlank() || YtmProxy.parse(draft) != null) { Text("保存") }
-            }
+    SettingsRow("YTM 连接", when (selection) { "vpn" -> "系统 VPN"; "manual" -> YtmProxy.raw(context); else -> "自动" }) { menu = true }
+    if (menu) TravelSheet({ menu = false }) {
+        listOf("自动" to "auto", "系统 VPN" to "vpn", "自定义代理" to "manual").forEach { (label, mode) ->
+            TextButton(onClick = {
+                menu = false
+                if (mode == "manual") { draft = YtmProxy.raw(context); editable = true }
+                else { selection = mode; YtmProxy.mode(context, mode); model.onYtmProxyChanged() }
+            }, modifier = Modifier.fillMaxWidth()) { Text(label) }
         }
     }
+    if (editable) TravelAlertDialog(onDismissRequest = { editable = false }, title = { Text("代理地址") }, text = {
+        OutlinedTextField(draft, { draft = it }, Modifier.fillMaxWidth().testTag("ytm-proxy-input"),
+            singleLine = true, placeholder = { Text("socks5://127.0.0.1:10808") }, isError = draft.isNotBlank() && YtmProxy.parse(draft) == null)
+    }, confirmButton = { TextButton(enabled = YtmProxy.parse(draft) != null, onClick = {
+        YtmProxy.write(context, draft); YtmProxy.mode(context, "manual"); selection = "manual"
+        model.onYtmProxyChanged(); editable = false
+    }) { Text("保存") } }, dismissButton = { TextButton({ editable = false }) { Text("取消") } })
 }
 
 @Composable

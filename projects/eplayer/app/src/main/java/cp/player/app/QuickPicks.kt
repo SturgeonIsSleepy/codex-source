@@ -30,6 +30,24 @@ internal data class QuickPick(val key: String, val title: String, val image: Str
     val source: String? get() = entry?.source ?: track?.source
 }
 
+internal fun readQuickPickHistory(raw: String?): List<QuickPick> = runCatching {
+    com.google.gson.JsonParser.parseString(raw ?: "[]").asJsonArray.mapNotNull { value -> runCatching {
+        val item = value.asJsonObject
+        val key = item.str("key")?.takeIf { it.isNotBlank() } ?: return@runCatching null
+        val title = item.str("title")?.takeIf { it.isNotBlank() } ?: return@runCatching null
+        val entry = item.obj("entry")?.let { old ->
+            val kind = runCatching { MusicKind.valueOf(old.str("kind").orEmpty()) }.getOrElse {
+                when (key.substringBefore(':').lowercase()) { "artist" -> MusicKind.ARTIST; "album" -> MusicKind.ALBUM; else -> MusicKind.PLAYLIST }
+            }
+            MusicEntry(old.str("id") ?: return@runCatching null, old.str("name") ?: title,
+                old.str("source") ?: return@runCatching null, kind, old.str("subtitle").orEmpty(), old.str("image"), old.str("owner"),
+                old.number("count"), old.flag("subscribed"), old.flag("special"), old.str("section").orEmpty(), old.str("query").orEmpty())
+        }
+        val track = item.obj("track")?.let { com.google.gson.Gson().fromJson(it, Track::class.java) }
+        QuickPick(key, title, item.str("image"), entry, track)
+    }.getOrNull() }
+}.getOrDefault(emptyList())
+
 internal fun quickPicks(home: CloudHome, recent: List<Track>, saved: List<QuickPick>, excluded: Set<String> = emptySet(), artistImages: Map<String, String> = emptyMap()): List<QuickPick> {
     val source = home.source ?: return emptyList()
     val tracks = recent.filter { it.source == source && it.recommendationKey() !in excluded }.distinctBy { it.recommendationKey() }
@@ -94,11 +112,11 @@ internal fun visibleQuickPicks(picks: List<QuickPick>, filter: Int, limit: Int =
 }
 
 @Composable
-internal fun QuickPickGrid(picks: List<QuickPick>, choose: (QuickPick) -> Unit, openPicker: (Int) -> Unit) {
+internal fun QuickPickGrid(picks: List<QuickPick>, choose: (QuickPick) -> Unit, openPicker: (Int) -> Unit, cellHeight: androidx.compose.ui.unit.Dp? = null, maxItems: Int = 9) {
     var filter by remember { mutableIntStateOf(0) }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text("一键点歌", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
-        IconButton(onClick = { openPicker(if (filter == 0) 1 else filter) }) { Icon(Icons.Default.Add, "添加漫游种子") }
+        IconButton(onClick = { openPicker(if (filter == 0) 1 else filter) }) { Icon(Icons.Default.Add, "查找点歌内容") }
     }
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("全部" to 0, "歌手" to 100, "歌单" to 1000, "专辑" to 10, "单曲" to 1).forEach { (label, value) ->
@@ -109,12 +127,12 @@ internal fun QuickPickGrid(picks: List<QuickPick>, choose: (QuickPick) -> Unit, 
         }
     }
     Spacer(Modifier.height(12.dp))
-    val visible = remember(picks, filter) { visibleQuickPicks(picks, filter) }
+    val visible = remember(picks, filter, maxItems) { visibleQuickPicks(picks, filter, maxItems) }
     if (visible.isEmpty()) OutlinedButton(onClick = { openPicker(if (filter == 0) 1 else filter) }, modifier = Modifier.fillMaxWidth()) { Text(when (filter) { 100 -> "选择歌手"; 1000 -> "选择歌单"; 10 -> "选择专辑"; else -> "选择歌曲" }) }
     visible.chunked(3).forEach { row ->
         Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             row.forEach { pick ->
-                Box(Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh).clickable { choose(pick) }) {
+                Box(Modifier.weight(1f).then(if (cellHeight == null) Modifier.aspectRatio(1f) else Modifier.height(cellHeight)).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh).clickable { choose(pick) }) {
                     AsyncImage(pick.image, null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
                     if (pick.image.isNullOrBlank()) Icon(when (pick.kind) { 100 -> Icons.Default.Person; 1000 -> Icons.Default.QueueMusic; 10 -> Icons.Default.Album; else -> Icons.Default.MusicNote }, null, Modifier.align(Alignment.Center).size(36.dp))
                     Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .88f)))))

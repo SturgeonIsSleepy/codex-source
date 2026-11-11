@@ -95,15 +95,19 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
     TravelDialog(onDismissRequest = cloud::back,
         animateDismiss = pages.size <= 1,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-        destination = { pages.getOrNull(pages.lastIndex - 1)?.let { previous -> val previousScroll = scrollStates[previous.instanceId]; CloudReturnPreview(previous, previousScroll?.firstVisibleItemIndex ?: 0, previousScroll?.firstVisibleItemScrollOffset ?: 0) } }) {
+        destination = { pages.getOrNull(pages.lastIndex - 1)?.let { previous -> val previousScroll = scrollStates[previous.instanceId]; CloudReturnPreview(previous, previousScroll?.firstVisibleItemIndex ?: 0, previousScroll?.firstVisibleItemScrollOffset ?: 0) } },
+        fixedContent = {
+            Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) {
+                MusicDock(playback, selectedTab, false, { tab -> cloud.closeDetails(); chooseTab(tab) }, showPlayer,
+                    player::playPause, player::next, { queue = true })
+            }
+        }) {
         key(page.instanceId) {
         Surface(Modifier.fillMaxSize()) {
           Box(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().graphicsLayer { alpha = entrance.value }
                 .nestedScroll(header.connection).systemBarsPadding().padding(bottom = if (playback.song != null) 128.dp else 76.dp)) {
-                androidx.compose.animation.AnimatedVisibility(header.shown || !listState.canScrollBackward,
-                    enter = androidx.compose.animation.expandVertically(AppMotion.fast()) + androidx.compose.animation.fadeIn(AppMotion.fast()),
-                    exit = androidx.compose.animation.shrinkVertically(AppMotion.fast()) + androidx.compose.animation.fadeOut(AppMotion.fast())) {
+                MovingHeader(header) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = (LocalDialogDismiss.current ?: cloud::back)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
                     Text(if (editing) "已选 ${selected.size}" else target.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -236,10 +240,7 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                     items(page.data?.entries.orEmpty(), key = { "${it.kind}:${it.id}" }) { entry -> MusicEntryRow(entry) { cloud.open(entry) } }
                 }
             }
-            Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) {
-                MusicDock(playback, selectedTab, false, { tab -> cloud.closeDetails(); chooseTab(tab) }, showPlayer,
-                    player::playPause, player::next, { queue = true })
-            }
+
           }
         }
         }

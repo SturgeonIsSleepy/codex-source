@@ -18,6 +18,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.*
@@ -57,7 +58,10 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     val busy by cloud.busy.collectAsState()
     val excluded by model.noInterest.collectAsState()
     val picks = remember(home.playlists, home.recommendations, home.source, recent, savedPicks, excluded, artistImages) { quickPicks(home, recent, savedPicks, excluded, artistImages) }
-    fun roam(pick: QuickPick) { cloud.roam(pick, excluded) { tracks, original -> model.startRoaming(pick, tracks, original); onShowPlayer(true) } }
+    fun openPick(pick: QuickPick) {
+        if (pick.track != null) cloud.roam(pick, excluded) { tracks, original -> model.startRoaming(pick, tracks, original); onShowPlayer(true) }
+        else pick.entry?.let { cloud.open(it.copy(section = it.section.orEmpty(), query = it.query.orEmpty())) }
+    }
     var query by rememberSaveable { mutableStateOf("") }
     var libraryMode by rememberSaveable { mutableIntStateOf(0) }
     var libraryMenu by remember { mutableStateOf(false) }
@@ -119,9 +123,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
         val list = lists[selectedPage]
         val header = rememberPullHeader(list)
         Column(Modifier.fillMaxSize().statusBarsPadding().nestedScroll(header.connection)) {
-            AnimatedVisibility(header.shown || !list.canScrollBackward,
-                enter = expandVertically(AppMotion.fast()) + fadeIn(AppMotion.fast()),
-                exit = shrinkVertically(AppMotion.fast()) + fadeOut(AppMotion.fast())) {
+            MovingHeader(header) {
                 Column {
                     AppHeader(when (selectedPage) { 1 -> "探索"; 2 -> "媒体库"; else -> "ePlayer" }, home.account?.avatar,
                         { openSettings("profile") }, { searchOpen = true }, Modifier.padding(horizontal = 20.dp))
@@ -137,15 +139,12 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                     }
                 }
             }
-            LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("root-content-$selectedPage"), state = list,
+            if (selectedPage == 0) HomePanel(stats, picks, ::openPick, { roamPicker = it },
+                Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = if (state.song != null) 124.dp else 72.dp)) else LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("root-content-$selectedPage"), state = list,
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = if (state.song != null) 124.dp else 72.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
                 when (selectedPage) {
-                    0 -> {
-                        item { ListeningSummary(stats) }
-                        item { Column { QuickPickGrid(picks, ::roam, { roamPicker = it }) } }
-                    }
                     1 -> {
                         if (home.source == null) item { SettingsRow("添加音源") { openSettings("source") } }
                         else {
@@ -273,7 +272,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     if (searchOpen) SearchScreen(query, { query = it }, cloud, model, { onShowPlayer(true) }, { track -> selectedTrack = track to null }) {
         searchOpen = false; query = ""; cloud.clearSearch()
     }
-    roamPicker?.let { type -> RoamPicker(home.source, type, ::roam) { roamPicker = null } }
+    roamPicker?.let { type -> RoamPicker(home.source, type, ::openPick) { roamPicker = null } }
     if (queueOpen) QueueSheet(state, model::queueIndex, model::moveQueue, model::removeQueue, model::clearQueue, removeSelected = model::removeQueueItems, options = ::openQueueOptions) { queueOpen = false }
     if (visualSettings) VisualSettings(model) { visualSettings = false }
     if (playbackSettings) Settings(model) { playbackSettings = false }
@@ -299,20 +298,20 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
 }
 
 @Composable
-private fun ListeningSummary(stats: ListeningStats) {
-    Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-        Text("近 7 天", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+internal fun ListeningSummary(stats: ListeningStats, compact: Boolean = false, tiny: Boolean = false) {
+    Column(Modifier.fillMaxWidth().padding(top = if (compact) 2.dp else 12.dp)) {
+        if (!tiny) Text("近 7 天", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(verticalAlignment = Alignment.Bottom) {
-            Text("${stats.minutes}", fontSize = 44.sp, lineHeight = 52.sp, fontWeight = FontWeight.SemiBold)
+            Text("${stats.minutes}", fontSize = if (compact) 34.sp else 44.sp, lineHeight = if (compact) 40.sp else 52.sp, fontWeight = FontWeight.SemiBold)
             Text("分钟", Modifier.padding(start = 8.dp, bottom = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.weight(1f))
             Text("${stats.songs} 首  ·  ${stats.activeDays} 天", Modifier.padding(bottom = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         val maximum = (stats.days.maxOfOrNull { it.milliseconds } ?: 0).coerceAtLeast(60000)
-        Row(Modifier.fillMaxWidth().height(84.dp).padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
+        if (!tiny) Row(Modifier.fillMaxWidth().height(if (compact) 54.dp else 84.dp).padding(top = if (compact) 8.dp else 18.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
             stats.days.forEachIndexed { index, day -> Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
-                    Box(Modifier.fillMaxWidth().height((4 + day.milliseconds.toFloat() / maximum * 64).dp).clip(RoundedCornerShape(5.dp))
+                    Box(Modifier.fillMaxWidth().height((4 + day.milliseconds.toFloat() / maximum * (if (compact) 32 else 64)).dp).clip(RoundedCornerShape(5.dp))
                         .background(if (index == stats.days.lastIndex) MusicRed else MusicRed.copy(alpha = .25f)))
                 }
                 Text(listOf("一","二","三","四","五","六","日")[day.date.dayOfWeek.value - 1], style = MaterialTheme.typography.labelSmall,

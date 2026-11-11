@@ -26,7 +26,7 @@ internal class YtmRadio {
         private const val USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
         /** Rebuilt whenever the configured proxy changes, so a new setting is never served by a stale client. */
         @Volatile private var client: OkHttpClient = build(null)
-        private var currentProxy: YtmProxy.Config? = null
+        private var currentRoute: String? = null
         private var routeGeneration = 0L
         @Volatile private var regionUnavailable = false
         @Synchronized fun forgetRouteMetadata() {
@@ -46,18 +46,17 @@ internal class YtmRadio {
             .build()
 
         /** Applies the user's proxy and drops cached metadata tied to the previous route. */
-        @Synchronized fun configure(context: android.content.Context) {
-            val raw = if (cp.player.network.PlaybackNetwork.splitEnabled(context)) YtmProxy.raw(context) else ""
-            val wanted = YtmProxy.parse(raw)
-            require(raw.isBlank() || wanted != null) { "YTM 代理地址无效，请重新设置" }
-            if (wanted == currentProxy) return
-            currentProxy = wanted
-            val previous = client
-            client = build(wanted)
-            closeIdle(previous)
-            routeGeneration++; regionUnavailable = false
-            cache.clear()
-            bootstrap = null
+        fun configure(context: android.content.Context) {
+            val route = YtmProxy.route(context)
+            synchronized(this) {
+                if (route.key == currentRoute) return
+                currentRoute = route.key
+                val previous = client
+                client = build(route.proxy)
+                closeIdle(previous)
+                routeGeneration++; regionUnavailable = false
+                cache.clear(); bootstrap = null
+            }
         }
 
         private data class Cached(val at: Long, val value: List<Recording>)

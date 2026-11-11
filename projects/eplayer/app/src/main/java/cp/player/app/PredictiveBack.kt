@@ -75,8 +75,10 @@ internal fun TravelDialog(onDismissRequest: () -> Unit,
     destination: (@Composable () -> Unit)? = null,
     animateDismiss: Boolean = destination == null,
     revealRoot: Boolean = destination == null,
+    fixedContent: @Composable BoxScope.() -> Unit = {},
+    previewState: BackPreview? = null,
     content: @Composable () -> Unit) {
-    val preview = rememberBackPreview()
+    val preview = previewState ?: rememberBackPreview()
     val entrance = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     var closing by remember { mutableStateOf(false) }
@@ -94,6 +96,7 @@ internal fun TravelDialog(onDismissRequest: () -> Unit,
         }
         PreviewWindow(preview, entrance.value, closing, revealRoot)
         LaunchedEffect(Unit) { entrance.animateTo(1f, AppMotion.page()) }
+        Box(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().graphicsLayer {
             alpha = entrance.value
             translationY = (1 - entrance.value) * 12.dp.toPx()
@@ -109,6 +112,8 @@ internal fun TravelDialog(onDismissRequest: () -> Unit,
             CompositionLocalProvider(LocalDialogDismiss provides ::dismiss) {
                 Box(Modifier.fillMaxSize().backPreview(preview).testTag("predictive-page")) { content() }
             }
+        }
+        fixedContent()
         }
     }
 }

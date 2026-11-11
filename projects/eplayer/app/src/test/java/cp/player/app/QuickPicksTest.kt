@@ -46,4 +46,12 @@ class QuickPicksTest {
         assertEquals("https://covers.test/avatar.jpg", populated.first { it.kind == 100 }.image)
     }
 
+    @Test fun oldArtistShortcutGetsSafeViewParameters() {
+        val old = """[{"key":"artist:32062601","title":"花譜","entry":{"id":"32062601","name":"花譜","source":"ncm","kind":"ARTIST"}}]"""
+        val pick = readQuickPickHistory(old).single()
+        assertEquals(MusicKind.ARTIST, pick.entry!!.kind)
+        assertEquals("", pick.entry.query); assertEquals("", pick.entry.section)
+        assertTrue(readQuickPickHistory("""[{"broken":true}]""").isEmpty())
+    }
+
 }
