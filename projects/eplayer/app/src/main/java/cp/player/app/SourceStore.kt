@@ -23,7 +23,7 @@ import kotlinx.coroutines.withContext
 /** All app-facing source operations use one serialized module store and explicit source IDs. */
 object SourceStore {
     private val mutex = Mutex()
-    private data class Resolved(val url: String, val expiresAt: Long)
+    private data class Resolved(val audio: cp.player.core.playback.AudioResource, val expiresAt: Long)
     private val resolved = android.util.LruCache<String, Resolved>(64)
     private val initialized = CompletableDeferred<Unit>()
     private val _issue = MutableStateFlow<String?>(null)
@@ -101,17 +101,35 @@ object SourceStore {
         return response.getAsJsonObject("result")?.getAsJsonArray("songs")?.mapNotNull(JsonUtils::parseSong)
             ?.map { Track(it, source = sourceId) }.orEmpty()
     }
-    suspend fun resolve(context: Context, sourceId: String, songId: String, quality: String = "standard"): String {
+    suspend fun resolve(context: Context, sourceId: String, songId: String, quality: String = "standard"): String =
+        resolveAudio(context, sourceId, songId, quality).url
+
+    fun peekAudio(source: String, song: String, quality: String): cp.player.core.playback.AudioResource? =
+        synchronized(resolved) { resolved.get("$source:$song:$quality")?.audio }
+
+    suspend fun resolveAudio(context: Context, sourceId: String, songId: String, quality: String = "standard",
+        refresh: Boolean = false): cp.player.core.playback.AudioResource {
         val key = "$sourceId:$songId:$quality"
-        synchronized(resolved) { resolved.get(key)?.takeIf { it.expiresAt > android.os.SystemClock.elapsedRealtime() }?.let { return it.url } }
-        val response = call(context, sourceId, "song/url/v1", mapOf("id" to songId, "level" to quality))
-        val url = response.get("redirectUrl")?.takeUnless { it.isJsonNull }?.asString ?: JsonUtils.findUrl(response)
-        check(!url.isNullOrBlank() && (url.startsWith("https://") || url.startsWith("http://"))) {
-            response.get("msg")?.asString ?: "此歌曲暂不可播放，可能需要登录或会员权限"
+        if (!refresh) synchronized(resolved) {
+            resolved.get(key)?.takeIf { it.expiresAt > android.os.SystemClock.elapsedRealtime() }?.let { return it.audio }
         }
-        val expires = response.getAsJsonArray("data")?.firstOrNull()?.asJsonObject?.get("expi")?.asLong ?: 300
-        synchronized(resolved) { resolved.put(key, Resolved(url, android.os.SystemClock.elapsedRealtime() + expires.coerceIn(1, 300) * 1000)) }
-        return url
+        var audio: cp.player.core.playback.AudioResource? = null
+        repeat(2) { attempt ->
+            if (audio == null) {
+                try {
+                    val response = call(context, sourceId, "song/url/v1", mapOf("id" to songId, "level" to quality,
+                        "timestamp" to System.currentTimeMillis().toString()))
+                    audio = cp.player.core.playback.AudioResource.parse(response)
+                } catch (failure: cp.player.core.playback.AudioResolutionException) {
+                    if (!failure.retryable || attempt != 0) throw failure
+                    kotlinx.coroutines.delay(250)
+                }
+            }
+        }
+        val result = checkNotNull(audio)
+        val lifetime = (result.lifetimeSeconds * 1000 - 15000).coerceAtLeast(1000)
+        synchronized(resolved) { resolved.put(key, Resolved(result, android.os.SystemClock.elapsedRealtime() + lifetime)) }
+        return result
     }
     fun clearResolved(source: String) {
         synchronized(resolved) { resolved.snapshot().keys.filter { it.startsWith("$source:") }.forEach(resolved::remove) }

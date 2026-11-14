@@ -164,7 +164,6 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
             }
         }
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-            playback.value.source?.let(SourceStore::clearResolved)
             message.value = "播放失败：${playbackErrorMessage(error) ?: error.errorCodeName}"
         }
     }

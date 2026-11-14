@@ -5,7 +5,7 @@
 | 工具 | 用途 | 入口 |
 | --- | --- | --- |
 | [Android Cloud](tools/android-cloud/) | Android 16 一键配置、自动选择 KVM 或软件模拟、后台启动 | [说明](tools/android-cloud/README.md) · [Skill](tools/android-cloud/SKILL.md) · [部署脚本](tools/android-cloud/android-cloud) |
-| [ePlayer](projects/eplayer/) | 0.6.10 一屏首页、连续顶栏、固定底栏与 VPN 入口适配，自用通用包 | [交接与验收](docs/EPLAYER-HANDOFF.md) · [源码](projects/eplayer/) · [0.6.10 记录](projects/eplayer/docs/HOME-0.6.10.md) |
+| [ePlayer](projects/eplayer/) | 0.6.11 音频缓存隔离与后台续播修复，自用通用包 | [交接与验收](docs/EPLAYER-HANDOFF.md) · [源码](projects/eplayer/) · [0.6.11 记录](projects/eplayer/docs/PLAYBACK-0.6.11.md) |
 | [Witch Player](projects/witch-player/) | 1.8 独立双曲播放器与角色动画参考 | [说明](projects/witch-player/README.md) · [历史产物](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/witch-player-v1.8.0) |
 
 ## Android 16：其他 cloud 会话直接用

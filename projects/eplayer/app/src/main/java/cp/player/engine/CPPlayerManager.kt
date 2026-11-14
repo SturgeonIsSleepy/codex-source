@@ -39,6 +39,7 @@ object CPPlayerManager {
 
             val playerBuilder = ExoPlayer.Builder(context, renderersFactory)
                 .setMediaSourceFactory(mediaSourceFactory)
+                .setWakeMode(C.WAKE_MODE_LOCAL)
 
             val player = playerBuilder.build()
 

@@ -80,7 +80,40 @@ class MusicService : MediaSessionService() {
     private val noisy = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) { pausePlayer() }
     }
+    private var recoveredItem: androidx.media3.common.MediaItem? = null
+    private var pendingRecovery: Runnable? = null
+    private fun cancelRecovery() { pendingRecovery?.let(handler::removeCallbacks); pendingRecovery = null }
     private val listener = object : Player.Listener {
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            Log.i("EPlayerPlayback", "request=$playWhenReady reason=$reason state=${player.playbackState}")
+            if (!playWhenReady) cancelRecovery()
+        }
+        override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
+            recoveredItem = null
+            cancelRecovery()
+        }
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            val item = player.currentMediaItem ?: return
+            val source = item.mediaMetadata.extras?.getString("source")
+                ?: item.localConfiguration?.uri?.getQueryParameter("source")
+            source?.let(cp.player.app.SourceStore::clearResolved)
+            val causes = generateSequence<Throwable>(error) { it.cause }.take(8).toList()
+            val retry = causes.any { it is cp.player.core.playback.AudioRepresentationChanged ||
+                it is cp.player.core.playback.AudioResolutionException && it.retryable } ||
+                error.errorCode in setOf(2001, 2002, 2004)
+            Log.i("EPlayerPlayback", "error=${error.errorCode} recovery=$retry requested=${player.playWhenReady}")
+            if (!retry || !player.playWhenReady || recoveredItem == item) return
+            recoveredItem = item
+            cancelRecovery()
+            pendingRecovery = Runnable {
+                pendingRecovery = null
+                if (player.currentMediaItem == item && player.playWhenReady && player.playerError != null) {
+                    // prepare() recreates the failed period/extractor, retaining queue and time.
+                    player.prepare()
+                }
+            }.also { handler.postDelayed(it, 500) }
+        }
+
         override fun onEvents(player: Player, events: Player.Events) {
             if (events.containsAny(Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_TIMELINE_CHANGED,
                     Player.EVENT_PLAY_WHEN_READY_CHANGED, Player.EVENT_PLAYBACK_STATE_CHANGED, Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED, Player.EVENT_REPEAT_MODE_CHANGED)) cp.player.app.RoamPlayback.changed()
@@ -230,6 +263,7 @@ class MusicService : MediaSessionService() {
     }
     override fun onTaskRemoved(rootIntent: Intent?) { if (!player.playWhenReady) stopSelf() }
     override fun onDestroy() {
+        cancelRecovery()
         cp.player.app.RoamPlayback.detach()
         checkpointListening(finishing = true)
         sleepTimer.set(0)
