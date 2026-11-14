@@ -1,6 +1,6 @@
 # ePlayer 转移交接
 
-存储收尾：源码及公开发布件已保存至 GitHub；原签名密钥在拥有者私有仓库备份并读回确认。147项历史工程/主题私有归档已按具体授权保存。新的 Android 17 / API37 / x86_64 / KernelSU3.3.1 已三次冷启动并实测 `uid=0(root)`、`context=u:r:ksu:s0`，ePlayer0.6.11可启动；禁用RAM后备文件后验证仍通过。后续按已授权范围清理本地工作副本、旧AVD及生成缓存，只保留最新APK与SDK内这一可用模拟器。[恢复说明](../projects/eplayer/docs/STORAGE-RECOVERY.md)。
+存储收尾：源码及公开发布件已保存至 GitHub；原签名密钥在拥有者私有仓库备份并读回确认。147项历史工程/主题私有归档已按具体授权保存。新的 Android 17 / API37 / x86_64 / KernelSU3.3.1 已三次冷启动并实测 `uid=0(root)`、`context=u:r:ksu:s0`，ePlayer0.6.11可启动；禁用RAM后备文件后验证仍通过。已按授权范围清理本地工作副本内容、旧AVD及生成缓存，项目仅保留最新APK，SDK保留这一可用模拟器。清理后通过保留启动器再次验证冷启动、root及ePlayer启动（累计四次冷启动），未生成RAM后备文件；净释放约16.5GiB，模拟器已关机。[恢复说明](../projects/eplayer/docs/STORAGE-RECOVERY.md)。
 
 0.6.11 修复不同实际音质文件共用缓存导致的固定位置跳段；缓存按实际文件隔离，拒绝在同一提取器中切换文件。后台播放增加有界链接刷新/服务恢复和按播放状态持有的 CPU 唤醒。[行为与验证](../projects/eplayer/docs/PLAYBACK-0.6.11.md)。
 
