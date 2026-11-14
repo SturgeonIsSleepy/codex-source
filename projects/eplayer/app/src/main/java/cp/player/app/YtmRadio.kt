@@ -1,0 +1,183 @@
+package cp.player.app
+
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import java.io.IOException
+import java.util.concurrent.TimeUnit
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.suspendCancellableCoroutine
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+
+/** Metadata-only anonymous Radio. No player/stream requests, account cookies or remote playlist writes. */
+internal class YtmRadio {
+    companion object {
+        // WEB_REMIX requires a supported browser identity; a bare Mozilla/5.0 can return
+        // a region-unavailable shell and an empty song catalog on the very same proxy.
+        private const val USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+        /** Rebuilt whenever the configured proxy changes, so a new setting is never served by a stale client. */
+        @Volatile private var client: OkHttpClient = build(null)
+        private var currentRoute: String? = null
+        private var routeGeneration = 0L
+        @Volatile private var regionUnavailable = false
+        @Synchronized fun forgetRouteMetadata() {
+            routeGeneration++; cache.clear(); bootstrap = null; regionUnavailable = false
+            val previous = client
+            client = previous.newBuilder().connectionPool(okhttp3.ConnectionPool()).build()
+            closeIdle(previous)
+        }
+
+        private fun closeIdle(previous: OkHttpClient) {
+            previous.dispatcher.executorService.execute { previous.connectionPool.evictAll() }
+        }
+        private fun build(proxy: YtmProxy.Config?): OkHttpClient = OkHttpClient.Builder()
+            .connectTimeout(4, TimeUnit.SECONDS).readTimeout(6, TimeUnit.SECONDS)
+            .callTimeout(10, TimeUnit.SECONDS).retryOnConnectionFailure(false).followRedirects(false)
+            .apply { proxy?.let { proxy(it.toProxy()) } }
+            .build()
+
+        /** Applies the user's proxy and drops cached metadata tied to the previous route. */
+        fun configure(context: android.content.Context) {
+            val route = YtmProxy.route(context)
+            synchronized(this) {
+                if (route.key == currentRoute) return
+                currentRoute = route.key
+                val previous = client
+                client = build(route.proxy)
+                closeIdle(previous)
+                routeGeneration++; regionUnavailable = false
+                cache.clear(); bootstrap = null
+            }
+        }
+
+        private data class Cached(val at: Long, val value: List<Recording>)
+        private val cache = linkedMapOf<String, Cached>()
+        private var bootstrap: Pair<Long, JsonObject>? = null
+        @Synchronized private fun cached(key: String): List<Recording>? = cache[key]?.takeIf { System.currentTimeMillis() - it.at < 10 * 60_000 }?.value
+        @Synchronized private fun store(key: String, value: List<Recording>) {
+            if (value.isEmpty()) return
+            cache[key] = Cached(System.currentTimeMillis(), value)
+            while (cache.size > 32) cache.remove(cache.keys.first())
+        }
+    }
+    private val route = synchronized(Companion) { client to routeGeneration }
+    private val requestClient = route.first
+    private val generation = route.second
+    private suspend fun response(request: Request, prefixLimit: Long? = null): String = suspendCancellableCoroutine { continuation ->
+        val call = requestClient.newCall(request)
+        continuation.invokeOnCancellation { call.cancel() }
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) { if (!continuation.isCancelled) continuation.resumeWith(Result.failure(e)) }
+            override fun onResponse(call: Call, response: Response) {
+                val result = runCatching { response.use {
+                    android.util.Log.i("EPlayerRoam", "stage=ytm-http status=${it.code}")
+                    check(it.isSuccessful) { "YTM 请求失败 (${it.code})" }
+                    it.body.source().use { source ->
+                        val limit = prefixLimit ?: 2_000_000L
+                        source.request(limit + 1)
+                        if (prefixLimit == null) check(source.buffer.size <= limit) { "YTM 响应过大" }
+                        source.buffer.readUtf8(minOf(source.buffer.size, limit))
+                    }
+                } }
+                if (!continuation.isCancelled) continuation.resumeWith(result)
+            }
+        })
+    }
+    private suspend fun context(): JsonObject {
+        synchronized(Companion) { bootstrap?.takeIf { System.currentTimeMillis() - it.first < 6 * 60 * 60_000 }?.let { return it.second } }
+        val html = try { response(Request.Builder().url("https://music.youtube.com/").header("User-Agent", USER_AGENT).header("Cookie", "SOCS=CAI").build(), prefixLimit = 128 * 1024L) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { "" }
+        if (html.isNotEmpty()) regionUnavailable = html.contains("not available in your area", ignoreCase = true)
+        // ytmusicapi initialize_context uses a UTC date version; the landing page is optional.
+        val version = Regex("\"(?:INNERTUBE_CLIENT_VERSION|INNERTUBE_CONTEXT_CLIENT_VERSION|clientVersion)\"\\s*:\\s*\"([0-9.]+)\"").find(html)?.groupValues?.get(1)
+            ?: "1.${LocalDate.now(ZoneOffset.UTC).format(DateTimeFormatter.BASIC_ISO_DATE)}.01.00"
+        val visitor = Regex("\"VISITOR_DATA\"\\s*:\\s*\"([^\"]+)\"").find(html)?.groupValues?.get(1)
+        val value = JsonObject().apply { add("client", JsonObject().apply {
+            addProperty("clientName", "WEB_REMIX"); addProperty("clientVersion", version)
+            addProperty("hl", "en"); visitor?.let { addProperty("visitorData", it) }
+        }) }
+        synchronized(Companion) { if (generation == routeGeneration) bootstrap = System.currentTimeMillis() to value }
+        return value
+    }
+    private suspend fun request(endpoint: String, body: JsonObject): JsonObject {
+        val context = context()
+        body.add("context", context)
+        val request = Request.Builder().url("https://music.youtube.com/youtubei/v1/$endpoint?prettyPrint=false")
+            .header("User-Agent", USER_AGENT).header("Origin", "https://music.youtube.com")
+            // Public, non-login consent marker also used by ytmusicapi; no account cookies.
+            .header("Cookie", "SOCS=CAI")
+            .header("X-Youtube-Client-Name", "67").header("X-Youtube-Client-Version", context.obj("client")!!.str("clientVersion")!!)
+        context.obj("client")?.str("visitorData")?.let { request.header("X-Goog-Visitor-Id", it) }
+        val result = JsonParser.parseString(response(request.post(body.toString().toRequestBody("application/json".toMediaType())).build())).asJsonObject
+        check(result.obj("error") == null) { "YTM 推荐暂不可用" }
+        return result
+    }
+    suspend fun search(song: Recording, query: String = "${song.title} ${song.artists.joinToString(" ")}"): List<Recording> {
+        val key = "search:$query"
+        cached(key)?.let { return it }
+        val result = YtmMetadata.search(request("search", JsonObject().apply {
+            addProperty("query", query)
+            addProperty("params", "EgWKAQIIAWoMEA4QChADEAQQCRAF")
+        }))
+        if (result.isEmpty() && regionUnavailable)
+            throw RecommendationUnavailable("当前 YTM 出口不提供歌曲目录，请更换代理节点")
+        synchronized(Companion) { if (generation == routeGeneration) store(key, result) }; return result
+    }
+    suspend fun radio(id: String): List<Recording> {
+        require(id.matches(Regex("[A-Za-z0-9_-]{11}")))
+        cached("radio:$id")?.let { return it }
+        val result = YtmMetadata.radio(request("next", JsonObject().apply {
+            addProperty("videoId", id); addProperty("playlistId", "RDAMVM$id"); addProperty("params", "wAEB")
+            addProperty("isAudioOnly", true); addProperty("enablePersistentPlaylistPanel", true)
+            addProperty("tunerSettingValue", "AUTOMIX_SETTING_NORMAL")
+        }))
+        synchronized(Companion) { if (generation == routeGeneration) store("radio:$id", result) }; return result
+    }
+}
+
+/** Parse only song renderers with artist links and known duration; ignore video-only/advertisement nodes. */
+internal object YtmMetadata {
+    private fun all(root: JsonElement, name: String): List<JsonObject> {
+        val found = mutableListOf<JsonObject>()
+        var count = 0
+        fun visit(element: JsonElement) {
+            if (++count > 30_000) return
+            if (element.isJsonObject) element.asJsonObject.entrySet().forEach { (key, value) ->
+                if (key == name && value.isJsonObject) found += value.asJsonObject else visit(value)
+            } else if (element.isJsonArray) element.asJsonArray.forEach(::visit)
+        }
+        visit(root); return found
+    }
+    private fun text(node: JsonObject?) = node?.str("simpleText") ?: node?.array("runs")?.joinToString("") { it.asJsonObject.str("text").orEmpty() }.orEmpty()
+    private fun duration(value: String): Long = value.split(':').takeIf { it.size in 2..3 && it.all { v -> v.toLongOrNull() != null } }
+        ?.fold(0L) { seconds, part -> seconds * 60 + part.toLong() }?.times(1000) ?: 0
+    private fun recording(node: JsonObject, title: String, runs: List<JsonObject>, id: String?, length: String): Recording? {
+        val artists = runs.filter { it.obj("navigationEndpoint")?.obj("browseEndpoint")?.str("browseId")?.startsWith("UC") == true }
+            .mapNotNull { it.str("text") }.distinct()
+        val album = runs.firstOrNull { it.obj("navigationEndpoint")?.obj("browseEndpoint")?.str("browseId")?.startsWith("MPRE") == true }?.str("text").orEmpty()
+        val videoTypes = all(node, "watchEndpointMusicConfig").mapNotNull { it.str("musicVideoType") }
+        if (videoTypes.isNotEmpty() && "MUSIC_VIDEO_TYPE_ATV" !in videoTypes) return null
+        if (id.isNullOrBlank() || title.isBlank() || artists.isEmpty() || duration(length) <= 0 || node.has("unplayableText")) return null
+        return Recording(id, title, artists, duration(length), album)
+    }
+    fun search(root: JsonObject): List<Recording> = all(root, "musicResponsiveListItemRenderer").mapNotNull { row ->
+        val columns = row.array("flexColumns").mapNotNull { it.asJsonObject.obj("musicResponsiveListItemFlexColumnRenderer")?.obj("text") }
+        val runs = columns.drop(1).flatMap { it.array("runs").map { run -> run.asJsonObject } }
+        val id = row.obj("playlistItemData")?.str("videoId") ?: all(row, "watchEndpoint").firstNotNullOfOrNull { it.str("videoId") }
+        recording(row, text(columns.firstOrNull()), runs, id, runs.mapNotNull { it.str("text") }.firstOrNull { it.matches(Regex("\\d+:\\d{2}(?::\\d{2})?")) }.orEmpty())
+    }.distinctBy { it.id }.take(20)
+    fun radio(root: JsonObject): List<Recording> = all(root, "playlistPanelVideoRenderer").mapNotNull { row ->
+        val runs = row.obj("longBylineText")?.array("runs")?.map { it.asJsonObject }.orEmpty()
+        recording(row, text(row.obj("title")), runs, row.str("videoId"), text(row.obj("lengthText")))
+    }.distinctBy { it.id }.take(32)
+}

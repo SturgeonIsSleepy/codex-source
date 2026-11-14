@@ -98,4 +98,39 @@ class PlaybackCacheTest {
             cache.removeResource(key)
         }
     }
+    @Test fun changedQualityCannotSpliceOldByteRangesAndRequiresANewExtractor() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val cache = PlaybackCache.get(context)
+        val id = "representation-${UUID.randomUUID()}"
+        val uri = android.net.Uri.parse("cp://$id?source=cache-fixture&quality=lossless")
+        val a = ByteArray(4096) { 31 }
+        val b = ByteArray(6144) { 71 }
+        var body = a
+        var resource = cp.player.core.playback.AudioResource("https://fixture.test/audio", "first", a.size.toLong(), 1200)
+        val factory = androidx.media3.datasource.DataSource.Factory { androidx.media3.datasource.ByteArrayDataSource(body) }
+        fun source() = cp.player.service.BackendDataSource(context, factory, { cache }) { _, _, _, _ -> resource }
+        fun read(ds: androidx.media3.datasource.DataSource, position: Long = 0, length: Long = C.LENGTH_UNSET.toLong()): ByteArray {
+            try {
+                ds.open(DataSpec.Builder().setUri(uri).setPosition(position).setLength(length).build())
+                val out = ByteArrayOutputStream(); val buffer = ByteArray(511)
+                while (true) { val n = ds.read(buffer, 0, buffer.size); if (n == -1) break; out.write(buffer, 0, n) }
+                return out.toByteArray()
+            } finally { ds.close() }
+        }
+        val keyA = resource.cacheKey("cache-fixture", id, "lossless")
+        val first = source()
+        try {
+            assertArrayEquals(a.copyOf(1024), read(first, length = 1024))
+            body = b
+            resource = resource.copy(identity = "second", size = b.size.toLong())
+            try { read(first, position = 1024); fail("An existing extractor must not consume changed audio bytes") }
+            catch (_: cp.player.core.playback.AudioRepresentationChanged) { }
+            assertArrayEquals("A fresh source must get only the new representation", b, read(source()))
+            assertEquals(1024L, cache.getCachedLength(keyA, 0, a.size.toLong()))
+        } finally {
+            cache.removeResource(keyA)
+            cache.removeResource(resource.cacheKey("cache-fixture", id, "lossless"))
+        }
+    }
+
 }

@@ -30,6 +30,9 @@ import java.util.concurrent.TimeUnit
 class EPlayerIntegrationTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
+    private val legacySongs = listOf(
+        cp.player.model.Song("witch_0", "ePlayer Test A", "Fixture", album = "Tests"),
+        cp.player.model.Song("witch_1", "ePlayer Test B", "Fixture", album = "Tests"))
     private fun main(action: () -> Unit) {
         var failure: Throwable? = null
         instrumentation.runOnMainSync { try { action() } catch (error: Throwable) { failure = error } }
@@ -61,7 +64,7 @@ class EPlayerIntegrationTest {
         main {
             fun containsQueue(node: android.view.accessibility.AccessibilityNodeInfo?): Boolean {
                 if (node == null) return false
-                if (node.isVisibleToUser && node.contentDescription?.toString() == "播放队列") return true
+                if (node.isVisibleToUser && node.contentDescription?.toString() == "收起播放器") return true
                 for (index in 0 until node.childCount) if (containsQueue(node.getChild(index))) return true
                 return false
             }
@@ -168,7 +171,7 @@ class EPlayerIntegrationTest {
                     }
                 })
                 player.repeatMode = Player.REPEAT_MODE_ONE
-                player.setMediaItems(WitchPlaylist.songs.map { it.toMediaItem(WitchPlaylist.uri(context, it.id)) })
+                player.setMediaItems(legacySongs.map { it.toMediaItem(WitchPlaylist.uri(context, it.id)) })
                 player.prepare()
                 player.play()
             }
@@ -224,10 +227,13 @@ class EPlayerIntegrationTest {
             await { var paused = false; main { paused = !player.playWhenReady && player.sessionExtras.getLong(PlaybackSleepTimer.DEADLINE) == 0L }; paused }
             main { assertFalse("Service timer pauses while the activity is backgrounded", player.isPlaying); player.play() }
             await { var playing = false; main { playing = player.isPlaying }; playing }
+            var notificationTitle = ""
             main {
                 assertNotNull("MediaSession exposes the notification return intent", player.sessionActivity)
-                player.sessionActivity!!.send() // Fixture setup; real notification tap is checked after backend playback.
+                notificationTitle = player.mediaMetadata.title?.toString().orEmpty()
             }
+            // Exercise a real user notification tap, not an Android-restricted background send.
+            openFromNotification(notificationTitle)
             await(60000) { playerExpanded() }
             SystemClock.sleep(1200)
             capture("player-playing")
@@ -288,14 +294,14 @@ class EPlayerIntegrationTest {
             }
             main {
                 player.pause(); player.repeatMode = Player.REPEAT_MODE_ONE; player.shuffleModeEnabled = true
-                player.setMediaItem(WitchPlaylist.songs[0].toMediaItem(FileProvider.getUriForFile(context,
+                player.setMediaItem(legacySongs[0].toMediaItem(FileProvider.getUriForFile(context,
                     "${context.packageName}.fileprovider", File(context.cacheDir, "invalid-audio.txt"))))
                 player.prepare(); player.play()
             }
             await { var failed = false; main { failed = player.playerError != null }; failed }
             main {
                 assertFalse("Native decoder errors must clear the playback request", player.playWhenReady)
-                player.setMediaItems(WitchPlaylist.songs.map { it.toMediaItem(WitchPlaylist.uri(context, it.id)) })
+                player.setMediaItems(legacySongs.map { it.toMediaItem(WitchPlaylist.uri(context, it.id)) })
                 player.prepare() // The same retry sequence used by EPlayerViewModel.play.
             }
             await { var cleared = false; main { cleared = player.playerError == null }; cleared }
@@ -310,7 +316,7 @@ class EPlayerIntegrationTest {
             assertEquals(SessionResult.RESULT_SUCCESS, timer(0))
             android.util.Log.i("EPlayerTest", "Rust playback/seek/pause and return to ExoPlayer passed")
             backgroundApp()
-            openFromNotification(WitchPlaylist.songs[0].name)
+            openFromNotification(legacySongs[0].name)
             await(60000) { playerExpanded() }
             capture("notification-return")
         } catch (failure: Throwable) {

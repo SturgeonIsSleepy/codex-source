@@ -5,6 +5,7 @@ import hashlib
 import fnmatch
 import json
 import os
+import re
 import subprocess
 import time
 
@@ -24,19 +25,19 @@ def adb(*arguments, **kwargs):
     return subprocess.run(['adb', *map(str, arguments)], check=True, **kwargs)
 
 
-def verify_release_start(apk):
+def verify_release_start(apk, package='app.eplayer.music'):
     # The test runtime shares Kotlin/Compose classes with the target. Exercise the
     # non-debuggable fast build, then launch the separately shrunk release without
     # instrumentation; do not change production shrinking rules to retain test APIs.
-    adb('shell', 'am', 'force-stop', 'app.eplayer.music')
+    adb('shell', 'am', 'force-stop', package)
     adb('install', '-r', apk)
     adb('logcat', '-c')
-    launch = adb('shell', 'am', 'start', '-W', '-n', 'app.eplayer.music/cp.player.MainActivity', capture_output=True, text=True)
+    launch = adb('shell', 'am', 'start', '-W', '-n', f'{package}/cp.player.MainActivity', capture_output=True, text=True)
     (output / 'release-launch.txt').write_text(launch.stdout + launch.stderr)
     if 'Status: ok' not in launch.stdout:
         raise RuntimeError('Shrunk release did not launch')
     time.sleep(3)
-    pid = adb('shell', 'pidof', 'app.eplayer.music', capture_output=True, text=True).stdout.strip()
+    pid = adb('shell', 'pidof', package, capture_output=True, text=True).stdout.strip()
     if not pid:
         raise RuntimeError('Shrunk release exited after launch')
     with (output / 'release-home.png').open('wb') as screenshot:
@@ -44,15 +45,25 @@ def verify_release_start(apk):
 
 
 def main():
+    variant = os.environ.get('EPLAYER_VARIANT', 'standard')
+    architecture = os.environ.get('EPLAYER_APK_ARCH', 'x86_64')
+    if variant not in {'standard', 'internal'} or architecture not in {'x86_64', 'universal'}:
+        raise RuntimeError('Invalid ePlayer variant or APK architecture')
+    package = 'app.eplayer.music' + ('.internal' if variant == 'internal' else '')
     adb('shell', 'wm', 'size', '480x800')
     adb('shell', 'wm', 'density', '160')
-    app = unique('*standard*x86_64*fastRelease.apk')
+    app = unique(f'*{variant}*{architecture}*fastRelease.apk')
     release_mode = os.environ.get('EPLAYER_CHECK_RELEASE', '1')
     if release_mode not in {'0', '1'}:
         raise RuntimeError('EPLAYER_CHECK_RELEASE must be 0 or 1')
-    release = unique('*standard*x86_64*release.apk') if release_mode == '1' else None
-    tests = unique('*standard*fastRelease*androidTest*.apk')
+    release = unique(f'*{variant}*{architecture}*release.apk') if release_mode == '1' else None
+    tests = unique(f'*{variant}*fastRelease*androidTest*.apk')
+    selected = [item.strip() for item in os.environ.get('EPLAYER_TEST_CLASSES', '').split(',') if item.strip()]
+    if any(not re.fullmatch(r'cp\.player\.[A-Za-z0-9_.$]+(?:#[A-Za-z0-9_]+)?', item) for item in selected):
+        raise RuntimeError('Invalid focused instrumentation selection')
     metadata = {'source_commit': os.environ.get('GITHUB_SHA'), 'kind': 'Android emulator; fastRelease instrumentation, not physical-device acceptance',
+                'variant': variant, 'package': package, 'apk_architecture': architecture,
+                'test_scope': {'kind': 'focused' if selected else 'full', 'classes': selected},
                 'checks': {'instrumentation': 'not_run', 'release_start': 'not_run' if release else 'not_requested'},
                 'app': {'name': app.name, 'sha256': hashlib.sha256(app.read_bytes()).hexdigest()},
                 'release': {'name': release.name, 'sha256': hashlib.sha256(release.read_bytes()).hexdigest()} if release else None,
@@ -64,11 +75,12 @@ def main():
         adb('install', '-r', app)
         adb('install', '-r', '-t', tests)
         metadata['checks']['instrumentation'] = 'running'
-        result = adb('shell', 'am', 'instrument', '-w', '-r', '-e', 'timeout_msec', '120000',
-                     'app.eplayer.music.test/androidx.test.runner.AndroidJUnitRunner',
+        arguments = ['shell', 'am', 'instrument', '-w', '-r', '-e', 'timeout_msec', '120000']
+        if selected: arguments += ['-e', 'class', ','.join(selected)]
+        result = adb(*arguments, f'{package}.test/androidx.test.runner.AndroidJUnitRunner',
                      capture_output=True, text=True, timeout=480)
         (output / 'instrumentation.txt').write_text(result.stdout + result.stderr)
-        print(result.stdout)
+        print("\n".join(result.stdout.splitlines()[-16:]))
         if 'FAILURES!!!' in result.stdout or 'INSTRUMENTATION_CODE: -1' not in result.stdout or 'OK (' not in result.stdout:
             metadata['checks']['instrumentation'] = 'failed'
             raise RuntimeError('Instrumentation did not report a complete passing run')
@@ -77,7 +89,7 @@ def main():
         (output / 'instrumentation-runtime.txt').write_text(runtime.stdout)
         if release:
             metadata['checks']['release_start'] = 'running'
-            verify_release_start(release)
+            verify_release_start(release, package)
             metadata['checks']['release_start'] = 'passed'
         else:
             (output / 'release-not-run.txt').write_text('R8 build/start not requested for this development branch.\n')
@@ -99,7 +111,7 @@ def main():
                 metadata['checks'][check] = 'incomplete'
         (output / 'build.json').write_text(json.dumps(metadata, indent=2))
         for folder in ['visual-check', 'art-check', 'layout-check']:
-            subprocess.run(['adb', 'pull', f'/sdcard/Android/data/app.eplayer.music/files/{folder}', str(output / folder)], check=False)
+            subprocess.run(['adb', 'pull', f'/sdcard/Android/data/{package}/files/{folder}', str(output / folder)], check=False)
         logs = subprocess.run(['adb', 'logcat', '-d', '-s', 'AndroidRuntime', 'EPlayerTest', 'EPlayerSession', 'FlickPlayer', 'RustEngine', 'RustAudioEngine', 'CPPlayerDebug', 'AudioTrack', 'AAudio', 'AudioManager'], capture_output=True, text=True, check=False)
         (output / 'runtime.txt').write_text(logs.stdout)
         subprocess.run(['adb', 'shell', 'wm', 'size', 'reset'], check=False)
