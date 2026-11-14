@@ -2,6 +2,8 @@
 
 基于 [Aurora-Nasa-1/CPPlayer](https://github.com/Aurora-Nasa-1/CPPlayer) 的 Android 音乐播放器，采用 YouTube Music 参考布局与固定中性配色。应用独立安装标识为 `app.eplayer.music`；保留原项目 Kotlin 包名与 JNI 名称，以免破坏原生引擎接口。
 
+本地精简与恢复方式见 [存储与恢复](docs/STORAGE-RECOVERY.md)：源码和发布件保存到 GitHub，私有签名独立备份，保留一个已验证的 Android 17＋KernelSU 环境。
+
 ## 当前开发版本 0.6.11
 
 0.6.11 修复音源音质降级后共用缓存导致的音频跳段；按实际文件隔离缓存，在字节范围重开时禁止混入另一文件。后台播放增加按播放状态释放的 CPU 唤醒，遵循链接有效期，失效时有限刷新和恢复。见 [0.6.11 记录](docs/PLAYBACK-0.6.11.md)。
