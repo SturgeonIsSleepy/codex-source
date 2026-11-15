@@ -36,3 +36,9 @@ uid=0(root) gid=0(root) groups=0(root) context=u:r:ksu:s0
 历史工程私有归档为 141 份脚本/说明、5 张主题参考图及一份归档说明，共147项；用户已明确授权该具体备份及验证后的清理。签名密钥单独备份且读回一致。原始手机日志、截图、账号/VPN数据和模拟器用户磁盘均未上传。
 
 2026-11-14 清理完成：本地项目文件仅保留最新 APK。旧 AVD、Android 16 镜像、工作副本内容、构建及重复下载缓存已清理；计入新 Android 17 环境占用后，D 盘净释放约 16.5 GiB。保留启动器在清理后再次完成冷启动、KernelSU root、ePlayer 启动及无 RAM 后备文件验证，随后正常关机。
+
+## 轻量恢复构建输入
+
+恢复源码可先使用 `git clone --filter=blob:none --no-checkout --depth 1 --branch codex/eplayer-power`。原字体约25MiB，可从已有APK中读取 `.ttf`，确认对应仓库字体的原始Git对象后写入本地Git对象库，再执行checkout，减少重复下载。
+
+若沿用 `-PwithRust=false`，需要把已有通用APK的三个 `lib/<ABI>/*.so` 目录原样恢复到 `app/src/main/jniLibs/<ABI>/`，再恢复 `assets/bundled-provider.zip` 作为内部打包输入。这仅适用于Rust/JNI未改变的Kotlin或界面更新；修改Rust/JNI后必须重新构建原生库。0.6.12按此方式恢复，五项定向检查及R8包覆盖安装启动通过。
