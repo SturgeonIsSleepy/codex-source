@@ -1,5 +1,7 @@
 # ePlayer 转移交接
 
+0.6.12 完成首页分区叠加修复、自适应单屏网格、带头像的宽松歌手选择、歌手顶部资料及评论热度/最新切换。应用源码 `c5490f5f4f9c5cfa87a5b72bf3f83efbd933a532`，versionCode193，原签名R8自用通用包53013551字节，原音源及16KB对齐通过。5项Android17定向检查通过；手机未连接，不宣称真实账号评论或全量回归。保留0.6.11音频修复。[本轮记录](../projects/eplayer/docs/BROWSE-0.6.12.md) · [下载](https://github.com/SturgeonIsSleepy/codex-source/releases/tag/eplayer-v0.6.12)。源码与产物保存后继续按已授权策略清理本地工作副本，仅留最新APK；共享SDK中的Android17＋KSU保留。
+
 存储收尾：源码及公开发布件已保存至 GitHub；原签名密钥在拥有者私有仓库备份并读回确认。147项历史工程/主题私有归档已按具体授权保存。新的 Android 17 / API37 / x86_64 / KernelSU3.3.1 已三次冷启动并实测 `uid=0(root)`、`context=u:r:ksu:s0`，ePlayer0.6.11可启动；禁用RAM后备文件后验证仍通过。已按授权范围清理本地工作副本内容、旧AVD及生成缓存，项目仅保留最新APK，SDK保留这一可用模拟器。清理后通过保留启动器再次验证冷启动、root及ePlayer启动（累计四次冷启动），未生成RAM后备文件；净释放约16.5GiB，模拟器已关机。[恢复说明](../projects/eplayer/docs/STORAGE-RECOVERY.md)。
 
 0.6.11 修复不同实际音质文件共用缓存导致的固定位置跳段；缓存按实际文件隔离，拒绝在同一提取器中切换文件。后台播放增加有界链接刷新/服务恢复和按播放状态持有的 CPU 唤醒。[行为与验证](../projects/eplayer/docs/PLAYBACK-0.6.11.md)。
