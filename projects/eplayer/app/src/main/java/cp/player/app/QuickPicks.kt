@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.testTag
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
@@ -112,35 +113,49 @@ internal fun visibleQuickPicks(picks: List<QuickPick>, filter: Int, limit: Int =
 }
 
 @Composable
-internal fun QuickPickGrid(picks: List<QuickPick>, choose: (QuickPick) -> Unit, openPicker: (Int) -> Unit, cellHeight: androidx.compose.ui.unit.Dp? = null, maxItems: Int = 9) {
+internal fun QuickPickGrid(picks: List<QuickPick>, choose: (QuickPick) -> Unit, openPicker: (Int) -> Unit,
+    modifier: Modifier = Modifier, maxItems: Int = 9) {
     var filter by remember { mutableIntStateOf(0) }
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("一键点歌", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
-        IconButton(onClick = { openPicker(if (filter == 0) 1 else filter) }) { Icon(Icons.Default.Add, "查找点歌内容") }
-    }
-    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("全部" to 0, "歌手" to 100, "歌单" to 1000, "专辑" to 10, "单曲" to 1).forEach { (label, value) ->
-            Box(Modifier.clip(RoundedCornerShape(7.dp)).background(if (filter == value) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceContainerHigh)
-                .clickable { filter = value }.padding(horizontal = 16.dp, vertical = 9.dp)) {
-                Text(label, color = if (filter == value) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface)
-            }
+    val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
+    Column(modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().testTag("quick-pick-heading"), verticalAlignment = Alignment.CenterVertically) {
+            Text("一键点歌", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
+            IconButton(onClick = { openPicker(if (filter == 0) 1 else filter) }) { Icon(Icons.Default.Add, "查找点歌内容") }
         }
-    }
-    Spacer(Modifier.height(12.dp))
-    val visible = remember(picks, filter, maxItems) { visibleQuickPicks(picks, filter, maxItems) }
-    if (visible.isEmpty()) OutlinedButton(onClick = { openPicker(if (filter == 0) 1 else filter) }, modifier = Modifier.fillMaxWidth()) { Text(when (filter) { 100 -> "选择歌手"; 1000 -> "选择歌单"; 10 -> "选择专辑"; else -> "选择歌曲" }) }
-    visible.chunked(3).forEach { row ->
-        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            row.forEach { pick ->
-                Box(Modifier.weight(1f).then(if (cellHeight == null) Modifier.aspectRatio(1f) else Modifier.height(cellHeight)).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh).clickable { choose(pick) }) {
-                    AsyncImage(pick.image, null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
-                    if (pick.image.isNullOrBlank()) Icon(when (pick.kind) { 100 -> Icons.Default.Person; 1000 -> Icons.Default.QueueMusic; 10 -> Icons.Default.Album; else -> Icons.Default.MusicNote }, null, Modifier.align(Alignment.Center).size(36.dp))
-                    Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .88f)))))
-                    Text(pick.title, Modifier.align(Alignment.BottomStart).padding(9.dp), color = Color.White,
-                        style = MaterialTheme.typography.labelLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Row(Modifier.horizontalScroll(rememberScrollState()).testTag("quick-pick-filters"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("全部" to 0, "歌手" to 100, "歌单" to 1000, "专辑" to 10, "单曲" to 1).forEach { (label, value) ->
+                Box(Modifier.clip(RoundedCornerShape(7.dp)).background(if (filter == value) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .clickable { filter = value }.padding(horizontal = 16.dp, vertical = 9.dp)) {
+                    Text(label, color = if (filter == value) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface)
                 }
             }
-            repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+        }
+        Spacer(Modifier.height(12.dp))
+        // Measure only after the heading and filters have taken their real (font-scaled) height.
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().testTag("quick-pick-cards")) {
+            val rows = ((maxHeight + 8.dp) / (maxOf(64.dp, (44 * fontScale + 18).dp) + 8.dp))
+                .toInt().coerceIn(1, (maxItems / 3).coerceAtLeast(1))
+            val cell = minOf((maxWidth - 16.dp) / 3, ((maxHeight - 8.dp * (rows - 1)) / rows).coerceAtLeast(0.dp))
+            val visible = remember(picks, filter, rows) { visibleQuickPicks(picks, filter, rows * 3) }
+            if (visible.isEmpty()) OutlinedButton(onClick = { openPicker(if (filter == 0) 1 else filter) }, modifier = Modifier.fillMaxWidth()) {
+                Text(when (filter) { 100 -> "选择歌手"; 1000 -> "选择歌单"; 10 -> "选择专辑"; else -> "选择歌曲" })
+            } else Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                visible.chunked(3).forEach { row ->
+                    Row(Modifier.fillMaxWidth().height(cell), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { pick ->
+                            Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh).clickable { choose(pick) }
+                                .testTag("quick-pick-${pick.key}")) {
+                                AsyncImage(pick.image, null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
+                                if (pick.image.isNullOrBlank()) Icon(when (pick.kind) { 100 -> Icons.Default.Person; 1000 -> Icons.Default.QueueMusic; 10 -> Icons.Default.Album; else -> Icons.Default.MusicNote }, null, Modifier.align(Alignment.Center).size(32.dp))
+                                Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .88f)))))
+                                Text(pick.title, Modifier.align(Alignment.BottomStart).padding(9.dp), color = Color.White,
+                                    style = MaterialTheme.typography.labelLarge, maxLines = if (cell >= (40 * fontScale + 18).dp) 2 else 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            }
         }
     }
 }

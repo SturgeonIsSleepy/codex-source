@@ -34,8 +34,9 @@ import kotlinx.coroutines.launch
 
 @Composable
 internal fun MusicEntryRow(entry: MusicEntry, open: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = open).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (entry.image.isNullOrBlank()) GenreArtwork(entry, Modifier.size(48.dp))
+    Row(Modifier.fillMaxWidth().clickable(onClick = open).padding(vertical = if (entry.kind == MusicKind.ARTIST) 12.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (entry.kind == MusicKind.ARTIST) ArtistAvatar(entry.image, Modifier.size(56.dp))
+        else if (entry.image.isNullOrBlank()) GenreArtwork(entry, Modifier.size(48.dp))
         else AsyncImage(entry.image, null, Modifier.size(48.dp).clip(RoundedCornerShape(6.dp)), contentScale = ContentScale.Crop)
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(if (entry.special) "我喜欢的音乐" else entry.name, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
@@ -87,7 +88,7 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
     var artistDraft by remember(page.instanceId) { mutableStateOf(page.target.query) }
     val artistFocus = remember(page.instanceId) { androidx.compose.ui.focus.FocusRequester() }
     LaunchedEffect(target.section, target.query) { if (target.kind == MusicKind.ARTIST) listState.scrollToItem(0) }
-    val reorderHeaders = listOf(target.image != null, page.data?.description?.isNotBlank() == true, tracks.isNotEmpty()).count { it }
+    val reorderHeaders = listOf(target.kind != MusicKind.ARTIST && target.image != null, target.kind != MusicKind.ARTIST && page.data?.description?.isNotBlank() == true, tracks.isNotEmpty()).count { it }
     val reorder = rememberSongReorder(keys, listState, headerCount = reorderHeaders) { from, to -> cloud.movePlaylist(target, from, to) }
     val editable = target.kind == MusicKind.PLAYLIST
 
@@ -108,6 +109,7 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
             Column(Modifier.fillMaxSize().graphicsLayer { alpha = entrance.value }
                 .nestedScroll(header.connection).systemBarsPadding().padding(bottom = if (playback.song != null) 128.dp else 76.dp)) {
                 MovingHeader(header) {
+                Column {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = (LocalDialogDismiss.current ?: cloud::back)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
                     Text(if (editing) "已选 ${selected.size}" else target.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -123,6 +125,8 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                             DropdownMenuItem(text = { Text("删除歌单") }, onClick = { menu = false; delete = true })
                         }
                     }
+                }
+                if (target.kind == MusicKind.ARTIST) ArtistProfileHeader(target, page.data?.description.orEmpty())
                 }
                 }
                 if (target.kind == MusicKind.ARTIST) {
@@ -160,7 +164,7 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                     }
                 }
                 LazyColumn(Modifier.weight(1f).testTag("cloud-detail-list"), state = listState, contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (target.image != null) item {
+                    if (target.kind != MusicKind.ARTIST && target.image != null) item {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             AsyncImage(target.image, null, Modifier.size(112.dp).clip(if (target.kind == MusicKind.ARTIST) androidx.compose.foundation.shape.CircleShape else RoundedCornerShape(16.dp)), contentScale = ContentScale.Crop)
                             Column(Modifier.weight(1f).padding(start = 16.dp)) {
@@ -168,7 +172,7 @@ internal fun CloudDetailScreen(cloud: CloudViewModel, player: EPlayerViewModel, 
                             }
                         }
                     }
-                    page.data?.description?.takeIf(String::isNotBlank)?.let { description -> item {
+                    page.data?.description?.takeIf { target.kind != MusicKind.ARTIST && it.isNotBlank() }?.let { description -> item {
                         var expanded by remember(page.target) { mutableStateOf(false) }
                         Text(description, style = MaterialTheme.typography.bodySmall, maxLines = if (expanded) Int.MAX_VALUE else 3,
                             overflow = TextOverflow.Ellipsis, modifier = Modifier.clickable { expanded = !expanded })
@@ -302,11 +306,16 @@ internal fun SongOptions(track: Track, playlist: MusicEntry?, cloud: CloudViewMo
         val performers = artistSong.artists.orEmpty().ifEmpty {
             artistSong.artistId?.let { listOf(cp.player.model.SongArtist(it, artistSong.artist.substringBefore(" / "))) }.orEmpty()
         }
-        performers.distinctBy { it.id }.forEach { artist ->
-            TextButton(onClick = {
-                track.source?.let { source -> open(MusicEntry(artist.id, artist.name, source, MusicKind.ARTIST)) }
-                chooseArtist = false; close()
-            }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { Text(artist.name) }
+        val artists = performers.distinctBy { it.id }
+        androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxWidth().heightIn(max = 520.dp)
+            .height((artists.size * 80 + 24).dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+            items(artists, key = { it.id }) { artist ->
+                val source = track.source
+                if (source != null) ResolvedArtistChoice(MusicEntry(artist.id, artist.name, source, MusicKind.ARTIST)) {
+                    open(MusicEntry(artist.id, artist.name, source, MusicKind.ARTIST))
+                    chooseArtist = false; close()
+                }
+            }
         }
         if (!artistLoading && performers.isEmpty() && artistIssue == null) Text("暂无歌手信息", Modifier.padding(20.dp))
     }
@@ -323,21 +332,35 @@ internal fun CommentsSheet(track: Track, close: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val source = track.source ?: return
     val repo = remember(source) { MusicRepository(context.applicationContext, source) }
-    var comments by remember { mutableStateOf<List<MusicComment>>(emptyList()) }
+    val id = track.remoteId ?: track.song.id
+    var order by remember(source, id) { mutableStateOf(CommentOrder.HOT) }
+    var requestGeneration by remember(source, id) { mutableIntStateOf(0) }
+    var comments by remember(source, id) { mutableStateOf<List<MusicComment>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
     var text by remember { mutableStateOf("") }
     var reply by remember { mutableStateOf<MusicComment?>(null) }
     val scope = rememberCoroutineScope()
-    val id = track.remoteId ?: track.song.id
-    suspend fun refresh() { comments = repo.comments(id) }
-    LaunchedEffect(source, id) {
-        try { refresh() } catch (failure: Exception) { error = failure.message }
-        finally { loading = false }
+    suspend fun refresh() {
+        val generation = ++requestGeneration
+        val requestedOrder = order
+        loading = true; error = null
+        try {
+            val result = repo.comments(id, order = requestedOrder)
+            if (generation == requestGeneration && requestedOrder == order) comments = result
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+        catch (failure: Exception) { if (generation == requestGeneration) error = failure.message }
+        finally { if (generation == requestGeneration) loading = false }
     }
+    LaunchedEffect(source, id, order) { comments = emptyList(); refresh() }
     TravelSheet(onDismissRequest = close) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(.85f).imePadding().padding(horizontal = 20.dp)) {
-            Text("评论", style = MaterialTheme.typography.titleLarge)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("评论", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                Box(Modifier.width(156.dp)) {
+                    MusicSegments(CommentOrder.entries.map { it.label }, order.ordinal) { order = CommentOrder.entries[it] }
+                }
+            }
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 16.dp)) {
@@ -376,6 +399,7 @@ private fun CloudReturnPreview(page: DetailPage, index: Int, offset: Int) {
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().systemBarsPadding().padding(20.dp)) {
             Text(page.target.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(vertical = 16.dp))
+            if (page.target.kind == MusicKind.ARTIST) ArtistProfileHeader(page.data?.entry ?: page.target, page.data?.description.orEmpty())
             LazyColumn(state = androidx.compose.foundation.lazy.rememberLazyListState(index, offset)) {
                 items(page.data?.entries.orEmpty()) { entry -> MusicEntryRow(entry) {} }
                 items(page.data?.tracks.orEmpty()) { track -> SongRow(track, false, {}) }

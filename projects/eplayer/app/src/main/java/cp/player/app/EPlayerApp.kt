@@ -304,8 +304,9 @@ internal fun ListeningSummary(stats: ListeningStats, compact: Boolean = false, t
         Row(verticalAlignment = Alignment.Bottom) {
             Text("${stats.minutes}", fontSize = if (compact) 34.sp else 44.sp, lineHeight = if (compact) 40.sp else 52.sp, fontWeight = FontWeight.SemiBold)
             Text("分钟", Modifier.padding(start = 8.dp, bottom = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.weight(1f))
-            Text("${stats.songs} 首  ·  ${stats.activeDays} 天", Modifier.padding(bottom = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${stats.songs} 首  ·  ${stats.activeDays} 天", Modifier.weight(1f).padding(start = 12.dp, bottom = 8.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.End, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         val maximum = (stats.days.maxOfOrNull { it.milliseconds } ?: 0).coerceAtLeast(60000)
         if (!tiny) Row(Modifier.fillMaxWidth().height(if (compact) 54.dp else 84.dp).padding(top = if (compact) 8.dp else 18.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {

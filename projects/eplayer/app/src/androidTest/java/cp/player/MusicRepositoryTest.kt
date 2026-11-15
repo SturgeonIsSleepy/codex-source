@@ -53,6 +53,7 @@ class MusicRepositoryTest {
                         "/playlist/detail" -> """{"code":200,"playlist":$playlist}"""
                         "/playlist/track/all", "/song/detail" -> """{"code":200,"songs":[$song]}"""
                         "/playlist/create" -> """{"code":200,"playlist":$playlist}"""
+                        "/comment/hot" -> """{"code":200,"hotComments":[{"commentId":9,"content":"server-hot-first","user":{"nickname":"first"},"likedCount":2},{"commentId":8,"content":"server-hot-second","user":{"nickname":"second"},"likedCount":100}]}"""
                         "/comment/music" -> """{"code":200,"comments":[{"commentId":6,"content":"fixture-comment","user":{"nickname":"fixture-user"},"likedCount":2}]}"""
                         else -> """{"code":200}"""
                     }.toByteArray()
@@ -115,4 +116,11 @@ class MusicRepositoryTest {
         assertEquals("2", reply.getString("t")); assertEquals("6", reply.getString("commentId"))
         assertEquals("fixture-comment", repo.comments("123").single().text)
     }
+    @Test fun hotCommentsUseTheServerRankingRatherThanSortingRecentComments() = exercise { repo, fixture ->
+        val result = repo.comments("123", order = CommentOrder.HOT)
+        assertEquals(listOf("9", "8"), result.map { it.id })
+        assertEquals("0", fixture.requests.single { it.first == "/comment/hot" }.second.getString("type"))
+        assertEquals("fixture-comment", repo.comments("123", order = CommentOrder.NEWEST).single().text)
+    }
+
 }

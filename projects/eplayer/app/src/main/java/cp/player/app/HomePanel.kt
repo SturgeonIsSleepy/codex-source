@@ -17,11 +17,7 @@ internal fun HomePanel(stats: ListeningStats, picks: List<QuickPick>, choose: (Q
         Column(Modifier.fillMaxSize().clipToBounds()) {
             ListeningSummary(stats, compact = true, tiny = short)
             Spacer(Modifier.height(8.dp))
-            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-                val rows = count / 3
-                val cell = minOf((maxWidth - 16.dp) / 3, ((maxHeight - 110.dp - 8.dp * rows) / rows).coerceAtLeast(32.dp))
-                QuickPickGrid(picks, choose, openPicker, cellHeight = cell, maxItems = count)
-            }
+            QuickPickGrid(picks, choose, openPicker, modifier = Modifier.weight(1f).fillMaxWidth(), maxItems = count)
         }
     }
 }

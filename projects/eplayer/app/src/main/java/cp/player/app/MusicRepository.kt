@@ -14,6 +14,8 @@ data class MusicEntry(val id: String, val name: String, val source: String, val 
 data class MusicDetail(val entry: MusicEntry, val tracks: List<Track> = emptyList(),
     val entries: List<MusicEntry> = emptyList(), val description: String = "", val total: Int = 0, val records: List<ListeningRecord> = emptyList(), val nextOffset: Int = 0, val hasMore: Boolean = false)
 data class MusicSearch(val tracks: List<Track> = emptyList(), val entries: List<MusicEntry> = emptyList())
+enum class CommentOrder(val label: String) { HOT("热度"), NEWEST("最新") }
+
 data class MusicComment(val id: String, val user: String, val text: String, val avatar: String?, val liked: Boolean, val likes: Int)
 
 internal fun JsonObject.str(key: String): String? = get(key)?.takeIf { it.isJsonPrimitive }?.asString
@@ -212,13 +214,16 @@ class MusicRepository(private val context: Context, val source: String) {
         val method = when (target.kind) { MusicKind.ALBUM -> "album/sub"; MusicKind.ARTIST -> "artist/sub"; else -> "playlist/subscribe" }
         request(method, mapOf("id" to target.id, "t" to if (value) "1" else "2"))
     }
-    suspend fun comments(song: String, offset: Int = 0): List<MusicComment> = request("comment/music", mapOf("id" to song, "limit" to "30", "offset" to offset.toString()))
-        .array("comments").mapNotNull { value ->
+    suspend fun comments(song: String, offset: Int = 0, order: CommentOrder = CommentOrder.NEWEST): List<MusicComment> {
+        val response = request(if (order == CommentOrder.HOT) "comment/hot" else "comment/music",
+            mapOf("id" to song, "type" to "0", "limit" to "30", "offset" to offset.toString()))
+        return response.array(if (order == CommentOrder.HOT) "hotComments" else "comments").mapNotNull { value ->
             val comment = value.takeIf { it.isJsonObject }?.asJsonObject ?: return@mapNotNull null
             val user = comment.obj("user") ?: JsonObject()
             MusicComment(comment.str("commentId") ?: return@mapNotNull null, user.str("nickname").orEmpty(), comment.str("content").orEmpty(),
                 user.str("avatarUrl"), comment.flag("liked"), comment.number("likedCount"))
         }
+    }
     suspend fun sendComment(song: String, content: String, reply: String? = null) {
         request("comment", mapOf("t" to if (reply == null) "1" else "2", "type" to "0", "id" to song, "content" to content) +
             (reply?.let { mapOf("commentId" to it) } ?: emptyMap()))
