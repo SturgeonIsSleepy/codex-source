@@ -155,7 +155,8 @@ class EPlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     }).buildAsync()
     private fun playbackErrorMessage(error: androidx.media3.common.PlaybackException): String? =
         generateSequence<Throwable>(error) { it.cause }.take(8)
-            .filterIsInstance<cp.player.network.PlaybackNetwork.RouteUnavailable>().firstOrNull()?.message ?: error.message
+            .firstOrNull { it is cp.player.network.PlaybackNetwork.RouteUnavailable ||
+                it is cp.player.core.playback.AudioResolutionException }?.message ?: error.message
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
             publish(queueChanged = events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_METADATA_CHANGED))

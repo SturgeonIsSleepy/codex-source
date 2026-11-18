@@ -119,7 +119,7 @@ object SourceStore {
                 try {
                     val response = call(context, sourceId, "song/url/v1", mapOf("id" to songId, "level" to quality,
                         "timestamp" to System.currentTimeMillis().toString()))
-                    audio = cp.player.core.playback.AudioResource.parse(response)
+                    audio = cp.player.core.playback.AudioResource.parse(response, quality)
                 } catch (failure: cp.player.core.playback.AudioResolutionException) {
                     if (!failure.retryable || attempt != 0) throw failure
                     kotlinx.coroutines.delay(250)

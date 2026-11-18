@@ -5,7 +5,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AudioResourceTest {
-    private fun resource(fields: String) = AudioResource.parse(JsonParser.parseString("{\"code\":200,\"data\":[{$fields}]}").asJsonObject)
+    private fun resource(fields: String, quality: String? = null) = AudioResource.parse(JsonParser.parseString("{\"code\":200,\"data\":[{$fields}]}").asJsonObject, quality)
+    @Test fun lowerReportedQualityIsRejectedWithoutRetry() {
+        try { resource("\"url\":\"https://cdn.test/audio\",\"level\":\"higher\"", "lossless"); fail() }
+        catch (failure: AudioResolutionException) { assertFalse(failure.retryable) }
+    }
+    @Test fun knownLossyFormatCannotSatisfyLosslessRequest() {
+        try { resource("\"url\":\"https://cdn.test/audio\",\"type\":\"mp3\"", "hires"); fail() }
+        catch (failure: AudioResolutionException) { assertFalse(failure.retryable) }
+    }
+    @Test fun requestedQualityAcceptsMatchingSource() {
+        assertEquals("https://cdn.test/audio", resource("\"url\":\"https://cdn.test/audio\",\"level\":\"lossless\",\"type\":\"flac\"", "lossless").url)
+    }
     @Test fun actualBitrateAndFormatNeverShareRequestedQualityCache() {
         val low = resource("\"url\":\"https://cdn.test/a\",\"md5\":\"a\",\"size\":100,\"br\":128000,\"type\":\"mp3\"")
         val high = resource("\"url\":\"https://cdn.test/b\",\"md5\":\"b\",\"size\":200,\"br\":192000,\"type\":\"mp3\"")
