@@ -70,8 +70,13 @@ internal object YtmProxy {
         if (!cp.player.network.PlaybackNetwork.splitEnabled(context)) return Route(null, "system:$networkKey")
         val selection = mode(context)
         if (selection == "vpn" && !vpn) throw RecommendationUnavailable("当前应用未进入系统 VPN，请使用自动或本地代理")
-        if (selection == "vpn" || selection == "auto" && vpn) return Route(null, "vpn:$networkKey")
+        if (selection == "vpn") return Route(null, "vpn:$networkKey")
         val saved = raw(context)
+        // Preserve the explicitly configured YTM exit, even when a system VPN is also active.
+        if (selection == "auto") {
+            parse(saved)?.let { return Route(it, "saved:$it:$networkKey") }
+            if (vpn) return Route(null, "vpn:$networkKey")
+        }
         if (selection == "manual") {
             val proxy = parse(saved) ?: throw RecommendationUnavailable("请设置有效的 SOCKS5 或 HTTP 代理地址")
             return Route(proxy, "manual:$proxy:$networkKey")
