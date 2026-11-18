@@ -32,6 +32,10 @@ import java.io.File
             .setExtras(Bundle().apply {
                 putString("artistId", this@toMediaItem.artistId)
                 putString("albumId", this@toMediaItem.albumId)
+                putStringArrayList("artistIds", ArrayList(this@toMediaItem.artists.orEmpty().map { it.id }))
+                putStringArrayList("artistNames", ArrayList(this@toMediaItem.artists.orEmpty().map { it.name }))
+                putStringArrayList("artistAliases", ArrayList(this@toMediaItem.artistAliases.orEmpty()))
+                putStringArrayList("titleAliases", ArrayList(this@toMediaItem.titleAliases.orEmpty()))
                 putLong("duration", this@toMediaItem.durationMs)
             })
             .build()
@@ -64,7 +68,13 @@ import java.io.File
             albumArtUrl = this.mediaMetadata.artworkUri?.toString(),
             artistId = this.mediaMetadata.extras?.getString("artistId"),
             durationMs = this.mediaMetadata.extras?.getLong("duration") ?: 0L,
-            albumId = this.mediaMetadata.extras?.getString("albumId")
+            albumId = this.mediaMetadata.extras?.getString("albumId"),
+            artists = this.mediaMetadata.extras?.let { extras ->
+                extras.getStringArrayList("artistIds").orEmpty().zip(extras.getStringArrayList("artistNames").orEmpty())
+                    .map { (id, name) -> cp.player.model.SongArtist(id, name) }
+            }.orEmpty(),
+            artistAliases = this.mediaMetadata.extras?.getStringArrayList("artistAliases").orEmpty(),
+            titleAliases = this.mediaMetadata.extras?.getStringArrayList("titleAliases").orEmpty()
         )
     }
 

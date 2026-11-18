@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,7 +29,7 @@ internal fun EqualizerBandDialog(index: Int, initial: EqualizerBand, dismiss: ()
         q.trim().toFloatOrNull()?.let { EqualizerBand(f, g, it) }
     } }
     val valid = band?.isValid() == true
-    AlertDialog(onDismissRequest = dismiss, modifier = Modifier.testTag("eq-band-editor"),
+    TravelAlertDialog(onDismissRequest = dismiss, modifier = Modifier.testTag("eq-band-editor"),
         title = { Text("第 ${index + 1} 段 · 参数均衡") }, text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Q 值越大，调整的频率范围越窄。保存后生效。")

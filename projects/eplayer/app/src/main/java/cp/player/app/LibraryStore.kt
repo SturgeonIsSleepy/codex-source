@@ -36,7 +36,16 @@ class LibraryStore(private val context: Context) {
     private val type = object : TypeToken<List<Track>>() {}.type
     private val imports = if (index.exists()) runCatching { gson.fromJson<List<Track>>(index.readText(), type) }.getOrNull().orEmpty().toMutableList() else mutableListOf()
 
-    @Synchronized fun imported(): List<Track> = imports.toList()
+    @Synchronized fun imported(): List<Track> {
+        // Retire preset rows, preserving audio the user explicitly imported in earlier versions.
+        val migrated = context.getSharedPreferences("legacy_audio_migration", Context.MODE_PRIVATE)
+        for (slot in 0..1) if (!migrated.getBoolean("slot_$slot", false)) {
+            val uri = WitchPlaylist.uri(context, "witch_$slot")
+            if (uri == null || runCatching { importAudio(uri) }.isSuccess)
+                migrated.edit().putBoolean("slot_$slot", true).apply()
+        }
+        return imports.toList()
+    }
     @Synchronized fun importAudio(uri: Uri, metadataOverride: Song? = null, source: String? = null): Track {
         val id = "import_${UUID.randomUUID()}"
         val directory = File(context.filesDir, "audio").apply { mkdirs() }

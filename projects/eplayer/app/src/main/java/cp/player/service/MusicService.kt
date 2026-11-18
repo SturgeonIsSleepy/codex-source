@@ -26,6 +26,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import cp.player.MainActivity
 import cp.player.app.QueueStore
 import cp.player.core.playback.togglePlayback
+import cp.player.core.playback.playbackOrder
 import cp.player.core.playback.PlaybackSleepTimer
 import cp.player.engine.CPPlayerManager
 import cp.player.util.UserPreferences
@@ -38,6 +39,22 @@ class MusicService : MediaSessionService() {
     private lateinit var audio: AudioManager
     private var rustFocus: RustAudioFocus? = null
     private var engine = 0
+    private val playNextOrder = cp.player.core.playback.PlayNextOrder()
+    private var lastPriorityOrder: String? = null
+    private fun updatePriorityShuffle() {
+        playNextOrder.consume(player.currentMediaItem)
+        val items = (0 until player.mediaItemCount).map(player::getMediaItemAt)
+        val current = player.currentMediaItemIndex
+        val pending = playNextOrder.pending(items, current)
+        val exo = player as? androidx.media3.exoplayer.ExoPlayer ?: return
+        if (!exo.shuffleModeEnabled || pending.isEmpty() || current !in items.indices) { lastPriorityOrder = null; return }
+        val signature = "$current:${items.size}:${pending.map { cp.player.core.playback.PlayNextOrder.token(items[it]) }}"
+        if (lastPriorityOrder == signature) return
+        lastPriorityOrder = signature
+        val fixed = (listOf(current) + pending).toSet()
+        val order = listOf(current) + pending + player.playbackOrder().filter { it !in fixed }
+        exo.setShuffleOrder(androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), System.nanoTime()))
+    }
     private val handler = Handler(Looper.getMainLooper())
     private val listeningClock = cp.player.app.ListeningClock()
     private val listeningCheckpoint = Runnable { checkpointListening(saveQueue = true) }
@@ -63,8 +80,44 @@ class MusicService : MediaSessionService() {
     private val noisy = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) { pausePlayer() }
     }
+    private var recoveredItem: androidx.media3.common.MediaItem? = null
+    private var pendingRecovery: Runnable? = null
+    private fun cancelRecovery() { pendingRecovery?.let(handler::removeCallbacks); pendingRecovery = null }
     private val listener = object : Player.Listener {
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            Log.i("EPlayerPlayback", "request=$playWhenReady reason=$reason state=${player.playbackState}")
+            if (!playWhenReady) cancelRecovery()
+        }
+        override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
+            recoveredItem = null
+            cancelRecovery()
+        }
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            val item = player.currentMediaItem ?: return
+            val source = item.mediaMetadata.extras?.getString("source")
+                ?: item.localConfiguration?.uri?.getQueryParameter("source")
+            source?.let(cp.player.app.SourceStore::clearResolved)
+            val causes = generateSequence<Throwable>(error) { it.cause }.take(8).toList()
+            val retry = causes.any { it is cp.player.core.playback.AudioRepresentationChanged ||
+                it is cp.player.core.playback.AudioResolutionException && it.retryable } ||
+                error.errorCode in setOf(2001, 2002, 2004)
+            Log.i("EPlayerPlayback", "error=${error.errorCode} recovery=$retry requested=${player.playWhenReady}")
+            if (!retry || !player.playWhenReady || recoveredItem == item) return
+            recoveredItem = item
+            cancelRecovery()
+            pendingRecovery = Runnable {
+                pendingRecovery = null
+                if (player.currentMediaItem == item && player.playWhenReady && player.playerError != null) {
+                    // prepare() recreates the failed period/extractor, retaining queue and time.
+                    player.prepare()
+                }
+            }.also { handler.postDelayed(it, 500) }
+        }
+
         override fun onEvents(player: Player, events: Player.Events) {
+            if (events.containsAny(Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_TIMELINE_CHANGED,
+                    Player.EVENT_PLAY_WHEN_READY_CHANGED, Player.EVENT_PLAYBACK_STATE_CHANGED, Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED, Player.EVENT_REPEAT_MODE_CHANGED)) cp.player.app.RoamPlayback.changed()
+            if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED)) updatePriorityShuffle()
             if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION)) checkpointListening()
             if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION,
                     Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_POSITION_DISCONTINUITY)) {
@@ -86,6 +139,7 @@ class MusicService : MediaSessionService() {
         rustFocus = if (engine == 1) RustAudioFocus(audio, player, handler) else null
         QueueStore.restore(this, player)
         player.addListener(listener)
+        cp.player.app.RoamPlayback.attach(this) { player }
         val activity = PendingIntent.getActivity(this, 0,
             Intent(this, MainActivity::class.java).setAction("ACTION_SHOW_PLAYER"),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
@@ -95,10 +149,13 @@ class MusicService : MediaSessionService() {
                     return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                         .setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
                             .add(SessionCommand("SET_ENGINE", Bundle.EMPTY))
+                            .add(SessionCommand(cp.player.app.RoamPlayback.START, Bundle.EMPTY))
+                            .add(SessionCommand("MOVE_SHUFFLE_ITEM", Bundle.EMPTY))
                             .add(SessionCommand(PlaybackSleepTimer.COMMAND, Bundle.EMPTY)).build()).build()
                 }
                 override fun onPlayerInteractionFinished(session: MediaSession,
                     controller: MediaSession.ControllerInfo, playerCommands: Player.Commands) {
+                    if (playerCommands.contains(Player.COMMAND_CHANGE_MEDIA_ITEMS)) updatePriorityShuffle()
                     if (playerCommands.contains(Player.COMMAND_STOP)) {
                         // Only whitelist our fixture labels; never dump arbitrary connection hints.
                         val label = controller.connectionHints.getString("eplayer.qa.owner")
@@ -118,6 +175,14 @@ class MusicService : MediaSessionService() {
                 }
                 override fun onCustomCommand(session: MediaSession, controller: MediaSession.ControllerInfo,
                     command: SessionCommand, args: Bundle): ListenableFuture<SessionResult> {
+                    if (command.customAction == cp.player.app.RoamPlayback.START) {
+                        val source = args.getString("source") ?: return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+                        val type = object : com.google.gson.reflect.TypeToken<List<cp.player.app.Track>>() {}.type
+                        val anchors = runCatching { com.google.gson.Gson().fromJson<List<cp.player.app.Track>>(args.getString("anchors"), type) }.getOrNull()
+                            ?: return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+                        cp.player.app.RoamPlayback.start(source, anchors, args.getStringArrayList("original").orEmpty().toSet())
+                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
                     if (command.customAction == PlaybackSleepTimer.COMMAND) {
                         if (!args.containsKey(PlaybackSleepTimer.DURATION_MS))
                             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
@@ -125,6 +190,20 @@ class MusicService : MediaSessionService() {
                         if (duration !in 0..PlaybackSleepTimer.MAX_DURATION_MS)
                             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
                         sleepTimer.set(duration)
+                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+                    if (command.customAction == "MOVE_SHUFFLE_ITEM") {
+                        val from = args.getInt("from", -1); val to = args.getInt("to", -1)
+                        val order = player.playbackOrder().toMutableList()
+                        val first = order.indexOf(from); val last = order.indexOf(to)
+                        if (!player.shuffleModeEnabled || first < 0 || last < 0)
+                            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+                        order.add(last, order.removeAt(first))
+                        when (val enginePlayer = player) {
+                            is androidx.media3.exoplayer.ExoPlayer -> enginePlayer.setShuffleOrder(
+                                androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), System.nanoTime()))
+                            is cp.player.engine.FlickPlayer -> enginePlayer.setShufflePlaybackOrder(order)
+                        }
                         return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                     }
                     if (command.customAction != "SET_ENGINE") return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
@@ -144,6 +223,8 @@ class MusicService : MediaSessionService() {
                         engine = requested
                         UserPreferences.saveAudioEngine(this@MusicService, engine)
                         player = CPPlayerManager.createPlayer(this@MusicService, engine)
+                        lastPriorityOrder = null
+                        (player as? cp.player.engine.FlickPlayer)?.rememberPlayedNextTokens(playNextOrder.consumed())
                         rustFocus = if (engine == 1) RustAudioFocus(audio, player, handler) else null
                         player.repeatMode = repeat
                         player.shuffleModeEnabled = shuffle
@@ -182,6 +263,8 @@ class MusicService : MediaSessionService() {
     }
     override fun onTaskRemoved(rootIntent: Intent?) { if (!player.playWhenReady) stopSelf() }
     override fun onDestroy() {
+        cancelRecovery()
+        cp.player.app.RoamPlayback.detach()
         checkpointListening(finishing = true)
         sleepTimer.set(0)
         rustFocus?.close(); rustFocus = null

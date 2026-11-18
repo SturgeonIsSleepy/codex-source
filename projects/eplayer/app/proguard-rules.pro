@@ -69,3 +69,7 @@
 -keep class cp.player.app.LyricsText { *; }
 -keep class cp.player.app.LyricParser { *; }
 -keep class cp.player.app.TimedLine { *; }
+
+# Persistent home shortcuts must survive updates between fast and R8 builds.
+-keep class cp.player.app.QuickPick { *; }
+-keep enum cp.player.app.MusicKind { *; }
