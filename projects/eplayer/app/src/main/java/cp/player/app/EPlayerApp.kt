@@ -126,7 +126,7 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
             MovingHeader(header) {
                 Column {
                     AppHeader(when (selectedPage) { 1 -> "探索"; 2 -> "媒体库"; else -> "ePlayer" }, home.account?.avatar,
-                        { openSettings("profile") }, { searchOpen = true }, Modifier.padding(horizontal = 20.dp))
+                        { openSettings("profile") }, { searchOpen = true }, Modifier.padding(horizontal = 16.dp))
                     if (selectedPage == 2) Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.weight(1f)) { MusicSegments(listOf("歌单", "歌曲", "最近"), libraryMode) { libraryMode = it } }
                         IconButton(onClick = { libraryMenu = true }) { Icon(Icons.Default.MoreVert, "媒体库操作") }
@@ -140,9 +140,9 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                 }
             }
             if (selectedPage == 0) HomePanel(stats, picks, ::openPick, { roamPicker = it },
-                Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = if (state.song != null) 124.dp else 72.dp)) else LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("root-content-$selectedPage"), state = list,
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = if (state.song != null) 124.dp else 72.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp)) else LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("root-content-$selectedPage"), state = list,
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
                 when (selectedPage) {
                     1 -> {
@@ -150,11 +150,11 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
                         else {
                             item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 listOf("新发行" to "new", "排行榜" to "charts", "心情与流派" to "genres").forEach { (label, id) ->
-                                    Column(Modifier.weight(1f).height(100.dp).clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                    Column(Modifier.weight(1f).heightIn(min = 80.dp).clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.surfaceContainerLow)
                                         .clickable { cloud.open(MusicEntry(id, label, home.source!!, if (id == "charts") MusicKind.CHARTS else MusicKind.BROWSE)) }
-                                        .padding(12.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                                        .padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Icon(when (id) { "new" -> Icons.Default.NewReleases; "charts" -> Icons.Default.TrendingUp; else -> Icons.Default.Mood }, null)
-                                        Text(label, style = MaterialTheme.typography.titleMedium)
+                                        Text(label, style = MaterialTheme.typography.labelLarge)
                                     }
                                 }
                             } }
@@ -242,18 +242,18 @@ fun EPlayerApp(model: EPlayerViewModel, cloud: CloudViewModel, showPlayer: Boole
     }
     CompositionLocalProvider(LocalBackPreviewVisibility provides revealBack) {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            ThemeBackdrop(Modifier.matchParentSize())
-            AnimatedContent(page, modifier = Modifier.fillMaxSize(), transitionSpec = {
-                fadeIn(AppMotion.page()).togetherWith(fadeOut(AppMotion.page()))
+        ThemeBackdrop(Modifier.matchParentSize())
+        Column(Modifier.fillMaxSize().navigationBarsPadding()) {
+            AnimatedContent(page, modifier = Modifier.weight(1f).fillMaxWidth(), transitionSpec = {
+                fadeIn(AppMotion.page()).togetherWith(fadeOut(AppMotion.page())).using(null)
             }, label = "root-tab") { selectedPage -> RootContents(selectedPage) }
-        }
-        Box(Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (chromeVisible) 1f else 0f }.navigationBarsPadding()) {
-            MusicDock(state, page, discovery, { target ->
-                if (target != page) { query = ""; cloud.clearSearch(); if (target == 2) libraryMode = 0 }
-                page = target; searchOpen = false
-            },
-                { onShowPlayer(true) }, model::playPause, model::next, { queueOpen = true })
+            Box(Modifier.graphicsLayer { alpha = if (chromeVisible) 1f else 0f }) {
+                MusicDock(state, page, discovery, { target ->
+                    if (target != page) { query = ""; cloud.clearSearch(); if (target == 2) libraryMode = 0 }
+                    page = target; searchOpen = false
+                },
+                    { onShowPlayer(true) }, model::playPause, model::next, { queueOpen = true })
+            }
         }
     }
     settingsSection?.let { section ->
