@@ -117,8 +117,13 @@ object SourceStore {
         repeat(2) { attempt ->
             if (audio == null) {
                 try {
-                    val response = call(context, sourceId, "song/url/v1", mapOf("id" to songId, "level" to quality,
+                    var response = call(context, sourceId, "song/url/v1", mapOf("id" to songId, "level" to quality,
                         "timestamp" to System.currentTimeMillis().toString()))
+                    if (sourceId == "netease-cloudmusic-rs" && songId.all(Char::isDigit) &&
+                        response.str("msg") == "No audio URL found after quality fallback") {
+                        val cookie = UserPreferences.getPrefs(context).getString("cookie_$sourceId", null)
+                        response = cp.player.network.NeteaseAudio.resolve(context, songId, quality, cookie)
+                    }
                     audio = cp.player.core.playback.AudioResource.parse(response, quality)
                 } catch (failure: cp.player.core.playback.AudioResolutionException) {
                     if (!failure.retryable || attempt != 0) throw failure

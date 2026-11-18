@@ -69,8 +69,13 @@ internal class YtmRecommendations(context: Context, private val source: String) 
             android.util.Log.i("EPlayerRoam", "stage=seed-search count=${searched.size}")
             var id = RecordingMatch.choose(expected, searched)
             if (id == null) {
-                searched += ytm.search(expected, expected.title)
-                id = RecordingMatch.choose(identity(seed), searched)
+                val identified = identity(seed)
+                id = RecordingMatch.choose(identified, searched)
+                for (query in RecordingMatch.seedQueries(identified)) {
+                    if (id != null) break
+                    searched += ytm.search(identified, query)
+                    id = RecordingMatch.choose(identified, searched)
+                }
             }
             if (id == null) continue
             seedMatches++

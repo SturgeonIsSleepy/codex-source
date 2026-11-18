@@ -24,6 +24,13 @@ internal object RecordingMatch {
         else "roman:" + words.map(::text).sorted().joinToString("|")
     }
     private val featureCredit = Regex("(?i)\\s*[\\[(]\\s*(?:feat\\.?|ft\\.?|featuring)\\s+([^\\])]+)[\\])]\\s*")
+    fun seedQueries(recording: Recording): List<String> {
+        val title = recording.title.replace(featureCredit, " ").trim()
+        val first = recording.artists.lastOrNull().orEmpty()
+        return (listOf("$title $first", title) +
+            recording.titleAliases.take(2).map { "$it $first" })
+            .map(String::trim).filter(String::isNotEmpty).distinct()
+    }
     private fun titleKeys(recording: Recording, credits: Set<String>): Set<String> = buildSet {
         for (value in listOf(recording.title) + recording.titleAliases) {
             val cleaned = value.replace(featureCredit) { credit ->

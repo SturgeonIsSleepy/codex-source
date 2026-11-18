@@ -174,7 +174,10 @@ internal object YtmMetadata {
         val columns = row.array("flexColumns").mapNotNull { it.asJsonObject.obj("musicResponsiveListItemFlexColumnRenderer")?.obj("text") }
         val runs = columns.drop(1).flatMap { it.array("runs").map { run -> run.asJsonObject } }
         val id = row.obj("playlistItemData")?.str("videoId") ?: all(row, "watchEndpoint").firstNotNullOfOrNull { it.str("videoId") }
-        recording(row, text(columns.firstOrNull()), runs, id, runs.mapNotNull { it.str("text") }.firstOrNull { it.matches(Regex("\\d+:\\d{2}(?::\\d{2})?")) }.orEmpty())
+        val fixed = row.array("fixedColumns").mapNotNull { it.asJsonObject.obj("musicResponsiveListItemFixedColumnRenderer")?.obj("text") }
+        val length = (runs.mapNotNull { it.str("text") } + fixed.map(::text))
+            .firstOrNull { it.matches(Regex("\\d+:\\d{2}(?::\\d{2})?")) }.orEmpty()
+        recording(row, text(columns.firstOrNull()), runs, id, length)
     }.distinctBy { it.id }.take(20)
     fun radio(root: JsonObject): List<Recording> = all(root, "playlistPanelVideoRenderer").mapNotNull { row ->
         val runs = row.obj("longBylineText")?.array("runs")?.map { it.asJsonObject }.orEmpty()
